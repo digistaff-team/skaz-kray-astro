@@ -1,0 +1,111 @@
+---
+import Base from '../layouts/Base.astro';
+import Slider from '../components/Slider.astro';
+import { slides, introBlocks } from '../data/home.js';
+---
+<Base>
+  <Slider slides={slides} />
+
+  <!-- Приветствие -->
+  <section class="intro wrap">
+    <div class="intro-inner">
+      <p class="eyebrow">Добро пожаловать</p>
+      <h1 class="intro-title">Мы создаём Сказочный Край — поселение родовых поместий</h1>
+      <p class="intro-lead">
+        В Северском районе Краснодарского края, среди лесов, полей и реки Шебш, семьи
+        обустраивают свои родовые поместья — пространство жизни в гармонии с природой,
+        которое передаётся из поколения в поколение.
+      </p>
+      <div class="intro-actions">
+        <a href="/o-nas/" class="btn btn--solid">О поселении</a>
+        <a href="/o-nas/novichkam/" class="btn">Новичкам</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Карточки-блоки -->
+  <section class="cards wrap" aria-label="О поселении">
+    <div class="cards-grid">
+      {introBlocks.map((b) => (
+        <article class="card">
+          {b.image && (
+            <a href={b.link} class="card-media" tabindex="-1" aria-hidden="true">
+              <img src={b.image} alt="" loading="lazy" width="600" height="380" />
+            </a>
+          )}
+          <div class="card-body">
+            <h3 class="card-title"><a href={b.link}>{b.title}</a></h3>
+            <p class="card-text">{b.text}</p>
+            <a href={b.link} class="card-link">{b.linkText} →</a>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Подписка -->
+  <section class="subscribe">
+    <div class="wrap subscribe-inner">
+      <div>
+        <p class="eyebrow" style="color: var(--wheat);">Путь в Сказочный Край</p>
+        <h2 class="subscribe-title">Хотите ближе познакомиться с поселением?</h2>
+        <p class="subscribe-text">
+          Подпишитесь на серию писем «Путь в Сказочный Край» — мы расскажем об образе
+          поселения, правилах и о том, как приехать в гости.
+        </p>
+      </div>
+      <a href="/o-nas/novichkam/" class="btn btn--solid subscribe-btn">Начать знакомство</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .intro { padding-top: 3.5rem; }
+  .intro-inner { max-width: 46rem; }
+  .intro-title { margin-bottom: 0.6em; }
+  .intro-lead { font-size: var(--step-1); color: var(--muted); }
+  .intro-actions { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.6rem; }
+
+  .cards { padding-top: 3rem; }
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.6rem;
+  }
+  .card {
+    display: flex; flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(31,42,32,0.1); }
+  .card-media { display: block; aspect-ratio: 3 / 2; overflow: hidden; background: var(--ground-2); }
+  .card-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+  .card:hover .card-media img { transform: scale(1.04); }
+  .card-body { padding: 1.4rem 1.5rem 1.6rem; display: flex; flex-direction: column; flex: 1; }
+  .card-title { margin-bottom: 0.4em; }
+  .card-title a { color: var(--ink); }
+  .card-title a:hover { color: var(--green); text-decoration: none; }
+  .card-text { color: var(--muted); font-size: var(--step-0); flex: 1; }
+  .card-link { font-weight: 700; font-size: var(--step--1); margin-top: 0.8rem; }
+
+  .subscribe { margin-top: 4rem; background: var(--green-soft); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .subscribe-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 2rem; flex-wrap: wrap;
+    padding-top: 2.6rem; padding-bottom: 2.6rem;
+  }
+  .subscribe-title { margin-bottom: 0.35em; }
+  .subscribe-text { color: var(--muted); max-width: 46ch; margin: 0; }
+  .subscribe-btn { flex: none; }
+
+  @media (max-width: 900px) {
+    .cards-grid { grid-template-columns: 1fr; max-width: 30rem; margin-inline: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card-media img { transition: none; }
+  }
+</style>

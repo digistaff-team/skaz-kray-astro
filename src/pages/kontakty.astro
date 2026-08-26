@@ -1,0 +1,166 @@
+---
+import Base from '../layouts/Base.astro';
+
+const contacts = {
+  address: 'Россия, Краснодарский край, Северский район, станица Григорьевская, поселение «Сказочный Край»',
+  phone: '+7 988 082 9335',
+  phoneName: 'Ольга',
+  phoneTel: '+79880829335',
+  email: 'skaz.kray@gmail.com',
+};
+const mapSrc = 'https://www.google.com/maps/d/embed?mid=1yYs6Fapw0sgJUNGGP-1UW0uhYSs&ll=44.77428,38.866882&z=13';
+---
+<Base title="Контакты" description="Контакты поселения родовых поместий Сказочный Край: адрес, телефон, как добраться, гостевой день.">
+  <header class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Свяжитесь с нами</p>
+      <h1>Контакты</h1>
+      <p class="page-head-lead">
+        Мы всегда рады знакомству с людьми, близкими нам по духу. Перед приездом,
+        пожалуйста, познакомьтесь с поселением и напишите нам.
+      </p>
+    </div>
+  </header>
+
+  <div class="wrap contacts-grid">
+    <!-- Контактная карточка -->
+    <aside class="contact-card">
+      <ul class="contact-list">
+        <li>
+          <span class="ci" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          </span>
+          <div><span class="ci-label">Адрес</span>{contacts.address}</div>
+        </li>
+        <li>
+          <span class="ci" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c0 8.3 6.7 15 15 15 .9 0 1.7-.7 1.9-1.6l.3-2a1.3 1.3 0 0 0-.8-1.4l-3.3-1.3a1.3 1.3 0 0 0-1.5.4l-.9 1.1a11.5 11.5 0 0 1-5-5l1.1-.9a1.3 1.3 0 0 0 .4-1.5L9.6 4.6a1.3 1.3 0 0 0-1.4-.8l-2 .3C5.3 4.3 4.6 5 4 5Z"/></svg>
+          </span>
+          <div><span class="ci-label">Телефон</span><a href={`tel:${contacts.phoneTel}`}>{contacts.phone}</a> — {contacts.phoneName}<span class="ci-hint">(пишите в телеграм или MAX)</span></div>
+        </li>
+        <li>
+          <span class="ci" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>
+          </span>
+          <div><span class="ci-label">Почта</span><a href={`mailto:${contacts.email}`}>{contacts.email}</a></div>
+        </li>
+        <li>
+          <span class="ci" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+          </span>
+          <div><span class="ci-label">Гостевой день</span>По субботам, по приглашению</div>
+        </li>
+      </ul>
+      <a href="https://vk.com/skaz.kray" target="_blank" rel="noopener" class="btn contact-vk">Наша группа ВКонтакте</a>
+      <p class="contact-note">По всем вопросам пишите на официальный электронный адрес поселения.</p>
+    </aside>
+
+    <!-- Как приехать -->
+    <div class="contacts-body prose">
+      <p>
+        Дорогие друзья! Перед приездом в наше поселение, пожалуйста, ознакомьтесь с
+        <a href="/o-nas/obraz-poseleniya/">Образом поселения</a> и
+        <a href="/o-nas/pravila/">Правилами</a>, а также подпишитесь на серию писем
+        <a href="/o-nas/novichkam/">«Путь в Сказочный Край»</a>.
+      </p>
+      <p>
+        Просьба звонить и писать только после прочтения всех писем серии и одобрения
+        вашей анкеты (через 1–2 недели после получения). Анкета высылается подписчикам
+        на серию писем.
+      </p>
+
+      <h2>Гостевой день</h2>
+      <p>
+        Гостевой день проходит <strong>по субботам</strong>. Вы можете приехать в любую
+        из суббот по приглашению (после заполнения анкет). Проводится без оплаты, включая
+        экскурсию и посещение гостевого поместья.
+      </p>
+
+      <h2>Туристам</h2>
+      <p>
+        Если вы хотите приехать с ознакомительной целью (без анкет), запишитесь заранее
+        на платную экскурсию — 2000&nbsp;₽. Для такого визита заполнение анкет не нужно,
+        день приезда вы выбираете сами.
+      </p>
+
+      <h2>Как добраться</h2>
+      <p>
+        Ехать из Краснодара нужно по маршруту <strong>Афипский — Смоленская — Григорьевская</strong>.
+        Проехать всю станицу Григорьевская в сторону станицы Ставропольская. На выезде из
+        Григорьевской, сразу за мостом — первый поворот налево; по грунтовой дороге до
+        первого поворота налево, повернуть. Вдалеке будет видна красно-коричневая крыша
+        беседки — подъезжайте к ней.
+      </p>
+      <p class="callout">
+        Обязательно согласуйте приезд заранее! Форма одежды — походная (смотрите прогноз
+        погоды). Возьмите с собой еду и питьё.
+      </p>
+    </div>
+  </div>
+
+  <!-- Карта -->
+  <section class="map-section wrap" aria-label="Карта проезда">
+    <h2 class="map-title">Мы на карте</h2>
+    <div class="map-frame">
+      <iframe src={mapSrc} title="Карта поселения Сказочный Край" loading="lazy" allowfullscreen></iframe>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-head { padding: 3rem 0 1.5rem; border-bottom: 1px solid var(--line); background: var(--ground-2); }
+  .page-head-lead { color: var(--muted); font-size: var(--step-1); max-width: 48ch; margin: 0.6rem 0 0; }
+
+  .contacts-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 3rem;
+    padding-top: 3rem;
+    align-items: start;
+  }
+  .contact-card {
+    position: sticky; top: 104px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.6rem 1.6rem 1.8rem;
+  }
+  .contact-list { list-style: none; margin: 0 0 1.3rem; padding: 0; display: flex; flex-direction: column; gap: 1.1rem; }
+  .contact-list li { display: flex; gap: 0.9rem; align-items: flex-start; font-size: var(--step-0); }
+  .ci {
+    flex: none; width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--green-soft); color: var(--green-deep);
+    border-radius: 50%;
+  }
+  .ci-label { display: block; font-size: var(--step--2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.15rem; }
+  .ci-note { color: var(--muted); }
+  .ci-hint { display: block; color: var(--muted); font-size: var(--step--1); margin-top: 0.1rem; }
+  .contact-vk { width: 100%; justify-content: center; }
+  .contact-note { font-size: var(--step--1); color: var(--muted); margin: 1rem 0 0; }
+
+  .callout {
+    background: var(--wheat-soft);
+    border-left: 4px solid var(--wheat);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    font-size: var(--step-0);
+  }
+
+  .map-section { padding-top: 3.5rem; }
+  .map-title { margin-bottom: 1rem; }
+  .map-frame {
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    aspect-ratio: 16 / 8;
+  }
+  .map-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+  @media (max-width: 860px) {
+    .contacts-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .contact-card { position: static; }
+  }
+</style>

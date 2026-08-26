@@ -1,0 +1,23 @@
+{
+  "name": "skaz-kray-astro",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.2.1",
+    "@fontsource/pt-sans": "^5.1.0",
+    "@fontsource/pt-serif": "^5.1.0",
+    "astro": "^4.16.18"
+  },
+  "devDependencies": {
+    "@wordpress/autop": "^4.53.0",
+    "gray-matter": "^4.0.3",
+    "sharp": "^0.35.3"
+  }
+}

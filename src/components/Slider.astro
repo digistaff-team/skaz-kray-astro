@@ -1,0 +1,133 @@
+---
+const { slides } = Astro.props;
+---
+<section class="hero" aria-roledescription="карусель" aria-label="Фотографии поселения">
+  <div class="hero-track" id="hero-track">
+    {slides.map((s, i) => (
+      <figure class="hero-slide" id={`slide-${i}`}>
+        <img
+          src={s.img}
+          alt={s.title}
+          loading={i === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+          width="1200" height="600"
+        />
+        <figcaption class="hero-caption">
+          <div class="wrap">
+            <span class="hero-eyebrow">Сказочный Край</span>
+            <h2 class="hero-title">{s.title}</h2>
+            {s.link && <a href={s.link} class="btn btn--solid hero-btn">Подробнее</a>}
+          </div>
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <div class="hero-dots" role="tablist" aria-label="Слайды">
+    {slides.map((s, i) => (
+      <button type="button" class="hero-dot" data-idx={i}
+         role="tab" aria-label={`Слайд ${i + 1}: ${s.title}`}></button>
+    ))}
+  </div>
+</section>
+
+<style>
+  .hero { position: relative; background: var(--ink); }
+  .hero-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  .hero-track::-webkit-scrollbar { display: none; }
+  .hero-slide {
+    position: relative;
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    margin: 0;
+    aspect-ratio: 2 / 1;
+    max-height: 68vh;
+    overflow: hidden;
+  }
+  .hero-slide img { width: 100%; height: 100%; object-fit: cover; }
+  .hero-caption {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 5rem 0 2.2rem;
+    background: linear-gradient(to top, rgba(15, 26, 17, 0.82) 8%, rgba(15, 26, 17, 0.35) 55%, transparent);
+    color: #fff;
+  }
+  .hero-eyebrow {
+    font-size: var(--step--2); font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: #d9ecdf;
+  }
+  .hero-title {
+    color: #fff;
+    font-size: clamp(1.5rem, 1.05rem + 2vw, 2.3rem);
+    margin: 0.35rem 0 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+    max-width: 20ch;
+  }
+  .hero-btn { margin-top: 1.1rem; }
+
+  .hero-dots {
+    position: absolute;
+    right: 0; left: 0; bottom: 1rem;
+    display: flex; justify-content: center; gap: 0.55rem;
+    padding: 0 1rem;
+  }
+  .hero-dot {
+    width: 11px; height: 11px; border-radius: 50%; padding: 0;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    transition: all 0.2s ease;
+  }
+  .hero-dot:hover { background: #fff; }
+  .hero-dot[aria-selected="true"] { background: var(--green); border-color: #fff; transform: scale(1.25); }
+
+  @media (max-width: 640px) {
+    .hero-slide { aspect-ratio: 3 / 4; max-height: 78vh; }
+    .hero-caption { padding-top: 3.5rem; }
+  }
+</style>
+
+<script>
+  // Progressive enhancement: sync dots with scroll + gentle autoplay.
+  const track = document.getElementById('hero-track');
+  if (track) {
+    const slides = Array.from(track.children);
+    const dots = Array.from(document.querySelectorAll('.hero-dot'));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const setActive = (idx) => dots.forEach((d, i) =>
+      d.setAttribute('aria-selected', i === idx ? 'true' : 'false'));
+    setActive(0);
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) setActive(slides.indexOf(e.target));
+      });
+    }, { root: track, threshold: 0.6 });
+    slides.forEach((s) => io.observe(s));
+
+    // Scroll horizontally within the track only — no hash/anchor jump.
+    const goTo = (idx) => track.scrollTo({ left: slides[idx].offsetLeft, behavior: reduce ? 'auto' : 'smooth' });
+
+    let timer = null;
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const start = () => { if (!reduce && !timer) timer = setInterval(() => {
+      const cur = dots.findIndex((d) => d.getAttribute('aria-selected') === 'true');
+      goTo((cur + 1) % slides.length);
+    }, 6000); };
+
+    dots.forEach((d, i) => d.addEventListener('click', () => { stop(); goTo(i); start(); }));
+
+    track.addEventListener('pointerdown', stop);
+    track.addEventListener('pointerenter', stop);
+    track.addEventListener('pointerleave', start);
+    start();
+  }
+</script>

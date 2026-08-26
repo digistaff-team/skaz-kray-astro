@@ -1,0 +1,44 @@
+---
+import { ruDate, excerptFrom, firstImage } from '../lib/utils.js';
+const { entry } = Astro.props;
+const url = `/${entry.slug}/`;
+const img = firstImage(entry);
+const excerpt = excerptFrom(entry, 160);
+---
+<article class="pcard">
+  {img && (
+    <a href={url} class="pcard-media" tabindex="-1" aria-hidden="true">
+      <img src={img} alt="" loading="lazy" />
+    </a>
+  )}
+  <div class="pcard-body">
+    <time class="pcard-date" datetime={entry.data.date}>{ruDate(entry.data.date)}</time>
+    <h3 class="pcard-title"><a href={url}>{entry.data.title}</a></h3>
+    <p class="pcard-excerpt">{excerpt}</p>
+    <a href={url} class="pcard-more">Читать дневник →</a>
+  </div>
+</article>
+
+<style>
+  .pcard {
+    display: flex; flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .pcard:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(31,42,32,0.1); }
+  .pcard-media { display: block; aspect-ratio: 16 / 10; overflow: hidden; background: var(--ground-2); }
+  .pcard-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+  .pcard:hover .pcard-media img { transform: scale(1.04); }
+  .pcard-body { padding: 1.1rem 1.3rem 1.4rem; display: flex; flex-direction: column; flex: 1; }
+  .pcard-date { font-size: var(--step--1); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .pcard-title { font-size: var(--step-1); margin: 0.3rem 0 0.5rem; }
+  .pcard-title a { color: var(--ink); }
+  .pcard-title a:hover { color: var(--green); text-decoration: none; }
+  .pcard-excerpt { color: var(--muted); font-size: var(--step-0); flex: 1; margin: 0; }
+  .pcard-more { font-weight: 700; font-size: var(--step--1); margin-top: 0.8rem; }
+  @media (prefers-reduced-motion: reduce) { .pcard, .pcard-media img { transition: none; } }
+</style>

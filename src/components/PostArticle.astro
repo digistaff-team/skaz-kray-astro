@@ -1,0 +1,45 @@
+---
+import { ruDate } from '../lib/utils.js';
+const { entry } = Astro.props;
+const { title, date, categories = [] } = entry.data;
+// resolve category chips (slug -> name + url) via the category tree
+import { categories as cats, catUrl } from '../data/categories.js';
+const bySlug = Object.fromEntries(cats.map((c) => [c.slug, c]));
+const chips = categories.map((s) => bySlug[s]).filter(Boolean);
+---
+<article class="post">
+  <header class="post-head wrap">
+    <nav class="crumbs" aria-label="Хлебные крошки">
+      <a href="/">Главная</a>
+      {chips[0] && <><span>/</span><a href={catUrl(chips[0])}>{chips[0].name}</a></>}
+    </nav>
+    <h1>{title}</h1>
+    <div class="post-meta">
+      <time datetime={date}>{ruDate(date)}</time>
+      {chips.length > 0 && (
+        <ul class="post-cats">
+          {chips.map((c) => <li><a href={catUrl(c)}>{c.name}</a></li>)}
+        </ul>
+      )}
+    </div>
+  </header>
+
+  <div class="wrap post-body prose" set:html={entry.body}></div>
+</article>
+
+<style>
+  .post-head { padding: 2.5rem 0 1.2rem; max-width: 820px; }
+  .crumbs { font-size: var(--step--1); color: var(--muted); margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .crumbs a { color: var(--muted); }
+  .crumbs a:hover { color: var(--green); }
+  .post-meta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.8rem; color: var(--muted); font-size: var(--step--1); }
+  .post-cats { display: flex; gap: 0.5rem; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+  .post-cats a {
+    display: inline-block; font-size: var(--step--1); font-weight: 700;
+    padding: 0.15em 0.7em; border-radius: 999px;
+    background: var(--green-soft); color: var(--green-deep);
+  }
+  .post-cats a:hover { background: var(--green); color: #fff; text-decoration: none; }
+  .post-body { max-width: 820px; padding-top: 1rem; padding-bottom: 1rem; }
+  .post-body :global(p), .post-body :global(li) { font-size: var(--step-0); }
+</style>

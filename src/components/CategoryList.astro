@@ -1,0 +1,56 @@
+---
+import PostCard from './PostCard.astro';
+import { catUrl, catById } from '../data/categories.js';
+const { cat, posts, children } = Astro.props;
+const parent = cat.parent ? catById[cat.parent] : null;
+---
+<div class="cat">
+  <header class="cat-head">
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Хлебные крошки">
+        <a href="/">Главная</a>
+        {parent && <><span>/</span><a href={catUrl(parent)}>{parent.name}</a></>}
+      </nav>
+      <p class="eyebrow">Рубрика</p>
+      <h1>{cat.name}</h1>
+      {children && children.length > 0 && (
+        <ul class="subcats">
+          {children.map((c) => (
+            <li><a href={catUrl(c)}>{c.name} <span>{c.count}</span></a></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </header>
+
+  <div class="wrap cat-body">
+    {posts.length > 0 ? (
+      <div class="cat-grid">
+        {posts.map((entry) => <PostCard entry={entry} />)}
+      </div>
+    ) : (
+      <p class="empty">В этой рубрике пока нет записей.</p>
+    )}
+  </div>
+</div>
+
+<style>
+  .cat-head { padding: 2.6rem 0 1.6rem; border-bottom: 1px solid var(--line); background: var(--ground-2); }
+  .crumbs { font-size: var(--step--1); color: var(--muted); margin-bottom: 0.9rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .crumbs a { color: var(--muted); }
+  .crumbs a:hover { color: var(--green); }
+  .subcats { display: flex; flex-wrap: wrap; gap: 0.6rem; list-style: none; margin: 1.2rem 0 0; padding: 0; }
+  .subcats a {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35em 0.9em; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card);
+    font-size: var(--step-0); font-weight: 700; color: var(--ink);
+  }
+  .subcats a span { color: var(--muted); font-weight: 400; font-size: var(--step--1); }
+  .subcats a:hover { border-color: var(--green); color: var(--green); text-decoration: none; }
+  .cat-body { padding-top: 2.5rem; }
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem; }
+  .empty { color: var(--muted); }
+  @media (max-width: 900px) { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .cat-grid { grid-template-columns: 1fr; } }
+</style>

@@ -37,7 +37,7 @@ seoDescription: 'Как стать участником поселения Ск�
     class="sk-subscribe__form"
     method="POST"
     action="https://cp.unisender.com/ru/subscribe?hash=6h889iyrd7mu47cyap9pu1w3muodywrfbx5xje47utikr8mo1e7jo"
-    target="sk-subscribe-frame"
+    target="_blank"
   >
     <div class="sk-subscribe__row">
       <div class="sk-subscribe__field">
@@ -65,7 +65,6 @@ seoDescription: 'Как стать участником поселения Ск�
     <button type="submit" class="btn btn--solid sk-subscribe__submit">Получить письма</button>
     <p class="sk-subscribe__status" id="sk-subscribe-status" role="status" aria-live="polite"></p>
   </form>
-  <iframe name="sk-subscribe-frame" class="sk-subscribe__frame" title="Отправка формы подписки" aria-hidden="true"></iframe>
 </div>
 
 <style>
@@ -133,7 +132,6 @@ seoDescription: 'Как стать участником поселения Ск�
   }
   .sk-subscribe__status--success { color: var(--green-deep); font-weight: 700; }
   .sk-subscribe__status--error { color: #a83232; font-weight: 700; }
-  .sk-subscribe__frame { display: none; }
   @media (max-width: 480px) {
     .sk-subscribe { padding: 1.3rem 1.1rem 1.5rem; }
     .sk-subscribe__row { grid-template-columns: 1fr; gap: 0; }
@@ -145,22 +143,14 @@ seoDescription: 'Как стать участником поселения Ск�
     var form = document.getElementById('sk-subscribe-form');
     var status = document.getElementById('sk-subscribe-status');
     if (!form || !status) return;
-    var submitted = false;
     form.addEventListener('submit', function () {
-      submitted = true;
-      status.textContent = 'Отправляем…';
-      status.className = 'sk-subscribe__status';
+      // Native HTML5 validation already ran before 'submit' fires, so
+      // reaching here means the fields are valid — show success right away
+      // instead of waiting on the background iframe post to finish.
+      status.textContent = 'Спасибо! Проверьте почту — первое письмо придёт в течение нескольких минут.';
+      status.className = 'sk-subscribe__status sk-subscribe__status--success';
+      setTimeout(function () { form.reset(); }, 50);
     });
-    var frame = form.nextElementSibling;
-    if (frame && frame.tagName === 'IFRAME') {
-      frame.addEventListener('load', function () {
-        if (!submitted) return; // ignore the initial blank load
-        status.textContent = 'Спасибо! Проверьте почту — первое письмо придёт в течение нескольких минут.';
-        status.className = 'sk-subscribe__status sk-subscribe__status--success';
-        form.reset();
-        submitted = false;
-      });
-    }
   })();
 </script>
 <p style="text-align: center;">По всем вопросам, связанным с подпиской на серию писем "Путь в Сказочный Край", обращайтесь на почту поселения - poselenie@skaz-kray.ru</p>

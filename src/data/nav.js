@@ -13,6 +13,7 @@ export const headerNav = [
       { title: 'Частые вопросы', url: '/o-nas/chastye-voprosy/' },
     ],
   },
+  { title: 'Новости', url: '/category/novosti/' },
   { title: 'Дневники', url: '/category/dnevniki-pomestij/' },
   {
     title: 'Статьи', url: '/category/stati/',
@@ -36,6 +37,7 @@ export const headerNav = [
 export const footerNav = [
   { title: 'Главная', url: '/' },
   { title: 'О нас', url: '/o-nas/' },
+  { title: 'Новости', url: '/category/novosti/' },
   { title: 'Дневники поместий', url: '/category/dnevniki-pomestij/' },
   { title: 'Статьи', url: '/category/stati/' },
   { title: 'Архив', url: '/category/archive/' },

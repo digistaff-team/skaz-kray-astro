@@ -2,6 +2,7 @@
 // URLs are nested under /category/ preserving WP hierarchy.
 
 export const categories = [
+  { id: 200, slug: 'novosti', name: 'Новости', parent: 0, count: 0 },
   { id: 30, slug: 'dnevniki-pomestij', name: 'Дневники поместий', parent: 0, count: 46 },
   { id: 31, slug: 'archive', name: 'Архив', parent: 0, count: 30 },
   { id: 49, slug: 'stati', name: 'Статьи', parent: 0, count: 20 },

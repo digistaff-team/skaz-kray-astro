@@ -37,7 +37,12 @@ export async function getStaticPaths() {
     const catPosts = (postsByCat[cat.slug] || []).slice().sort(sortByDateDesc);
     const children = categories.filter((c) => c.parent === cat.id);
     const childHasPosts = children.some((c) => (postsByCat[c.slug] || []).length > 0);
-    if (catPosts.length === 0 && !childHasPosts) continue;
+    // Top-level categories are linked from the nav — always generate them
+    // (with a graceful "no posts yet" state) so a freshly-added empty
+    // section like "Новости" doesn't dead-link until its first post lands.
+    // Sub-categories (e.g. individual поместья) stay hidden until used,
+    // to avoid cluttering listings with unused legacy taxonomy.
+    if (cat.parent !== 0 && catPosts.length === 0 && !childHasPosts) continue;
     const slug = catUrl(cat).replace(/^\/|\/$/g, '');
     add(slug, { type: 'category', cat, posts: catPosts, children: children.filter((c) => (postsByCat[c.slug] || []).length > 0) });
   }

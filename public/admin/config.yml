@@ -19,10 +19,25 @@ media_folder: "public/wp-content/uploads/decap"
 public_folder: "/wp-content/uploads/decap"
 
 collections:
+  - name: novosti
+    label: "Новости"
+    label_singular: "Новость"
+    description: "Быстрая заметка в раздел «Новости» на сайте. Заполните заголовок и текст — остальное подставится само."
+    folder: "src/content/posts"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок новости", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: body, label: "Текст новости", widget: markdown }
+      - { name: categories, widget: hidden, default: ["novosti"] }
+
   - name: posts
-    label: "Записи (дневники, новости, статьи)"
+    label: "Записи (дневники, статьи)"
     label_singular: "Запись"
-    description: "Дневники поместий, новости и статьи."
+    description: "Дневники поместий и статьи. Для короткой новости используйте вкладку «Новости»."
     folder: "src/content/posts"
     create: true
     slug: "{{slug}}"
@@ -38,8 +53,9 @@ collections:
         multiple: true
         required: false
         options:
-          - { label: "Дневники поместий", value: "dnevniki-pomestij" }
           - { label: "Новости", value: "novosti" }
+          - { label: "Дневники поместий", value: "dnevniki-pomestij" }
+          - { label: "Архив", value: "archive" }
           - { label: "Статьи", value: "stati" }
           - { label: "Без рубрики", value: "bez-rubriki" }
           - { label: "Поместье Грушко «Дубы колдуны»", value: "pomeste-grushko-duby-kolduny" }

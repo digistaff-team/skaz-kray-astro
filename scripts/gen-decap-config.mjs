@@ -12,11 +12,11 @@ const yml = `# Decap CMS — редактор контента сайта «Ск
 
 backend:
   name: github
-  repo: OWNER/REPO          # ← указать после публикации репозитория на GitHub
+  repo: digistaff-team/skaz-kray-astro
   branch: main
 
 # Локальное редактирование при разработке:
-#   1) npx decap-server   2) npm run dev   3) открыть http://localhost:4321/admin/
+#   1) npx decap-server   2) npm run dev   3) открыть http://localhost:4321/admin/index.html
 local_backend: true
 
 locale: ru

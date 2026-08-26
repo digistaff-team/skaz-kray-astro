@@ -143,41 +143,7 @@ p { margin: 0 0 1em; }
 .prose audio { width: 100%; }
 .prose iframe { max-width: 100%; border-radius: 8px; }
 .prose table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.prose .subscribe-form-box {
-  max-width: 480px;
-  margin: 1.5em auto;
-  padding: 1.6rem 1.6rem 1.8rem;
-  background: var(--green-soft);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
-/* UniSender's popup.js sets an inline style="width:max-content" on the
-   widget root once it loads, which ignores the mobile viewport and forces
-   horizontal scroll. Cap it to the box; its own inner tables already use
-   width:100%/max-width so they reflow correctly once the wrapper shrinks.
-   Also opt this widget out of the generic .prose table scroll-wrapper
-   rule above — its table-based email layout is self-contained already. */
-.prose .subscribe-form-box #unisender-subscribe-form {
-  max-width: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box;
-}
-.prose .subscribe-form-box table {
-  display: table !important;
-  overflow: visible !important;
-  max-width: 100%;
-}
-@media (max-width: 480px) {
-  .prose .subscribe-form-box { padding: 1rem 0.5rem 1.2rem; }
-}
 .prose td, .prose th { border: 1px solid var(--line); padding: 0.5em 0.7em; }
-/* The widget's raw <td> layout cells picked up our generic table-cell
-   border/padding above — that's the unwanted "box around every field"
-   look. Its own <input> elements already have a normal field border. */
-.prose .subscribe-form-box td, .prose .subscribe-form-box th {
-  border: none !important;
-  padding: 0 !important;
-}
 .prose::after { content: ""; display: block; clear: both; }
 
 /* Eyebrow / section label */

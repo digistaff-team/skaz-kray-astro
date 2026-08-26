@@ -31,12 +31,137 @@ seoDescription: 'Как стать участником поселения Ск�
 <h5 style="text-align: center;"></h5>
 <h5 style="text-align: center;"><span style="color: #008000;"><strong>Начните знакомство со Сказочным Краем прямо сейчас!<br />
 Прочитайте 7 ознакомительных <strong>писем серии</strong> "Путь в Сказочный Край":</strong></span></h5>
-<div class="subscribe-form-box">
-<div id="unisender-subscribe-form" data-url="https://cp.unisender.com/ru/v5/subscribe-form/view/6yfjyfy5hn4b1z868nfcrhdxg8fhsagighzdrcpy" data-settings="6yb68ppbzn7utbcyap9pu1w3muo16koknybhc76sq457mfpfwb1yy"></div>
+<div class="sk-subscribe">
+  <form
+    id="sk-subscribe-form"
+    class="sk-subscribe__form"
+    method="POST"
+    action="https://cp.unisender.com/ru/subscribe?hash=6h889iyrd7mu47cyap9pu1w3muodywrfbx5xje47utikr8mo1e7jo"
+    target="sk-subscribe-frame"
+  >
+    <div class="sk-subscribe__row">
+      <div class="sk-subscribe__field">
+        <label for="sk-sub-name">Ваше имя</label>
+        <input type="text" id="sk-sub-name" name="f_1" autocomplete="name" required />
+      </div>
+      <div class="sk-subscribe__field">
+        <label for="sk-sub-email">Email</label>
+        <input type="email" id="sk-sub-email" name="email" autocomplete="email" required />
+      </div>
+    </div>
+
+    <label class="sk-subscribe__consent">
+      <input type="checkbox" id="sk-sub-consent" required />
+      <span>Я ознакомлен(а) с Политикой конфиденциальности и даю согласие на обработку персональных данных</span>
+    </label>
+
+    <input type="hidden" name="charset" value="UTF-8" />
+    <input type="hidden" name="default_list_id" value="1" />
+    <input type="hidden" name="list_ids[]" value="1" />
+    <input type="hidden" name="list_ids[]" value="2" />
+    <input type="hidden" name="overwrite" value="2" />
+    <input type="hidden" name="is_v5" value="1" />
+
+    <button type="submit" class="btn btn--solid sk-subscribe__submit">Получить письма</button>
+    <p class="sk-subscribe__status" id="sk-subscribe-status" role="status" aria-live="polite"></p>
+  </form>
+  <iframe name="sk-subscribe-frame" class="sk-subscribe__frame" title="Отправка формы подписки" aria-hidden="true"></iframe>
 </div>
-<script src="https://sf2df4j6wzf.s3.eu-central-1.amazonaws.com/popups/popup.js"></script>
+
+<style>
+  .sk-subscribe {
+    max-width: 480px;
+    margin: 1.5em auto;
+    padding: 1.8rem 1.8rem 2rem;
+    background: var(--green-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .sk-subscribe__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .sk-subscribe__field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+  .sk-subscribe__field label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .sk-subscribe__field input[type="text"],
+  .sk-subscribe__field input[type="email"] {
+    font: inherit;
+    font-size: var(--step-0);
+    padding: 0.6em 0.8em;
+    border: 1.5px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--ink);
+    transition: border-color 0.15s ease;
+  }
+  .sk-subscribe__field input:focus-visible {
+    outline: none;
+    border-color: var(--green);
+  }
+  .sk-subscribe__consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+    margin-bottom: 1.3rem;
+    cursor: pointer;
+  }
+  .sk-subscribe__consent input {
+    margin-top: 0.2em;
+    flex: none;
+    width: 1.1em;
+    height: 1.1em;
+    accent-color: var(--green);
+  }
+  .sk-subscribe__submit {
+    width: 100%;
+    justify-content: center;
+    font-size: var(--step-0);
+    padding: 0.75em 1.4em;
+  }
+  .sk-subscribe__status {
+    margin: 0.9rem 0 0;
+    font-size: var(--step--1);
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .sk-subscribe__status--success { color: var(--green-deep); font-weight: 700; }
+  .sk-subscribe__status--error { color: #a83232; font-weight: 700; }
+  .sk-subscribe__frame { display: none; }
+  @media (max-width: 480px) {
+    .sk-subscribe { padding: 1.3rem 1.1rem 1.5rem; }
+    .sk-subscribe__row { grid-template-columns: 1fr; gap: 0; }
+  }
+</style>
+
 <script>
-  window.popupForSubscriptionsForm("https://apig.unisender.com");
+  (function () {
+    var form = document.getElementById('sk-subscribe-form');
+    var status = document.getElementById('sk-subscribe-status');
+    if (!form || !status) return;
+    var submitted = false;
+    form.addEventListener('submit', function () {
+      submitted = true;
+      status.textContent = 'Отправляем…';
+      status.className = 'sk-subscribe__status';
+    });
+    var frame = form.nextElementSibling;
+    if (frame && frame.tagName === 'IFRAME') {
+      frame.addEventListener('load', function () {
+        if (!submitted) return; // ignore the initial blank load
+        status.textContent = 'Спасибо! Проверьте почту — первое письмо придёт в течение нескольких минут.';
+        status.className = 'sk-subscribe__status sk-subscribe__status--success';
+        form.reset();
+        submitted = false;
+      });
+    }
+  })();
 </script>
 <p style="text-align: center;">По всем вопросам, связанным с подпиской на серию писем "Путь в Сказочный Край", обращайтесь на почту поселения - poselenie@skaz-kray.ru</p>
 <p style="text-align: center;"><a href="/skazochnyj-kraj-dlya-predprinimatelej-s-chistymi-pomyslami/">Обращение к Предпринимателям с чистыми помыслами от предпринимателей Сказочного Края!</a></p>

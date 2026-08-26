@@ -5,6 +5,8 @@ backend:
   name: github
   repo: digistaff-team/skaz-kray-astro
   branch: main
+  auth_type: pkce
+  app_id: Iv23liz6rGBelKFXn0Ha
 
 # Локальное редактирование при разработке:
 #   1) npx decap-server   2) npm run dev   3) открыть http://localhost:4321/admin/index.html

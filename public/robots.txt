@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
-Disallow: /editor/
 
 Sitemap: https://skaz-kray.ru/sitemap-index.xml

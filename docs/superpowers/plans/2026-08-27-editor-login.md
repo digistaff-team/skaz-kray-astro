@@ -64,9 +64,8 @@ ${novostiCollectionYaml}
 
 - [ ] **Step 3: Verify the generated output is byte-identical**
 
-Run:
+Run (from the repo root — main checkout or worktree):
 ```bash
-cd /c/Projects/skaz-kray-astro
 node scripts/gen-decap-config.mjs
 git diff --stat public/admin/config.yml
 ```
@@ -96,6 +95,8 @@ Create `scripts/gen-editor-config.mjs`:
 // без GitHub-аккаунта (git-gateway backend + Netlify Identity).
 // См. docs/superpowers/specs/2026-08-27-editor-login-design.md
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { novostiCollectionYaml } from './novosti-collection.mjs';
 
 // Поддомен Netlify-сайта, на котором включены Identity + Git Gateway
@@ -124,15 +125,22 @@ collections:
 ${novostiCollectionYaml}
 `;
 
-fs.writeFileSync('C:/Projects/skaz-kray-astro/public/editor/config.yml', yml);
+// Путь резолвится относительно расположения этого файла (не хардкод
+// абсолютного пути) — так генератор корректно работает и из основного
+// checkout, и из git worktree. mkdirSync с recursive:true нужен, потому
+// что на момент первого запуска этой задачи папки public/editor/ ещё
+// не существует (её создаёт Task 3) — writeFileSync сам директорию не создаёт.
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const outDir = path.join(scriptDir, '..', 'public', 'editor');
+fs.mkdirSync(outDir, { recursive: true });
+fs.writeFileSync(path.join(outDir, 'config.yml'), yml);
 console.log('Wrote public/editor/config.yml (Netlify site:', NETLIFY_SITE + ')');
 ```
 
 - [ ] **Step 2: Run it and verify the output**
 
-Run:
+Run (from the repo root — main checkout or worktree, the script resolves its own path either way):
 ```bash
-cd /c/Projects/skaz-kray-astro
 node scripts/gen-editor-config.mjs
 cat public/editor/config.yml
 ```
@@ -188,9 +196,8 @@ Create `public/editor/index.html`:
 
 - [ ] **Step 2: Verify the widget script is present**
 
-Run:
+Run (from the repo root):
 ```bash
-cd /c/Projects/skaz-kray-astro
 grep -c "netlify-identity-widget" public/editor/index.html
 ```
 Expected: `1`
@@ -210,18 +217,16 @@ git commit -m "feat(cms): страница входа редактора /editor
 
 - [ ] **Step 1: Full build**
 
-Run:
+Run (from the repo root):
 ```bash
-cd /c/Projects/skaz-kray-astro
 npm run build
 ```
 Expected: build succeeds (exit code 0), no errors mentioning `editor`.
 
 - [ ] **Step 2: Confirm the editor page made it into the build output**
 
-Run:
+Run (from the repo root):
 ```bash
-cd /c/Projects/skaz-kray-astro
 test -f dist/editor/index.html && test -f dist/editor/config.yml && echo "OK: both present"
 ```
 Expected: `OK: both present`
@@ -230,17 +235,18 @@ Expected: `OK: both present`
 
 ---
 
-### Task 5: Push
+### Task 5: Push feature branch
 
 **Files:** none
 
-- [ ] **Step 1: Push all commits from this plan**
+- [ ] **Step 1: Push the feature branch (not main)**
 
 ```bash
-cd /c/Projects/skaz-kray-astro
-git push origin main
+git push -u origin feature/editor-login
 ```
-Expected: `main -> main` push succeeds. The existing autodeploy cron (runs every 10 minutes on the server) will pick this up automatically — no manual server deploy step needed, matching how the `/admin/` OAuth fix shipped earlier.
+Expected: `feature/editor-login -> feature/editor-login` push succeeds.
+
+This plan's tasks end here. Merging `feature/editor-login` into `main` happens afterward via `superpowers:finishing-a-development-branch` (per the subagent-driven-development process — final code review, then branch integration), not as a plan task. Only once merged and pushed to `main` will the existing autodeploy cron (runs every 10 minutes on the server) pick it up — no manual server deploy step needed, matching how the `/admin/` OAuth fix shipped earlier.
 
 ---
 

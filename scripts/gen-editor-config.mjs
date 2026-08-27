@@ -11,7 +11,7 @@ import { novostiCollectionYaml } from './novosti-collection.mjs';
 // Заводится вручную (создание стороннего аккаунта — вне зоны действия
 // генератора), см. спеку. После того как сайт создан, подставьте сюда
 // реальное значение и перезапустите генератор.
-const NETLIFY_SITE = 'REPLACE-ME.netlify.app';
+const NETLIFY_SITE = 'resplendent-cupcake-1f315a.netlify.app';
 
 const yml = `# Decap CMS — вход для редактора (только раздел «Новости»).
 # Сгенерировано scripts/gen-editor-config.mjs — правьте генератор, не этот файл.

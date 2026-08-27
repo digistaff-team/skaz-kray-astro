@@ -1,0 +1,30 @@
+# Decap CMS — вход для редактора (только раздел «Новости»).
+# Сгенерировано scripts/gen-editor-config.mjs — правьте генератор, не этот файл.
+
+backend:
+  name: git-gateway
+  branch: main
+  identity_url: https://REPLACE-ME.netlify.app/.netlify/identity
+  gateway_url: https://REPLACE-ME.netlify.app/.netlify/git
+
+locale: ru
+site_url: https://skaz-kray.ru
+display_url: https://skaz-kray.ru
+media_folder: "public/wp-content/uploads/decap"
+public_folder: "/wp-content/uploads/decap"
+
+collections:
+  - name: novosti
+    label: "Новости"
+    label_singular: "Новость"
+    description: "Быстрая заметка в раздел «Новости» на сайте. Заполните заголовок и текст — остальное подставится само."
+    folder: "src/content/posts"
+    create: true
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок новости", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: body, label: "Текст новости", widget: markdown }
+      - { name: categories, widget: hidden, default: ["novosti"] }

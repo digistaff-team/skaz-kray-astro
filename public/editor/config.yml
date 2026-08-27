@@ -4,8 +4,8 @@
 backend:
   name: git-gateway
   branch: main
-  identity_url: https://resplendent-cupcake-1f315a.netlify.app/.netlify/identity
-  gateway_url: https://resplendent-cupcake-1f315a.netlify.app/.netlify/git
+  identity_url: https://REPLACE-ME.netlify.app/.netlify/identity
+  gateway_url: https://REPLACE-ME.netlify.app/.netlify/git
 
 locale: ru
 site_url: https://skaz-kray.ru

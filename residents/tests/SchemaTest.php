@@ -12,7 +12,10 @@ final class SchemaTest extends TestCase
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
         )->fetchAll(\PDO::FETCH_COLUMN);
         $this->assertSame(
-            ['diary_entries', 'families', 'images', 'login_attempts', 'password_resets', 'products'],
+            [
+                'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',
+                'diary_entries', 'families', 'images', 'login_attempts', 'password_resets', 'products',
+            ],
             $names
         );
     }

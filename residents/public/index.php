@@ -11,6 +11,10 @@ use SkazResidents\Controller\DiaryController;
 use SkazResidents\Controller\ProductController;
 use SkazResidents\Controller\ModerationController;
 use SkazResidents\Controller\PublicController;
+use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
+use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
+use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
+use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
 
 $router = new Router();
 
@@ -58,6 +62,42 @@ $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);
 $router->get('/dnevniki-pomestiy/{id}', [$public, 'diaryShow']);
 $router->get('/yarmarka', [$public, 'marketList']);
 $router->get('/yarmarka/{id}', [$public, 'marketShow']);
+
+// ==== Попечительский совет (/sovet/…) — отдельная авторизация ====
+$cAuth = new CouncilAuthController();
+$router->get('/sovet/vhod', [$cAuth, 'showLogin']);
+$router->post('/sovet/login', [$cAuth, 'login']);
+$router->get('/sovet/vyhod', [$cAuth, 'logout']);
+$router->get('/sovet/vosstanovit', [$cAuth, 'showForgot']);
+$router->post('/sovet/vosstanovit', [$cAuth, 'forgot']);
+$router->get('/sovet/sbros', [$cAuth, 'showReset']);
+$router->post('/sovet/sbros', [$cAuth, 'reset']);
+$router->get('/sovet/parol', [$cAuth, 'showPassword']);
+$router->post('/sovet/parol', [$cAuth, 'changePassword']);
+
+$cPages = new CouncilPagesController();
+$router->get('/sovet', [$cPages, 'home']);
+$router->get('/sovet/', [$cPages, 'home']);
+$router->get('/sovet/napravleniya', [$cPages, 'directions']);
+
+$cTasks = new CouncilTaskController();
+$router->get('/sovet/zadachi', [$cTasks, 'index']);
+$router->post('/sovet/zadachi/novaya', [$cTasks, 'create']);
+$router->post('/sovet/zadachi/{id}/obnovit', [$cTasks, 'update']);
+$router->post('/sovet/zadachi/{id}/vzyat', [$cTasks, 'take']);
+$router->post('/sovet/zadachi/{id}/gotovo', [$cTasks, 'done']);
+$router->post('/sovet/zadachi/{id}/vernut', [$cTasks, 'reopen']);
+$router->post('/sovet/zadachi/{id}/udalit', [$cTasks, 'delete']);
+$router->post('/sovet/zadachi/{id}/podzadacha', [$cTasks, 'addSubtask']);
+$router->post('/sovet/podzadacha/{id}/pereklyuchit', [$cTasks, 'toggleSubtask']);
+$router->post('/sovet/podzadacha/{id}/pereimenovat', [$cTasks, 'renameSubtask']);
+$router->post('/sovet/podzadacha/{id}/udalit', [$cTasks, 'deleteSubtask']);
+
+$cAdmin = new CouncilAdminController();
+$router->get('/sovet/upravlenie', [$cAdmin, 'index']);
+$router->post('/sovet/upravlenie/dobavit', [$cAdmin, 'add']);
+$router->post('/sovet/upravlenie/sbros-parolya', [$cAdmin, 'resetPassword']);
+$router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

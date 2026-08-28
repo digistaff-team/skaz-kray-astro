@@ -1,0 +1,39 @@
+# --- Раздел жителей поселения (PHP-приложение вне докрута статики) ---
+# Вставить внутрь server { } vhost skaz-kray.ru (там же, где location для статики).
+# root приложения — /var/www/skaz-residents/public
+
+# Отдача загруженных фото как статики, без выполнения PHP
+location /poselenie/uploads/ {
+    alias /var/www/skaz-residents/public/uploads/;
+    access_log off;
+    expires 30d;
+}
+
+# Публичные ленты и раздел жителей — во фронт-контроллер PHP
+location ^~ /poselenie/ {
+    root /var/www/skaz-residents/public;
+    try_files $uri /index.php$is_args$args;
+}
+location = /poselenie { return 301 /poselenie/; }
+
+location = /dnevniki-pomestiy { try_files /nonexistent /poselenie-fc; }
+location ^~ /dnevniki-pomestiy/ { try_files /nonexistent /poselenie-fc; }
+location ^~ /yarmarka/ { try_files /nonexistent /poselenie-fc; }
+location = /yarmarka { try_files /nonexistent /poselenie-fc; }
+
+# Общая точка входа во фронт-контроллер
+location = /poselenie-fc {
+    internal;
+    fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME /var/www/skaz-residents/public/index.php;
+    fastcgi_param REQUEST_URI $request_uri;
+}
+
+# PHP внутри /poselenie/
+location ~ ^/poselenie/.*\.php$ {
+    root /var/www/skaz-residents/public;
+    fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME /var/www/skaz-residents/public/index.php;
+}

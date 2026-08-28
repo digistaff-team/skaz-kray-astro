@@ -9,7 +9,7 @@ final class SchemaTest extends TestCase
     {
         $pdo = make_test_db();
         $names = $pdo->query(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
         )->fetchAll(\PDO::FETCH_COLUMN);
         $this->assertSame(
             ['diary_entries', 'families', 'images', 'login_attempts', 'password_resets', 'products'],

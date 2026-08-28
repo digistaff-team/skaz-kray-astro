@@ -22,6 +22,10 @@ location ^~ /dnevniki-pomestiy/ { try_files /nonexistent /poselenie-fc; }
 location ^~ /yarmarka/ { try_files /nonexistent /poselenie-fc; }
 location = /yarmarka { try_files /nonexistent /poselenie-fc; }
 
+# Попечительский совет (нет собственных статических файлов — всё во фронт-контроллер)
+location = /sovet { try_files /nonexistent /poselenie-fc; }
+location ^~ /sovet/ { try_files /nonexistent /poselenie-fc; }
+
 # Общая точка входа во фронт-контроллер
 location = /poselenie-fc {
     internal;

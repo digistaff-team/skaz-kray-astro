@@ -42,3 +42,25 @@ nginx -t && systemctl reload nginx
 
 ## 6. Обновление кода
 Локально: `bash residents/deploy/deploy.sh`
+
+## 7. Раздел «Попечительский совет» (/sovet/)
+Живёт в том же приложении и БД, но с отдельной таблицей аккаунтов
+`council_members` (email независим от `families`).
+
+1. Накатить схему совета (один раз):
+   ```
+   mysql skazkray_residents < /var/www/skaz-residents/config/council-schema.sql
+   ```
+2. Завести первого администратора совета (дальше он добавляет остальных через
+   веб-интерфейс `/sovet/upravlenie`):
+   ```
+   cd /var/www/skaz-residents
+   php bin/council-admin.php <email> "<Имя>" "<пароль>"
+   ```
+3. nginx: блоки `/sovet` уже включены в `deploy/nginx-residents.conf.example`
+   (location `= /sovet` и `^~ /sovet/` → тот же фронт-контроллер). После
+   вставки — `nginx -t && systemctl reload nginx`.
+4. Контент (состав совета, документы, протоколы, ближайшее собрание, направления)
+   правится в коде — `src/CouncilData.php` (ссылки на Google Docs — заменить
+   плейсхолдеры `PLACEHOLDER-*` на реальные). Доска задач `/sovet/zadachi`
+   редактируется членами совета прямо в интерфейсе.

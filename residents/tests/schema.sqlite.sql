@@ -51,3 +51,39 @@ CREATE TABLE login_attempts (
     ip TEXT NOT NULL,
     attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE council_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE council_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    author TEXT NOT NULL DEFAULT '',
+    assignee TEXT NOT NULL DEFAULT '',
+    priority TEXT NOT NULL DEFAULT 'средняя',
+    status TEXT NOT NULL DEFAULT 'новая',
+    progress INTEGER NOT NULL DEFAULT 0,
+    spent REAL NOT NULL DEFAULT 0,
+    contacts TEXT,
+    links TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT
+);
+CREATE TABLE council_subtasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    position INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE council_password_resets (
+    token TEXT PRIMARY KEY,
+    member_id INTEGER NOT NULL,
+    expires_at TEXT NOT NULL
+);

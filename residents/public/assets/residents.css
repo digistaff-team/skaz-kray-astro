@@ -43,3 +43,97 @@ a { color: var(--green); }
 .res-status--pending { background: #fff6e5; color: var(--ochre); }
 .res-status--published { background: #e5f4ec; color: #0a5; }
 .res-status--rejected { background: #fbe9e7; color: #c0392b; }
+
+/* ==== Попечительский совет ==== */
+.sovet-main { max-width: 1040px; }
+.sovet-sub { display: block; font-size: .7rem; font-weight: 400; color: var(--muted); font-family: "PT Sans", system-ui, sans-serif; }
+.sovet-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; color: var(--ochre); margin: 0 0 .3rem; }
+.sovet-hero { margin-bottom: 2rem; }
+.sovet-hero h1 { margin: .2rem 0 .6rem; }
+.sovet-hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; }
+.sovet-hero-actions .res-btn { margin-top: .4rem; }
+
+.sovet-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; align-items: start; }
+@media (max-width: 760px) { .sovet-cols { grid-template-columns: 1fr; } }
+
+.sovet-doclist { list-style: none; padding: 0; margin: 0; }
+.sovet-doclist li { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-bottom: 1px solid #f0efe9; flex-wrap: wrap; }
+.sovet-doclist li:last-child { border-bottom: 0; }
+.sovet-kind { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #eef4ef; color: var(--green); }
+.sovet-meet-date { font-weight: 700; margin: .2rem 0; }
+.sovet-h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
+.sovet-agenda { margin: 0; padding-left: 1.2rem; }
+.sovet-agenda li { margin: .3rem 0; }
+.sovet-roster { list-style: none; padding: 0; margin: .6rem 0 0; }
+.sovet-roster li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-roster li:last-child { border-bottom: 0; }
+.sovet-roster-name { font-weight: 700; }
+.sovet-roster-role { color: var(--muted); font-size: .82rem; text-align: right; }
+
+.sovet-directions { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+@media (max-width: 760px) { .sovet-directions { grid-template-columns: 1fr; } }
+.sovet-dir-tasks { list-style: none; padding: 0; margin: .6rem 0 0; }
+.sovet-dir-task { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-dir-task:last-child { border-bottom: 0; }
+.sovet-dir-mark { font-size: 1rem; }
+.sovet-dir-task--done .sovet-dir-mark { color: var(--green); }
+.sovet-dir-task--progress .sovet-dir-mark { color: var(--ochre); }
+.sovet-dir-task--plan .sovet-dir-mark { color: #bbb; }
+.sovet-dir-owner { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+
+.sovet-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem; margin: 1rem 0; }
+.sovet-sorts { color: var(--muted); font-size: .9rem; }
+.sovet-sort { margin-left: .5rem; text-decoration: none; }
+.sovet-sort--active { font-weight: 700; text-decoration: underline; }
+.sovet-newtask { margin-bottom: 1.4rem; }
+.sovet-newtask > summary { display: inline-block; list-style: none; cursor: pointer; }
+.sovet-newtask > summary::-webkit-details-marker { display: none; }
+.sovet-empty { padding: 1.5rem 0; }
+
+.sovet-task { padding: 0; }
+.sovet-task > summary { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; padding: 1rem 1.2rem; cursor: pointer; list-style: none; }
+.sovet-task > summary::-webkit-details-marker { display: none; }
+.sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
+.sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; }
+.sovet-pri { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
+.sovet-pri--high { background: #fbe9e7; color: #c0392b; }
+.sovet-pri--mid { background: #eef4ef; color: var(--green); }
+.sovet-pri--low { background: #f2f2ee; color: var(--muted); }
+.sovet-st { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
+.sovet-st--new { background: #f2f2ee; color: var(--muted); }
+.sovet-st--progress { background: #fff6e5; color: var(--ochre); }
+.sovet-st--done { background: #e5f4ec; color: #0a5; }
+.sovet-task-meta, .sovet-task-desc, .sovet-quick, .sovet-edit, .sovet-subs { padding: 0 1.2rem; }
+.sovet-task-meta { color: var(--ink); font-size: .88rem; margin: .8rem 0 .4rem; }
+.sovet-task-desc { margin: .4rem 0; }
+.sovet-quick { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .6rem 0; }
+.sovet-quick form { margin: 0; }
+.sovet-quick .res-btn { margin-top: 0; padding: .35rem .9rem; font-size: .85rem; }
+.sovet-danger { color: #c0392b; }
+.sovet-edit { border-top: 1px dashed #e6e5df; margin-top: .6rem; padding-top: .6rem; padding-bottom: .6rem; }
+.sovet-edit-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8rem; }
+.sovet-edit-row:has(> label:nth-child(2):last-child) { grid-template-columns: 1fr 1fr; }
+@media (max-width: 620px) { .sovet-edit-row { grid-template-columns: 1fr; } }
+.sovet-subs { padding-bottom: 1.2rem; }
+.sovet-sub { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; }
+.sovet-sub--done .sovet-sub-rename input { text-decoration: line-through; color: var(--muted); }
+.sovet-sub form { margin: 0; }
+.sovet-check { background: none; border: 0; font-size: 1.15rem; cursor: pointer; color: var(--green); padding: 0; }
+.sovet-sub-rename { display: flex; gap: .3rem; flex: 1; align-items: center; }
+.sovet-sub-rename input { flex: 1; padding: .3rem .5rem; font: inherit; border: 1px solid #e0e0da; border-radius: 5px; }
+.sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: center; }
+.sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
+.sovet-sub-add .res-btn { margin-top: 0; padding: .35rem .9rem; font-size: .85rem; }
+
+.sovet-archive-h { margin-top: 2rem; }
+.sovet-arch { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem; }
+.sovet-arch-title { flex: 1; text-decoration: line-through; color: var(--muted); min-width: 10rem; }
+.sovet-arch-actions { display: flex; gap: .8rem; }
+.sovet-arch-actions form { margin: 0; }
+
+.sovet-members { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.sovet-members th, .sovet-members td { text-align: left; padding: .5rem .4rem; border-bottom: 1px solid #f0efe9; vertical-align: top; }
+.sovet-member-actions { display: flex; flex-direction: column; gap: .3rem; }
+.sovet-member-actions form { margin: 0; }
+.sovet-err, .sovet-direction { }
+.sovet-err { display: block; color: #c0392b; font-size: .82rem; margin-top: .2rem; }

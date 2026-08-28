@@ -7,6 +7,7 @@ use SkazResidents\Router;
 use SkazResidents\View;
 use SkazResidents\Controller\AuthController;
 use SkazResidents\Controller\CabinetController;
+use SkazResidents\Controller\DiaryController;
 
 $router = new Router();
 
@@ -24,6 +25,13 @@ $router->post('/poselenie/sbros', [$auth, 'reset']);
 $cabinet = new CabinetController();
 $router->get('/poselenie', [$cabinet, 'index']);
 $router->get('/poselenie/', [$cabinet, 'index']);
+
+$diary = new DiaryController();
+$router->get('/poselenie/dnevnik/novaya', [$diary, 'showCreate']);
+$router->post('/poselenie/dnevnik/novaya', [$diary, 'create']);
+$router->get('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'showEdit']);
+$router->post('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'update']);
+$router->get('/poselenie/dnevnik/{id}/udalit', [$diary, 'delete']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

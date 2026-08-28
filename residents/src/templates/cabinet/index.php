@@ -1,0 +1,40 @@
+<?php use SkazResidents\View; ?>
+<h1>Личный кабинет</h1>
+
+<section>
+    <h2>Дневник поместья</h2>
+    <p><a class="res-btn" href="/poselenie/dnevnik/novaya">Новая запись</a></p>
+    <?php if (!$entries): ?><p class="res-meta">Записей пока нет.</p><?php endif; ?>
+    <?php foreach ($entries as $e): ?>
+        <div class="res-card">
+            <strong><?= View::e($e['title']) ?></strong>
+            <span class="res-status res-status--<?= View::e($e['status']) ?>"><?= View::e(status_label($e['status'])) ?></span>
+            <?php if ($e['status'] === 'rejected' && $e['reject_reason']): ?>
+                <div class="res-flash res-flash--error">Причина: <?= View::e($e['reject_reason']) ?></div>
+            <?php endif; ?>
+            <p class="res-meta">
+                <a href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/redaktirovat">Редактировать</a> ·
+                <a href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/udalit" onclick="return confirm('Удалить запись?')">Удалить</a>
+            </p>
+        </div>
+    <?php endforeach; ?>
+</section>
+
+<section>
+    <h2>Мои товары и услуги</h2>
+    <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
+    <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>
+    <?php foreach ($products as $p): ?>
+        <div class="res-card">
+            <strong><?= View::e($p['title']) ?></strong>
+            <span class="res-status res-status--<?= View::e($p['status']) ?>"><?= View::e(status_label($p['status'])) ?></span>
+            <?php if ($p['status'] === 'rejected' && $p['reject_reason']): ?>
+                <div class="res-flash res-flash--error">Причина: <?= View::e($p['reject_reason']) ?></div>
+            <?php endif; ?>
+            <p class="res-meta">
+                <a href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Редактировать</a> ·
+                <a href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onclick="return confirm('Удалить?')">Удалить</a>
+            </p>
+        </div>
+    <?php endforeach; ?>
+</section>

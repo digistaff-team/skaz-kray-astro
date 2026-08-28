@@ -19,4 +19,14 @@ session_set_cookie_params([
 ]);
 session_start();
 
+function status_label(string $status): string
+{
+    return match ($status) {
+        'pending'   => 'на проверке',
+        'published' => 'опубликовано',
+        'rejected'  => 'отклонено',
+        default     => $status,
+    };
+}
+
 Database::connect(Config::get('db'));

@@ -6,6 +6,7 @@ require __DIR__ . '/../src/bootstrap.php';
 use SkazResidents\Router;
 use SkazResidents\View;
 use SkazResidents\Controller\AuthController;
+use SkazResidents\Controller\CabinetController;
 
 $router = new Router();
 
@@ -19,6 +20,10 @@ $router->get('/poselenie/vosstanovit', [$auth, 'showForgot']);
 $router->post('/poselenie/vosstanovit', [$auth, 'forgot']);
 $router->get('/poselenie/sbros', [$auth, 'showReset']);
 $router->post('/poselenie/sbros', [$auth, 'reset']);
+
+$cabinet = new CabinetController();
+$router->get('/poselenie', [$cabinet, 'index']);
+$router->get('/poselenie/', [$cabinet, 'index']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

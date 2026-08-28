@@ -15,6 +15,10 @@ $router->post('/poselenie/register', [$auth, 'register']);
 $router->get('/poselenie/vhod', [$auth, 'showLogin']);
 $router->post('/poselenie/login', [$auth, 'login']);
 $router->get('/poselenie/vyhod', [$auth, 'logout']);
+$router->get('/poselenie/vosstanovit', [$auth, 'showForgot']);
+$router->post('/poselenie/vosstanovit', [$auth, 'forgot']);
+$router->get('/poselenie/sbros', [$auth, 'showReset']);
+$router->post('/poselenie/sbros', [$auth, 'reset']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

@@ -7,7 +7,10 @@ use SkazResidents\Repository\FamilyRepository;
 
 final class AuthController
 {
-    public function __construct(private FamilyRepository $families = new FamilyRepository()) {}
+    public function __construct(
+        private FamilyRepository $families = new FamilyRepository(),
+        private \SkazResidents\Repository\ResetRepository $resets = new \SkazResidents\Repository\ResetRepository()
+    ) {}
 
     public function showRegister(): void
     {
@@ -81,6 +84,60 @@ final class AuthController
     public function logout(): void
     {
         Auth::logout();
+        header('Location: /poselenie/vhod');
+    }
+
+    public function showForgot(): void
+    {
+        View::render('auth/forgot', ['sent' => false], 'Восстановление пароля');
+    }
+
+    public function forgot(): void
+    {
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        $email = trim($_POST['email'] ?? '');
+        $family = Validator::email($email) ? $this->families->findByEmail($email) : null;
+
+        // Всегда показываем "письмо отправлено" — не раскрываем, есть ли такой email.
+        if ($family && $family['status'] === 'active') {
+            $ttl = (int) Config::get('reset_ttl', 3600);
+            $expires = date('Y-m-d H:i:s', time() + $ttl);
+            $token = $this->resets->create((int) $family['id'], $expires);
+            $link = Config::get('base_url') . '/poselenie/sbros?token=' . $token;
+            try {
+                \SkazResidents\Mailer::send(
+                    $email, 'Восстановление пароля — Сказочный Край',
+                    "Здравствуйте!\n\nЧтобы задать новый пароль, перейдите по ссылке (действует час):\n$link\n\nЕсли вы не запрашивали сброс — просто игнорируйте письмо."
+                );
+            } catch (\Throwable $e) {
+                error_log('reset mail failed: ' . $e->getMessage());
+            }
+        }
+        View::render('auth/forgot', ['sent' => true], 'Восстановление пароля');
+    }
+
+    public function showReset(): void
+    {
+        $token = (string) ($_GET['token'] ?? '');
+        $row = $this->resets->findValid($token, date('Y-m-d H:i:s'));
+        if (!$row) { View::render('auth/reset', ['valid' => false, 'token' => ''], 'Новый пароль'); return; }
+        View::render('auth/reset', ['valid' => true, 'token' => $token, 'error' => null], 'Новый пароль');
+    }
+
+    public function reset(): void
+    {
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        $token = (string) ($_POST['token'] ?? '');
+        $pass  = (string) ($_POST['password'] ?? '');
+        $row = $this->resets->findValid($token, date('Y-m-d H:i:s'));
+        if (!$row) { View::render('auth/reset', ['valid' => false, 'token' => ''], 'Новый пароль'); return; }
+        if (!Validator::password($pass)) {
+            View::render('auth/reset', ['valid' => true, 'token' => $token, 'error' => 'Пароль не короче 8 символов.'], 'Новый пароль');
+            return;
+        }
+        $this->families->updatePassword((int) $row['family_id'], Auth::hash($pass));
+        $this->resets->delete($token);
+        Flash::set('success', 'Пароль обновлён. Теперь войдите с новым паролем.');
         header('Location: /poselenie/vhod');
     }
 

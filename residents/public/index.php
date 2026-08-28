@@ -5,13 +5,16 @@ require __DIR__ . '/../src/bootstrap.php';
 
 use SkazResidents\Router;
 use SkazResidents\View;
+use SkazResidents\Controller\AuthController;
 
 $router = new Router();
 
-// Проверочный маршрут (удалить после Task 13)
-$router->get('/poselenie/ping', function () {
-    View::render('auth/ping', [], 'ping');
-});
+$auth = new AuthController();
+$router->get('/poselenie/register', [$auth, 'showRegister']);
+$router->post('/poselenie/register', [$auth, 'register']);
+$router->get('/poselenie/vhod', [$auth, 'showLogin']);
+$router->post('/poselenie/login', [$auth, 'login']);
+$router->get('/poselenie/vyhod', [$auth, 'logout']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

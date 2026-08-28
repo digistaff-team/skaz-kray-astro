@@ -1,22 +1,49 @@
+/* Шрифты — те же, что на сайте skaz-kray.ru (@fontsource PT Sans / PT Serif,
+   кириллические сабсеты). Файлы самостоятельно захостены рядом с приложением
+   и отдаются nginx как статика из /poselenie/assets/fonts/. */
+@font-face {
+    font-family: 'PT Sans'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-sans-cyrillic-400-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Sans'; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-sans-cyrillic-700-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-400-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-700-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: italic; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-400-italic.woff2) format('woff2');
+}
+
 :root {
     --green: #008757;
     --ochre: #c98a3a;
     --ink: #2b2b2b;
     --paper: #fbfaf6;
     --muted: #6b6b6b;
+    /* Идентичны переменным сайта (src/styles/global.css) */
+    --font-head: "PT Serif", Georgia, "Times New Roman", serif;
+    --font-body: "PT Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 * { box-sizing: border-box; }
 body {
     margin: 0; background: var(--paper); color: #2b2b2b;
-    font-family: "PT Sans", system-ui, sans-serif; font-size: 18px; line-height: 1.6;
+    font-family: var(--font-body); font-size: 18px; line-height: 1.6;
 }
-h1, h2, h3 { font-family: "PT Serif", Georgia, serif; color: var(--green); }
+h1, h2, h3 { font-family: var(--font-head); color: var(--green); }
 a { color: var(--green); }
 .res-header {
     display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
     padding: 1rem 1.5rem; border-bottom: 2px solid var(--green); background: #fff;
 }
-.res-logo { font-family: "PT Serif", Georgia, serif; font-size: 1.4rem; font-weight: 700; text-decoration: none; }
+.res-logo { font-family: var(--font-head); font-size: 1.4rem; font-weight: 700; text-decoration: none; }
 .res-nav { display: flex; flex-wrap: wrap; gap: 1rem; }
 .res-nav a { text-decoration: none; }
 .res-main { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -46,7 +73,7 @@ a { color: var(--green); }
 
 /* ==== Попечительский совет ==== */
 .sovet-main { max-width: 1040px; }
-.sovet-sub { display: block; font-size: .7rem; font-weight: 400; color: var(--muted); font-family: "PT Sans", system-ui, sans-serif; }
+.sovet-sub { display: block; font-size: .7rem; font-weight: 400; color: var(--muted); font-family: var(--font-body); }
 .sovet-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; color: var(--ochre); margin: 0 0 .3rem; }
 .sovet-hero { margin-bottom: 2rem; }
 .sovet-hero h1 { margin: .2rem 0 .6rem; }

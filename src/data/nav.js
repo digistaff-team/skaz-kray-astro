@@ -1,5 +1,7 @@
-// Header + footer navigation. "Ярмарка" intentionally dropped (не переносим).
+// Header + footer navigation.
 // URLs preserve the original WordPress permalink structure.
+// "Ярмарка" из старого WP-раздела была намеренно исключена при переносе;
+// новый пункт "Ярмарка" ниже ведёт в раздел жителей поселения (residents/), это другой сервис.
 
 export const headerNav = [
   { title: 'Главная', url: '/' },
@@ -31,6 +33,9 @@ export const headerNav = [
       { title: 'Полезные ссылки', url: '/arxiv/poleznye-ssylki/' },
     ],
   },
+  { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
+  { title: 'Ярмарка', url: '/yarmarka/' },
+  { title: 'Кабинет жителя', url: '/poselenie/vhod' },
   { title: 'Контакты', url: '/kontakty/' },
 ];
 

@@ -1,0 +1,4 @@
+/vendor/
+/.phpunit.cache/
+/config/config.php
+/public/uploads/

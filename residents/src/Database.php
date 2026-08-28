@@ -11,11 +11,18 @@ final class Database
     public static function connect(array $cfg): PDO
     {
         if (self::$pdo === null) {
-            self::$pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], [
+            $opts = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
+            ];
+            // Форсируем utf8mb4 на уровне соединения. DSN-параметр charset=utf8mb4
+            // применяется не во всех сборках pdo_mysql (в php-fpm на проде — нет,
+            // из-за чего кириллица писалась как «?»), а INIT_COMMAND надёжен везде.
+            if (defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
+                $opts[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci";
+            }
+            self::$pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], $opts);
         }
         return self::$pdo;
     }

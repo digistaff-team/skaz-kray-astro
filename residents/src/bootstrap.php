@@ -12,7 +12,7 @@ $session = Config::get('session_name', 'skazres');
 session_name($session);
 session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/poselenie',
+    'path'     => '/',
     'secure'   => true,
     'httponly' => true,
     'samesite' => 'Lax',

@@ -1,4 +1,4 @@
-<?php use SkazResidents\View; ?>
+<?php use SkazResidents\View; use SkazResidents\Csrf; ?>
 <h1>Личный кабинет</h1>
 
 <section>
@@ -14,7 +14,10 @@
             <?php endif; ?>
             <p class="res-meta">
                 <a href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/redaktirovat">Редактировать</a> ·
-                <a href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/udalit" onclick="return confirm('Удалить запись?')">Удалить</a>
+                <form method="post" action="/poselenie/dnevnik/<?= (int) $e['id'] ?>/udalit" style="display:inline" onsubmit="return confirm('Удалить запись?')">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="res-link-btn">Удалить</button>
+                </form>
             </p>
         </div>
     <?php endforeach; ?>
@@ -33,7 +36,10 @@
             <?php endif; ?>
             <p class="res-meta">
                 <a href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Редактировать</a> ·
-                <a href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onclick="return confirm('Удалить?')">Удалить</a>
+                <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" style="display:inline" onsubmit="return confirm('Удалить?')">
+                    <?= Csrf::field() ?>
+                    <button type="submit" class="res-link-btn">Удалить</button>
+                </form>
             </p>
         </div>
     <?php endforeach; ?>

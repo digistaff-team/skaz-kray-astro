@@ -34,14 +34,14 @@ $router->get('/poselenie/dnevnik/novaya', [$diary, 'showCreate']);
 $router->post('/poselenie/dnevnik/novaya', [$diary, 'create']);
 $router->get('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'showEdit']);
 $router->post('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'update']);
-$router->get('/poselenie/dnevnik/{id}/udalit', [$diary, 'delete']);
+$router->post('/poselenie/dnevnik/{id}/udalit', [$diary, 'delete']);
 
 $product = new ProductController();
 $router->get('/poselenie/yarmarka/novyy', [$product, 'showCreate']);
 $router->post('/poselenie/yarmarka/novyy', [$product, 'create']);
 $router->get('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'showEdit']);
 $router->post('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'update']);
-$router->get('/poselenie/yarmarka/{id}/udalit', [$product, 'delete']);
+$router->post('/poselenie/yarmarka/{id}/udalit', [$product, 'delete']);
 
 $mod = new ModerationController();
 $router->get('/poselenie/moderation', [$mod, 'index']);

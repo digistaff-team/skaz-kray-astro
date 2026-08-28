@@ -35,6 +35,7 @@ a { color: var(--green); }
     background: var(--green); color: #fff; font: inherit; cursor: pointer; text-decoration: none;
 }
 .res-btn--ghost { background: transparent; color: var(--green); border: 1px solid var(--green); }
+.res-link-btn { background: none; border: 0; padding: 0; color: var(--green); font: inherit; cursor: pointer; text-decoration: underline; }
 .res-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem; }
 .res-card img { max-width: 100%; height: auto; border-radius: 8px; }
 .res-meta { color: var(--muted); font-size: .9rem; }

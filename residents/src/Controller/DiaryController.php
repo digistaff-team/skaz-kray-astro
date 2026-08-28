@@ -67,11 +67,22 @@ final class DiaryController
     public function delete(array $params): void
     {
         Auth::requireLogin();
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $entry = $this->ownedOr404((int) $params['id']);
+        $this->deleteImageFiles((int) $entry['id']);
         $this->images->deleteFor('entry', (int) $entry['id']);
         $this->diary->delete((int) $entry['id']);
         Flash::set('success', 'Запись удалена.');
         header('Location: /poselenie/');
+    }
+
+    /** Удаляет физические файлы фото записи из uploads_dir (строки БД чистит deleteFor). */
+    private function deleteImageFiles(int $ownerId): void
+    {
+        $dir = rtrim((string) Config::get('uploads_dir'), '/\\');
+        foreach ($this->images->listFor('entry', $ownerId) as $img) {
+            @unlink($dir . '/' . basename((string) $img['path']));
+        }
     }
 
     /** @return array{0:array<string,string>,1:array<string,string>} */

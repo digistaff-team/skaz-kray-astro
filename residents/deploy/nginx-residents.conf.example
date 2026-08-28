@@ -2,8 +2,9 @@
 # Вставить внутрь server { } vhost skaz-kray.ru (там же, где location для статики).
 # root приложения — /var/www/skaz-residents/public
 
-# Отдача загруженных фото как статики, без выполнения PHP
-location /poselenie/uploads/ {
+# Отдача загруженных фото как статики, без выполнения PHP.
+# ^~ даёт приоритет над regex-локейшном ~ ^/poselenie/.*\.php$ ниже.
+location ^~ /poselenie/uploads/ {
     alias /var/www/skaz-residents/public/uploads/;
     access_log off;
     expires 30d;

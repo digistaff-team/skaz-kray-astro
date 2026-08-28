@@ -64,11 +64,22 @@ final class ProductController
     public function delete(array $params): void
     {
         Auth::requireLogin();
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $product = $this->ownedOr404((int) $params['id']);
+        $this->deleteImageFiles((int) $product['id']);
         $this->images->deleteFor('product', (int) $product['id']);
         $this->products->delete((int) $product['id']);
         Flash::set('success', 'Удалено.');
         header('Location: /poselenie/');
+    }
+
+    /** Удаляет физические файлы фото товара из uploads_dir (строки БД чистит deleteFor). */
+    private function deleteImageFiles(int $ownerId): void
+    {
+        $dir = rtrim((string) Config::get('uploads_dir'), '/\\');
+        foreach ($this->images->listFor('product', $ownerId) as $img) {
+            @unlink($dir . '/' . basename((string) $img['path']));
+        }
     }
 
     /** @return array{0:array<string,?string>,1:array<string,string>} */

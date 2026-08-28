@@ -10,6 +10,7 @@ use SkazResidents\Controller\CabinetController;
 use SkazResidents\Controller\DiaryController;
 use SkazResidents\Controller\ProductController;
 use SkazResidents\Controller\ModerationController;
+use SkazResidents\Controller\PublicController;
 
 $router = new Router();
 
@@ -51,6 +52,12 @@ $router->post('/poselenie/moderation/entry/approve', [$mod, 'approveEntry']);
 $router->post('/poselenie/moderation/entry/reject', [$mod, 'rejectEntry']);
 $router->post('/poselenie/moderation/product/approve', [$mod, 'approveProduct']);
 $router->post('/poselenie/moderation/product/reject', [$mod, 'rejectProduct']);
+
+$public = new PublicController();
+$router->get('/dnevniki-pomestiy', [$public, 'diaryList']);
+$router->get('/dnevniki-pomestiy/{id}', [$public, 'diaryShow']);
+$router->get('/yarmarka', [$public, 'marketList']);
+$router->get('/yarmarka/{id}', [$public, 'marketShow']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

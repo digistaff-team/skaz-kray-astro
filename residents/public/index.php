@@ -9,6 +9,7 @@ use SkazResidents\Controller\AuthController;
 use SkazResidents\Controller\CabinetController;
 use SkazResidents\Controller\DiaryController;
 use SkazResidents\Controller\ProductController;
+use SkazResidents\Controller\ModerationController;
 
 $router = new Router();
 
@@ -40,6 +41,16 @@ $router->post('/poselenie/yarmarka/novyy', [$product, 'create']);
 $router->get('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'showEdit']);
 $router->post('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'update']);
 $router->get('/poselenie/yarmarka/{id}/udalit', [$product, 'delete']);
+
+$mod = new ModerationController();
+$router->get('/poselenie/moderation', [$mod, 'index']);
+$router->post('/poselenie/moderation/family/approve', [$mod, 'approveFamily']);
+$router->post('/poselenie/moderation/family/reject', [$mod, 'rejectFamily']);
+$router->post('/poselenie/moderation/family/reset-password', [$mod, 'resetPassword']);
+$router->post('/poselenie/moderation/entry/approve', [$mod, 'approveEntry']);
+$router->post('/poselenie/moderation/entry/reject', [$mod, 'rejectEntry']);
+$router->post('/poselenie/moderation/product/approve', [$mod, 'approveProduct']);
+$router->post('/poselenie/moderation/product/reject', [$mod, 'rejectProduct']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

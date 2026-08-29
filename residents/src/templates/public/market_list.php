@@ -2,6 +2,7 @@
 $u = PublicController::uploadsUrl();
 $pages = (int) ceil($total / $perPage);
 ?>
+<div class="wrap" style="padding-top:2.6rem;padding-bottom:3rem;max-width:820px;">
 <h1>Ярмарка</h1>
 <p class="res-meta">Товары и услуги семей поселения.</p>
 <?php if (!$items): ?><p>Пока нет объявлений.</p><?php endif; ?>
@@ -19,9 +20,10 @@ $pages = (int) ceil($total / $perPage);
     </article>
 <?php endforeach; ?>
 <?php if ($pages > 1): ?>
-    <nav class="res-meta">
+    <nav class="pager" aria-label="Страницы">
         <?php for ($i = 1; $i <= $pages; $i++): ?>
             <?php if ($i === $page): ?><strong><?= $i ?></strong><?php else: ?><a href="?page=<?= $i ?>"><?= $i ?></a><?php endif; ?>
         <?php endfor; ?>
     </nav>
 <?php endif; ?>
+</div>

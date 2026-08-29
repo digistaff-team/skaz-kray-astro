@@ -34,15 +34,15 @@ final class PublicController
             'page' => $page,
             'total' => $this->diary->countPublishedPublic(),
             'perPage' => self::PER_PAGE,
-        ], 'Дневники поместий');
+        ], 'Дневники поместий', 'public/layout');
     }
 
     public function diaryShow(array $params): void
     {
         $entry = $this->diary->findPublishedPublicById((int) $params['id']);
-        if (!$entry) { http_response_code(404); View::render('public/notfound', [], 'Запись не найдена'); return; }
+        if (!$entry) { http_response_code(404); View::render('public/notfound', [], 'Запись не найдена', 'public/layout'); return; }
         $entry['images'] = $this->images->listFor('entry', (int) $entry['id']);
-        View::render('public/diary_show', ['entry' => $entry], $entry['title']);
+        View::render('public/diary_show', ['entry' => $entry], $entry['title'], 'public/layout');
     }
 
     public function marketList(): void
@@ -59,15 +59,15 @@ final class PublicController
             'page' => $page,
             'total' => $this->products->countPublished(),
             'perPage' => self::PER_PAGE,
-        ], 'Ярмарка');
+        ], 'Ярмарка', 'public/layout');
     }
 
     public function marketShow(array $params): void
     {
         $p = $this->products->findPublishedById((int) $params['id']);
-        if (!$p) { http_response_code(404); View::render('public/notfound', [], 'Товар не найден'); return; }
+        if (!$p) { http_response_code(404); View::render('public/notfound', [], 'Товар не найден', 'public/layout'); return; }
         $p['images'] = $this->images->listFor('product', (int) $p['id']);
-        View::render('public/market_show', ['product' => $p], $p['title']);
+        View::render('public/market_show', ['product' => $p], $p['title'], 'public/layout');
     }
 
     public static function uploadsUrl(): string

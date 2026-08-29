@@ -150,5 +150,10 @@ $router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {
     http_response_code(404);
-    View::render('public/notfound', [], 'Страница не найдена');
+    // /poselenie/* и /sovet/* — контекст портала (гварды входа сами решают,
+    // что показать); всё остальное (/dnevniki-pomestiy, /yarmarka) приходит
+    // с внешнего сайта и не должно показывать интерфейс/навигацию портала.
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
+    $isPortal = str_starts_with($path, '/poselenie') || str_starts_with($path, '/sovet');
+    View::render('public/notfound', [], 'Страница не найдена', $isPortal ? 'layout' : 'public/layout');
 }

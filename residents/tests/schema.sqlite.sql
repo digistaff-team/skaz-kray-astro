@@ -13,6 +13,7 @@ CREATE TABLE diary_entries (
     family_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
+    is_public INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
     reject_reason TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

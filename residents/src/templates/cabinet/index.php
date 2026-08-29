@@ -3,7 +3,10 @@
 
 <section>
     <h2>Дневник поместья</h2>
-    <p><a class="res-btn" href="/poselenie/dnevnik/novaya">Новая запись</a></p>
+    <p>
+        <a class="res-btn" href="/poselenie/dnevnik/novaya">Новая запись</a>
+        <a class="res-btn res-btn--ghost" href="/poselenie/dnevniki">Дневники всех жителей</a>
+    </p>
     <?php if (!$entries): ?><p class="res-meta">Записей пока нет.</p><?php endif; ?>
     <?php foreach ($entries as $e): ?>
         <div class="res-card">

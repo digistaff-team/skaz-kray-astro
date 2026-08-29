@@ -16,6 +16,7 @@ CREATE TABLE diary_entries (
     family_id     INT UNSIGNED NOT NULL,
     title         VARCHAR(200) NOT NULL,
     body          MEDIUMTEXT   NOT NULL,
+    is_public     TINYINT(1)   NOT NULL DEFAULT 0,           -- показывать на внешнем сайте (/dnevniki-pomestiy/)
     status        VARCHAR(16)  NOT NULL DEFAULT 'pending',   -- pending|published|rejected
     reject_reason VARCHAR(500) NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

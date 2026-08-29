@@ -13,6 +13,11 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
         <textarea name="body" required><?= View::e($entry['body'] ?? '') ?></textarea>
     </label>
     <?php if (isset($errors['body'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['body']) ?></div><?php endif; ?>
+    <label class="res-checkbox">
+        <input type="checkbox" name="is_public" value="1"<?= !empty($entry['is_public']) ? ' checked' : '' ?>>
+        Опубликовать на внешнем сайте (в разделе «Дневники поместий» для всех посетителей)
+    </label>
+    <p class="res-meta">Без галочки запись видна только жителям поселения на внутреннем портале.</p>
     <label>Фотографии (JPEG/PNG/WebP, до 5 МБ)
         <input type="file" name="photos[]" accept="image/*" multiple>
     </label>

@@ -19,7 +19,7 @@ export const headerNav = [
   {
     title: 'Статьи', url: '/category/stati/',
     children: [
-      { title: 'Дневники поместий', url: '/category/dnevniki-pomestij/' },
+      { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
       { title: 'Сказочная кухня', url: '/category/stati/cuisine/' },
       { title: '«Сказочные» репортажи', url: '/category/stati/skazochnye-reportazhi/' },
       { title: 'Копилка знаний', url: '/category/stati/kopilka-znanij/' },
@@ -35,7 +35,7 @@ export const footerNav = [
   { title: 'Главная', url: '/' },
   { title: 'О нас', url: '/o-nas/' },
   { title: 'Новости', url: '/category/novosti/' },
-  { title: 'Дневники поместий', url: '/category/dnevniki-pomestij/' },
+  { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   { title: 'Статьи', url: '/category/stati/' },
   { title: 'Архив', url: '/category/archive/' },
   { title: 'Контакты', url: '/kontakty/' },

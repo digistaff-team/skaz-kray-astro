@@ -15,11 +15,16 @@ final class PublicController
         private ImageRepository $images = new ImageRepository()
     ) {}
 
+    /**
+     * Внешняя публичная лента (без авторизации) — только записи, отмеченные
+     * семьёй галочкой «Опубликовать на внешнем сайте» (is_public=1). Полная
+     * лента для жителей — DiaryController::feed() (требует входа).
+     */
     public function diaryList(): void
     {
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $offset = ($page - 1) * self::PER_PAGE;
-        $entries = $this->diary->listPublished(self::PER_PAGE, $offset);
+        $entries = $this->diary->listPublishedPublic(self::PER_PAGE, $offset);
         foreach ($entries as &$e) {
             $e['images'] = $this->images->listFor('entry', (int) $e['id']);
         }
@@ -27,14 +32,14 @@ final class PublicController
         View::render('public/diary_list', [
             'entries' => $entries,
             'page' => $page,
-            'total' => $this->diary->countPublished(),
+            'total' => $this->diary->countPublishedPublic(),
             'perPage' => self::PER_PAGE,
         ], 'Дневники поместий');
     }
 
     public function diaryShow(array $params): void
     {
-        $entry = $this->diary->findPublishedById((int) $params['id']);
+        $entry = $this->diary->findPublishedPublicById((int) $params['id']);
         if (!$entry) { http_response_code(404); View::render('public/notfound', [], 'Запись не найдена'); return; }
         $entry['images'] = $this->images->listFor('entry', (int) $entry['id']);
         View::render('public/diary_show', ['entry' => $entry], $entry['title']);

@@ -76,3 +76,13 @@ nginx -t && systemctl reload nginx
    ```
 2. Отдельных env/nginx-правок не нужно — всё под уже настроенным `/poselenie/`.
    Пункт меню «Инструменты» ведёт на `/poselenie/instrumenty`.
+
+## 9. Обмен книгами (/poselenie/knigi)
+Зеркало сервиса инструментов, но для книг (title/author/genre). P2P, бронь
+одобряет владелец, возврат с проверкой состояния. Фото — `images` owner_type='book'.
+
+1. Накатить схему книг (один раз, в ту же БД):
+   ```
+   mysql skazkray_residents < /var/www/skaz-residents/config/books-schema.sql
+   ```
+2. Отдельных env/nginx-правок не нужно. Пункт меню «Книги» → `/poselenie/knigi`.

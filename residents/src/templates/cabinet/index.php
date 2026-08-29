@@ -33,6 +33,15 @@
 </section>
 
 <section>
+    <h2>Обмен книгами</h2>
+    <p class="res-meta">Общая книжная полка жителей — возьмите книгу почитать или поделитесь своей.</p>
+    <p>
+        <a class="res-btn" href="/poselenie/knigi">Каталог книг</a>
+        <a class="res-btn res-btn--ghost" href="/poselenie/knigi/moi">Мои книги и брони</a>
+    </p>
+</section>
+
+<section>
     <h2>Мои товары и услуги</h2>
     <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
     <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>

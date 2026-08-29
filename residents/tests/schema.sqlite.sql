@@ -113,3 +113,29 @@ CREATE TABLE tool_loans (
     return_condition TEXT,
     return_note TEXT
 );
+CREATE TABLE books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL DEFAULT '',
+    genre TEXT NOT NULL DEFAULT '',
+    description TEXT,
+    condition_note TEXT,
+    status TEXT NOT NULL DEFAULT 'available',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE book_loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    borrower_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'requested',
+    message TEXT,
+    due_date TEXT,
+    requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    handed_out_at TEXT,
+    returned_at TEXT,
+    decided_at TEXT,
+    return_condition TEXT,
+    return_note TEXT
+);

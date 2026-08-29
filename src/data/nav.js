@@ -16,7 +16,7 @@ export const headerNav = [
     ],
   },
   { title: 'Новости', url: '/category/novosti/' },
-  { title: 'Дневники', url: '/category/dnevniki-pomestij/' },
+  { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   {
     title: 'Статьи', url: '/category/stati/',
     children: [
@@ -25,15 +25,6 @@ export const headerNav = [
       { title: 'Копилка знаний', url: '/category/stati/kopilka-znanij/' },
     ],
   },
-  {
-    // Бывший раздел "Новости" — записи датированы прошлыми годами, теперь это архив.
-    title: 'Архив', url: '/category/archive/',
-    children: [
-      { title: 'Словарь терминов', url: '/arxiv/slovar-terminov/' },
-      { title: 'Полезные ссылки', url: '/arxiv/poleznye-ssylki/' },
-    ],
-  },
-  { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   { title: 'Ярмарка', url: '/yarmarka/' },
   // Внутренние разделы (вход/сервисы жителей и совета) намеренно НЕ в главном меню.
   // Доступ к ним — по прямым ссылкам: /poselenie/vhod, /sovet/vhod.

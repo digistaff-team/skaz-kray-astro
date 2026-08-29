@@ -3,11 +3,6 @@
 import fs from 'node:fs';
 import { novostiCollectionYaml } from './novosti-collection.mjs';
 import { articleCollectionsYaml } from './article-collections.mjs';
-const { categories } = await import('../src/data/categories.js');
-
-const catOptions = categories
-  .map((c) => `          - { label: "${c.name.replace(/"/g, '\\"')}", value: "${c.slug}" }`)
-  .join('\n');
 
 const yml = `# Decap CMS — редактор контента сайта «Сказочный Край».
 # Сгенерировано scripts/gen-decap-config.mjs — правьте генератор, не этот файл.
@@ -34,31 +29,6 @@ ${novostiCollectionYaml}
 
 ${articleCollectionsYaml()}
 
-  - name: posts
-    label: "Записи (дневники, статьи)"
-    label_singular: "Запись"
-    description: "Дневники поместий и статьи. Для короткой новости используйте вкладку «Новости»."
-    folder: "src/content/posts"
-    create: true
-    slug: "{{slug}}"
-    identifier_field: title
-    sortable_fields: [date, title]
-    fields:
-      - { name: title, label: "Заголовок", widget: string }
-      - { name: date, label: "Дата", widget: datetime, date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
-      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
-      - name: categories
-        label: "Рубрики"
-        widget: select
-        multiple: true
-        required: false
-        options:
-${catOptions}
-      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
-      - { name: seoTitle, label: "SEO: заголовок", widget: string, required: false }
-      - { name: seoDescription, label: "SEO: описание", widget: text, required: false }
-      - { name: body, label: "Текст", widget: markdown }
-
   - name: pages
     label: "Страницы"
     label_singular: "Страница"
@@ -77,4 +47,4 @@ ${catOptions}
 `;
 
 fs.writeFileSync('C:/Projects/skaz-kray-astro/public/admin/config.yml', yml);
-console.log('Wrote public/admin/config.yml with', categories.length, 'category options');
+console.log('Wrote public/admin/config.yml');

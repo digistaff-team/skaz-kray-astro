@@ -37,7 +37,6 @@ export const footerNav = [
   { title: 'Новости', url: '/category/novosti/' },
   { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   { title: 'Статьи', url: '/category/stati/' },
-  { title: 'Архив', url: '/category/archive/' },
   { title: 'Контакты', url: '/kontakty/' },
 ];
 

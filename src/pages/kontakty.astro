@@ -8,7 +8,10 @@ const contacts = {
   phoneTel: '+79880829335',
   email: 'skaz.kray@gmail.com',
 };
-const mapSrc = 'https://www.google.com/maps/d/embed?mid=1yYs6Fapw0sgJUNGGP-1UW0uhYSs&ll=44.77428,38.866882&z=13';
+// Яндекс.Карты (виджет без API-ключа). У Яндекса порядок координат
+// «долгота,широта», поэтому 38.866882,44.77428 (у Google было наоборот).
+// pt=…,pm2rdm — метка места поселения.
+const mapSrc = 'https://yandex.ru/map-widget/v1/?ll=38.866882%2C44.77428&z=13&pt=38.866882%2C44.77428%2Cpm2rdm';
 ---
 <Base title="Контакты" description="Контакты поселения родовых поместий Сказочный Край: адрес, телефон, как добраться, гостевой день.">
   <header class="page-head">

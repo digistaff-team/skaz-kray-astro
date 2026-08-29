@@ -15,6 +15,12 @@ return [
         'from'      => 'noreply@skaz-kray.ru',
         'from_name' => 'Сказочный Край',
     ],
+    // Авто-логин жителя через Telegram Mini App (@SkazKray_bot).
+    'telegram' => [
+        'bot_token'     => 'CHANGE_ME',               // токен @SkazKray_bot (BotFather)
+        'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
+        'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
+    ],
     'base_url'     => 'https://skaz-kray.ru',
     'uploads_dir'  => __DIR__ . '/../public/uploads',   // куда пишем файлы
     'uploads_url'  => '/poselenie/uploads',             // как отдаём (nginx)

@@ -87,6 +87,17 @@ nginx -t && systemctl reload nginx
    ```
 2. Отдельных env/nginx-правок не нужно. Пункт меню «Книги» → `/poselenie/knigi`.
 
+## 11. Совместные поездки (/poselenie/poezdki)
+Попутки: водитель-семья публикует поездку A→B на дату/время с числом мест;
+пассажир бронирует место; при подтверждении водителем места списываются.
+Только для вошедших жителей. Эталон — Ride_Share_Bot (carpool-домен).
+
+1. Накатить схему поездок (один раз, в ту же БД):
+   ```
+   mysql skazkray_residents < /var/www/skaz-residents/config/rides-schema.sql
+   ```
+2. Отдельных env/nginx-правок не нужно. Пункт меню «Поездки» → `/poselenie/poezdki`.
+
 ## 10. Публичные страницы = дизайн сайта (site-mirror.css)
 `/dnevniki-pomestiy/` и `/yarmarka/` рендерятся раздельным `templates/public/layout.php`,
 который грузит `public/assets/site-mirror.css` — точную копию скомпилированного

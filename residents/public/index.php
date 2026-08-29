@@ -17,6 +17,7 @@ use SkazResidents\Controller\BookController;
 use SkazResidents\Controller\BookLoanController;
 use SkazResidents\Controller\TripController;
 use SkazResidents\Controller\TripBookingController;
+use SkazResidents\Controller\TgAuthController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
@@ -34,6 +35,12 @@ $router->get('/poselenie/vosstanovit', [$auth, 'showForgot']);
 $router->post('/poselenie/vosstanovit', [$auth, 'forgot']);
 $router->get('/poselenie/sbros', [$auth, 'showReset']);
 $router->post('/poselenie/sbros', [$auth, 'reset']);
+
+// Авто-логин жителя через Telegram Mini App (@SkazKray_bot) с гейтом подписки.
+$tg = new TgAuthController();
+$router->get('/poselenie/tg', [$tg, 'entry']);
+$router->post('/poselenie/tg/login', [$tg, 'login']);
+$router->get('/poselenie/tg/gate', [$tg, 'gate']);
 
 $cabinet = new CabinetController();
 $router->get('/poselenie', [$cabinet, 'index']);

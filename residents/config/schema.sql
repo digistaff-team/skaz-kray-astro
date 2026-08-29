@@ -3,6 +3,7 @@
 CREATE TABLE families (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     email         VARCHAR(255) NOT NULL UNIQUE,
+    telegram_id   BIGINT       NULL UNIQUE,               -- привязка к Telegram (авто-логин через Mini App)
     password_hash VARCHAR(255) NOT NULL,
     name          VARCHAR(160) NOT NULL,
     status        VARCHAR(16)  NOT NULL DEFAULT 'pending',   -- pending|active|blocked

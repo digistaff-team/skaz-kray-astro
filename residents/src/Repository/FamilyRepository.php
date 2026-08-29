@@ -31,6 +31,30 @@ final class FamilyRepository
         return $st->fetch() ?: null;
     }
 
+    public function findByTelegramId(int $telegramId): ?array
+    {
+        $st = $this->db->prepare('SELECT * FROM families WHERE telegram_id = ?');
+        $st->execute([$telegramId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Создаёт аккаунт жителя, привязанный к Telegram: сразу active (членство в
+     * группе — гейт вместо одобрения редактором). Email синтетический, пароль —
+     * случайный неиспользуемый (вход только через Telegram).
+     */
+    public function createTelegramFamily(int $telegramId, string $name): int
+    {
+        $email = 'tg' . $telegramId . '@telegram.local';
+        $passwordHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
+        $st = $this->db->prepare(
+            'INSERT INTO families (email, telegram_id, password_hash, name, status, role, approved_at)
+             VALUES (?, ?, ?, ?, \'active\', \'resident\', ?)'
+        );
+        $st->execute([$email, $telegramId, $passwordHash, $name, date('Y-m-d H:i:s')]);
+        return (int) $this->db->lastInsertId();
+    }
+
     public function findById(int $id): ?array
     {
         $st = $this->db->prepare('SELECT * FROM families WHERE id = ?');

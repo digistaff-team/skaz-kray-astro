@@ -1,6 +1,7 @@
 CREATE TABLE families (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
+    telegram_id INTEGER UNIQUE,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',

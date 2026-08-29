@@ -11,6 +11,8 @@ use SkazResidents\Controller\DiaryController;
 use SkazResidents\Controller\ProductController;
 use SkazResidents\Controller\ModerationController;
 use SkazResidents\Controller\PublicController;
+use SkazResidents\Controller\ToolController;
+use SkazResidents\Controller\ToolLoanController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
@@ -56,6 +58,27 @@ $router->post('/poselenie/moderation/entry/approve', [$mod, 'approveEntry']);
 $router->post('/poselenie/moderation/entry/reject', [$mod, 'rejectEntry']);
 $router->post('/poselenie/moderation/product/approve', [$mod, 'approveProduct']);
 $router->post('/poselenie/moderation/product/reject', [$mod, 'rejectProduct']);
+
+// ==== Шеринг инструментов (раздел жителей) ====
+$tool = new ToolController();
+$loan = new ToolLoanController();
+// Специфичные пути — ДО generic '/{id}', иначе {id} их перехватит.
+$router->get('/poselenie/instrumenty', [$tool, 'catalog']);
+$router->get('/poselenie/instrumenty/novyy', [$tool, 'showCreate']);
+$router->post('/poselenie/instrumenty/novyy', [$tool, 'create']);
+$router->get('/poselenie/instrumenty/moi', [$tool, 'mine']);
+$router->get('/poselenie/instrumenty/{id}/redaktirovat', [$tool, 'showEdit']);
+$router->post('/poselenie/instrumenty/{id}/redaktirovat', [$tool, 'update']);
+$router->post('/poselenie/instrumenty/{id}/udalit', [$tool, 'delete']);
+$router->post('/poselenie/instrumenty/{id}/skryt', [$tool, 'toggleHidden']);
+$router->post('/poselenie/instrumenty/{id}/remont', [$tool, 'toggleMaintenance']);
+$router->post('/poselenie/instrumenty/{id}/zapros', [$loan, 'request']);
+$router->get('/poselenie/instrumenty/{id}', [$tool, 'show']);
+// Действия с займами
+$router->post('/poselenie/zaymy/{id}/vydat', [$loan, 'give']);
+$router->post('/poselenie/zaymy/{id}/otklonit', [$loan, 'decline']);
+$router->post('/poselenie/zaymy/{id}/vozvrat', [$loan, 'returnLoan']);
+$router->post('/poselenie/zaymy/{id}/otmenit', [$loan, 'cancel']);
 
 $public = new PublicController();
 $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);

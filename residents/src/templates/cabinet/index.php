@@ -24,6 +24,15 @@
 </section>
 
 <section>
+    <h2>Шеринг инструментов</h2>
+    <p class="res-meta">Общая копилка инструментов жителей — возьмите нужное у соседа или поделитесь своим.</p>
+    <p>
+        <a class="res-btn" href="/poselenie/instrumenty">Каталог инструментов</a>
+        <a class="res-btn res-btn--ghost" href="/poselenie/instrumenty/moi">Мои инструменты и заявки</a>
+    </p>
+</section>
+
+<section>
     <h2>Мои товары и услуги</h2>
     <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
     <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>

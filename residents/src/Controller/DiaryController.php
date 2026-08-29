@@ -7,10 +7,45 @@ use SkazResidents\Repository\{DiaryRepository, ImageRepository};
 
 final class DiaryController
 {
+    private const PER_PAGE = 10;
+
     public function __construct(
         private DiaryRepository $diary = new DiaryRepository(),
         private ImageRepository $images = new ImageRepository()
     ) {}
+
+    /**
+     * Внутренняя лента дневников — только для вошедших жителей. Показывает
+     * ВСЕ опубликованные записи (независимо от галочки is_public), в отличие
+     * от внешней публичной ленты (PublicController::diaryList), которая
+     * фильтрует только записи с is_public=1.
+     */
+    public function feed(): void
+    {
+        Auth::requireLogin();
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $offset = ($page - 1) * self::PER_PAGE;
+        $entries = $this->diary->listPublished(self::PER_PAGE, $offset);
+        foreach ($entries as &$e) {
+            $e['images'] = $this->images->listFor('entry', (int) $e['id']);
+        }
+        unset($e);
+        View::render('diary/feed_list', [
+            'entries' => $entries,
+            'page'    => $page,
+            'total'   => $this->diary->countPublished(),
+            'perPage' => self::PER_PAGE,
+        ], 'Дневники поместий');
+    }
+
+    public function feedShow(array $params): void
+    {
+        Auth::requireLogin();
+        $entry = $this->diary->findPublishedById((int) $params['id']);
+        if (!$entry) { http_response_code(404); View::render('public/notfound', [], 'Запись не найдена'); return; }
+        $entry['images'] = $this->images->listFor('entry', (int) $entry['id']);
+        View::render('diary/feed_show', ['entry' => $entry], $entry['title']);
+    }
 
     public function showCreate(): void
     {
@@ -29,7 +64,7 @@ final class DiaryController
             return;
         }
         $now = date('Y-m-d H:i:s');
-        $id = $this->diary->create(Auth::id(), $data['title'], $data['body'], $now);
+        $id = $this->diary->create(Auth::id(), $data['title'], $data['body'], $data['is_public'], $now);
         $this->handleUploads('entry', $id);
         Flash::set('success', 'Запись отправлена на проверку редактору.');
         header('Location: /poselenie/');
@@ -58,7 +93,7 @@ final class DiaryController
             View::render('diary/form', ['entry' => $data, 'images' => $this->images->listFor('entry', (int) $entry['id']), 'errors' => $errors], 'Редактирование записи');
             return;
         }
-        $this->diary->update((int) $entry['id'], $data['title'], $data['body'], date('Y-m-d H:i:s'));
+        $this->diary->update((int) $entry['id'], $data['title'], $data['body'], $data['is_public'], date('Y-m-d H:i:s'));
         $this->handleUploads('entry', (int) $entry['id']);
         Flash::set('success', 'Изменения отправлены на повторную проверку.');
         header('Location: /poselenie/');
@@ -85,15 +120,16 @@ final class DiaryController
         }
     }
 
-    /** @return array{0:array<string,string>,1:array<string,string>} */
+    /** @return array{0:array{title:string,body:string,is_public:bool},1:array<string,string>} */
     private function validate(): array
     {
         $title = trim($_POST['title'] ?? '');
         $body  = trim($_POST['body'] ?? '');
+        $isPublic = !empty($_POST['is_public']);
         $errors = [];
         if (!Validator::length($title, 2, 200)) { $errors['title'] = 'Заголовок: 2–200 символов.'; }
         if (!Validator::required($body)) { $errors['body'] = 'Текст записи не может быть пустым.'; }
-        return [['title' => $title, 'body' => $body], $errors];
+        return [['title' => $title, 'body' => $body, 'is_public' => $isPublic], $errors];
     }
 
     private function handleUploads(string $ownerType, int $ownerId): void

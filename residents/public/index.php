@@ -43,6 +43,10 @@ $router->post('/poselenie/dnevnik/novaya', [$diary, 'create']);
 $router->get('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'showEdit']);
 $router->post('/poselenie/dnevnik/{id}/redaktirovat', [$diary, 'update']);
 $router->post('/poselenie/dnevnik/{id}/udalit', [$diary, 'delete']);
+// Внутренняя лента (все опубликованные записи, только для вошедших жителей) —
+// отдельно от внешней публичной ленты /dnevniki-pomestiy (см. ниже, PublicController).
+$router->get('/poselenie/dnevniki', [$diary, 'feed']);
+$router->get('/poselenie/dnevniki/{id}', [$diary, 'feedShow']);
 
 $product = new ProductController();
 $router->get('/poselenie/yarmarka/novyy', [$product, 'showCreate']);

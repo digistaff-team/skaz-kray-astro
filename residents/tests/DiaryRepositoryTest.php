@@ -19,15 +19,23 @@ final class DiaryRepositoryTest extends TestCase
 
     public function test_create_is_pending(): void
     {
-        $id = $this->repo->create($this->familyId, 'Весна', 'Посадили сад', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'Весна', 'Посадили сад', false, '2026-08-28 09:00:00');
         $e = $this->repo->findById($id);
         $this->assertSame('pending', $e['status']);
         $this->assertNull($e['published_at']);
+        $this->assertSame(0, (int) $e['is_public']);
+    }
+
+    public function test_create_public(): void
+    {
+        $id = $this->repo->create($this->familyId, 'Весна', 'Посадили сад', true, '2026-08-28 09:00:00');
+        $e = $this->repo->findById($id);
+        $this->assertSame(1, (int) $e['is_public']);
     }
 
     public function test_approve_publishes(): void
     {
-        $id = $this->repo->create($this->familyId, 'T', 'B', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'T', 'B', false, '2026-08-28 09:00:00');
         $this->repo->approve($id, '2026-08-28 10:00:00');
         $e = $this->repo->findById($id);
         $this->assertSame('published', $e['status']);
@@ -36,29 +44,30 @@ final class DiaryRepositoryTest extends TestCase
 
     public function test_reject_stores_reason(): void
     {
-        $id = $this->repo->create($this->familyId, 'T', 'B', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'T', 'B', false, '2026-08-28 09:00:00');
         $this->repo->reject($id, 'Нет фото');
         $e = $this->repo->findById($id);
         $this->assertSame('rejected', $e['status']);
         $this->assertSame('Нет фото', $e['reject_reason']);
     }
 
-    public function test_edit_returns_to_pending_and_clears_reason(): void
+    public function test_edit_returns_to_pending_and_updates_is_public(): void
     {
-        $id = $this->repo->create($this->familyId, 'T', 'B', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'T', 'B', false, '2026-08-28 09:00:00');
         $this->repo->reject($id, 'Нет фото');
-        $this->repo->update($id, 'T2', 'B2', '2026-08-28 11:00:00');
+        $this->repo->update($id, 'T2', 'B2', true, '2026-08-28 11:00:00');
         $e = $this->repo->findById($id);
         $this->assertSame('pending', $e['status']);
         $this->assertNull($e['reject_reason']);
         $this->assertSame('T2', $e['title']);
+        $this->assertSame(1, (int) $e['is_public']);
     }
 
     public function test_list_published_only(): void
     {
-        $p = $this->repo->create($this->familyId, 'Опубл', 'B', '2026-08-28 09:00:00');
+        $p = $this->repo->create($this->familyId, 'Опубл', 'B', false, '2026-08-28 09:00:00');
         $this->repo->approve($p, '2026-08-28 10:00:00');
-        $this->repo->create($this->familyId, 'Черновик', 'B', '2026-08-28 09:30:00');
+        $this->repo->create($this->familyId, 'Черновик', 'B', false, '2026-08-28 09:30:00');
         $rows = $this->repo->listPublished(10, 0);
         $this->assertCount(1, $rows);
         $this->assertSame('Опубл', $rows[0]['title']);
@@ -67,14 +76,36 @@ final class DiaryRepositoryTest extends TestCase
 
     public function test_list_by_family(): void
     {
-        $this->repo->create($this->familyId, 'Моя', 'B', '2026-08-28 09:00:00');
+        $this->repo->create($this->familyId, 'Моя', 'B', false, '2026-08-28 09:00:00');
         $rows = $this->repo->listByFamily($this->familyId);
         $this->assertCount(1, $rows);
     }
 
+    public function test_public_feed_only_includes_published_and_public(): void
+    {
+        $public  = $this->repo->create($this->familyId, 'Публичная', 'B', true, '2026-08-28 09:00:00');
+        $private = $this->repo->create($this->familyId, 'Приватная', 'B', false, '2026-08-28 09:05:00');
+        $draft   = $this->repo->create($this->familyId, 'Черновик', 'B', true, '2026-08-28 09:10:00'); // с галочкой, но не одобрена
+        $this->repo->approve($public, '2026-08-28 10:00:00');
+        $this->repo->approve($private, '2026-08-28 10:05:00');
+
+        // Внутренняя лента (все опубликованные) — 2 записи (public+private), draft не одобрена.
+        $this->assertCount(2, $this->repo->listPublished(10, 0));
+
+        // Внешняя публичная лента — только 1 (опубликована И с галочкой).
+        $rows = $this->repo->listPublishedPublic(10, 0);
+        $this->assertCount(1, $rows);
+        $this->assertSame('Публичная', $rows[0]['title']);
+        $this->assertSame(1, $this->repo->countPublishedPublic());
+
+        $this->assertNotNull($this->repo->findPublishedPublicById($public));
+        $this->assertNull($this->repo->findPublishedPublicById($private)); // без галочки — не видна вовне
+        $this->assertNull($this->repo->findPublishedPublicById($draft));   // не одобрена — не видна вовне
+    }
+
     public function test_delete(): void
     {
-        $id = $this->repo->create($this->familyId, 'T', 'B', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'T', 'B', false, '2026-08-28 09:00:00');
         $this->repo->delete($id);
         $this->assertNull($this->repo->findById($id));
     }

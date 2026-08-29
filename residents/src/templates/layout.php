@@ -11,7 +11,11 @@
 <header class="res-header">
     <a class="res-logo" href="/">Сказочный Край</a>
     <nav class="res-nav">
-        <a href="/dnevniki-pomestiy/">Дневники поместий</a>
+        <?php if (Auth::id() !== null): ?>
+            <a href="/poselenie/dnevniki">Дневники поместий</a>
+        <?php else: ?>
+            <a href="/dnevniki-pomestiy/">Дневники поместий</a>
+        <?php endif; ?>
         <a href="/yarmarka/">Ярмарка</a>
         <a href="/poselenie/instrumenty">Инструменты</a>
         <a href="/poselenie/knigi">Книги</a>

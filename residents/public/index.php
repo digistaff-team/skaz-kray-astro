@@ -13,6 +13,8 @@ use SkazResidents\Controller\ModerationController;
 use SkazResidents\Controller\PublicController;
 use SkazResidents\Controller\ToolController;
 use SkazResidents\Controller\ToolLoanController;
+use SkazResidents\Controller\BookController;
+use SkazResidents\Controller\BookLoanController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
@@ -79,6 +81,25 @@ $router->post('/poselenie/zaymy/{id}/vydat', [$loan, 'give']);
 $router->post('/poselenie/zaymy/{id}/otklonit', [$loan, 'decline']);
 $router->post('/poselenie/zaymy/{id}/vozvrat', [$loan, 'returnLoan']);
 $router->post('/poselenie/zaymy/{id}/otmenit', [$loan, 'cancel']);
+
+// ==== Обмен книгами (раздел жителей) ====
+$book = new BookController();
+$bloan = new BookLoanController();
+$router->get('/poselenie/knigi', [$book, 'catalog']);
+$router->get('/poselenie/knigi/novaya', [$book, 'showCreate']);
+$router->post('/poselenie/knigi/novaya', [$book, 'create']);
+$router->get('/poselenie/knigi/moi', [$book, 'mine']);
+$router->get('/poselenie/knigi/{id}/redaktirovat', [$book, 'showEdit']);
+$router->post('/poselenie/knigi/{id}/redaktirovat', [$book, 'update']);
+$router->post('/poselenie/knigi/{id}/udalit', [$book, 'delete']);
+$router->post('/poselenie/knigi/{id}/skryt', [$book, 'toggleHidden']);
+$router->post('/poselenie/knigi/{id}/nedostupna', [$book, 'toggleMaintenance']);
+$router->post('/poselenie/knigi/{id}/bron', [$bloan, 'request']);
+$router->get('/poselenie/knigi/{id}', [$book, 'show']);
+$router->post('/poselenie/knigi-bron/{id}/vydat', [$bloan, 'give']);
+$router->post('/poselenie/knigi-bron/{id}/otklonit', [$bloan, 'decline']);
+$router->post('/poselenie/knigi-bron/{id}/vozvrat', [$bloan, 'returnLoan']);
+$router->post('/poselenie/knigi-bron/{id}/otmenit', [$bloan, 'cancel']);
 
 $public = new PublicController();
 $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);

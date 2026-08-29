@@ -14,6 +14,7 @@
         <a href="/dnevniki-pomestiy/">Дневники поместий</a>
         <a href="/yarmarka/">Ярмарка</a>
         <a href="/poselenie/instrumenty">Инструменты</a>
+        <a href="/poselenie/knigi">Книги</a>
         <?php if (Auth::id() !== null): ?>
             <a href="/poselenie/">Кабинет</a>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>

@@ -2,6 +2,7 @@
 // in sync with src/data/categories.js.
 import fs from 'node:fs';
 import { novostiCollectionYaml } from './novosti-collection.mjs';
+import { articleCollectionsYaml } from './article-collections.mjs';
 const { categories } = await import('../src/data/categories.js');
 
 const catOptions = categories
@@ -30,6 +31,8 @@ public_folder: "/wp-content/uploads/decap"
 
 collections:
 ${novostiCollectionYaml}
+
+${articleCollectionsYaml()}
 
   - name: posts
     label: "Записи (дневники, статьи)"

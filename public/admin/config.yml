@@ -34,6 +34,114 @@ collections:
       - { name: body, label: "Текст новости", widget: markdown }
       - { name: categories, widget: hidden, default: ["novosti"] }
 
+  - name: art-stati
+    label: "Статьи"
+    label_singular: "Статья"
+    description: "Статьи в рубрику «Статьи». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "stati" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["stati"] }
+
+  - name: art-skazochnye-reportazhi
+    label: "«Сказочные» репортажи"
+    label_singular: "Статья"
+    description: "Статьи в рубрику ««Сказочные» репортажи». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "skazochnye-reportazhi" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["skazochnye-reportazhi"] }
+
+  - name: art-kopilka-znanij
+    label: "Копилка знаний"
+    label_singular: "Статья"
+    description: "Статьи в рубрику «Копилка знаний». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "kopilka-znanij" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["kopilka-znanij"] }
+
+  - name: art-cuisine
+    label: "Сказочная кухня"
+    label_singular: "Статья"
+    description: "Статьи в рубрику «Сказочная кухня». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "cuisine" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["cuisine"] }
+
+  - name: art-rasteniya-skazochnogo-kraya
+    label: "Растения Сказочного Края"
+    label_singular: "Статья"
+    description: "Статьи в рубрику «Растения Сказочного Края». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "rasteniya-skazochnogo-kraya" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["rasteniya-skazochnogo-kraya"] }
+
+  - name: art-skazochnaya-eko-produkciya
+    label: "Сказочная эко-продукция"
+    label_singular: "Статья"
+    description: "Статьи в рубрику «Сказочная эко-продукция». Заполните заголовок и текст — рубрика подставится сама."
+    folder: "src/content/posts"
+    create: true
+    filter: { field: categories, value: "skazochnaya-eko-produkciya" }
+    slug: "{{slug}}"
+    identifier_field: title
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: "Заголовок", widget: string }
+      - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: body, label: "Текст", widget: markdown }
+      - { name: categories, widget: hidden, default: ["skazochnaya-eko-produkciya"] }
+
   - name: posts
     label: "Записи (дневники, статьи)"
     label_singular: "Запись"

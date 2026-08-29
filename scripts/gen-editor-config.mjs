@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { novostiCollectionYaml } from './novosti-collection.mjs';
+import { articleCollectionsYaml } from './article-collections.mjs';
 
-const yml = `# Decap CMS — вход для редактора (только раздел «Новости»).
+const yml = `# Decap CMS — вход для редактора (Новости и все виды статей).
 # Сгенерировано scripts/gen-editor-config.mjs — правьте генератор, не этот файл.
 
 backend:
@@ -25,6 +26,8 @@ public_folder: "/wp-content/uploads/decap"
 
 collections:
 ${novostiCollectionYaml}
+
+${articleCollectionsYaml()}
 `;
 
 // Путь резолвится относительно расположения этого файла, не хардкод

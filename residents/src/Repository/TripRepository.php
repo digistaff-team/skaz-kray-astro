@@ -51,11 +51,18 @@ final class TripRepository
         $st->execute([$status, $id]);
     }
 
-    /** Изменить число свободных мест на $delta (может быть отрицательным). Не уходит ниже 0. */
+    /**
+     * Изменить число свободных мест на $delta (может быть отрицательным). Не уходит ниже 0.
+     * Считаем в PHP (переносимо): в MariaDB нет скалярного двухаргументного MAX
+     * (это агрегат; скаляр — GREATEST), а в SQLite наоборот нет GREATEST.
+     */
     public function adjustSeats(int $id, int $delta): void
     {
-        $st = $this->db->prepare('UPDATE trips SET seats_free = MAX(0, seats_free + ?) WHERE id = ?');
-        $st->execute([$delta, $id]);
+        $cur = $this->findById($id);
+        if (!$cur) { return; }
+        $new = max(0, (int) $cur['seats_free'] + $delta);
+        $st = $this->db->prepare('UPDATE trips SET seats_free = ? WHERE id = ?');
+        $st->execute([$new, $id]);
     }
 
     /**

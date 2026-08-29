@@ -64,3 +64,15 @@ nginx -t && systemctl reload nginx
    правится в коде — `src/CouncilData.php` (ссылки на Google Docs — заменить
    плейсхолдеры `PLACEHOLDER-*` на реальные). Доска задач `/sovet/zadachi`
    редактируется членами совета прямо в интерфейсе.
+
+## 8. Шеринг инструментов (/poselenie/instrumenty)
+Часть раздела жителей: жители делятся своими инструментами (P2P), заявку
+одобряет владелец. Модерации нет. Фото — в существующей таблице `images`
+(owner_type='tool'), каталог виден только вошедшим жителям.
+
+1. Накатить схему инструментов (один раз, в ту же БД):
+   ```
+   mysql skazkray_residents < /var/www/skaz-residents/config/tools-schema.sql
+   ```
+2. Отдельных env/nginx-правок не нужно — всё под уже настроенным `/poselenie/`.
+   Пункт меню «Инструменты» ведёт на `/poselenie/instrumenty`.

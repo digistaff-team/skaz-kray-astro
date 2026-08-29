@@ -15,6 +15,7 @@ final class SchemaTest extends TestCase
             [
                 'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',
                 'diary_entries', 'families', 'images', 'login_attempts', 'password_resets', 'products',
+                'tool_loans', 'tools',
             ],
             $names
         );

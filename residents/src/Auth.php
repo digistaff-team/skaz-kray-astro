@@ -35,6 +35,11 @@ final class Auth
         return isset($_SESSION['family_id']) ? (int) $_SESSION['family_id'] : null;
     }
 
+    public static function name(): string
+    {
+        return (string) ($_SESSION['family_name'] ?? '');
+    }
+
     public static function isEditor(): bool
     {
         return ($_SESSION['role'] ?? '') === 'editor';

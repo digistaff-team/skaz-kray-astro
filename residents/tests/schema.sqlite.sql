@@ -87,3 +87,29 @@ CREATE TABLE council_password_resets (
     member_id INTEGER NOT NULL,
     expires_at TEXT NOT NULL
 );
+CREATE TABLE tools (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    family_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    description TEXT,
+    condition_note TEXT,
+    terms TEXT,
+    status TEXT NOT NULL DEFAULT 'available',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE tool_loans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tool_id INTEGER NOT NULL,
+    borrower_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'requested',
+    message TEXT,
+    due_date TEXT,
+    requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    handed_out_at TEXT,
+    returned_at TEXT,
+    decided_at TEXT,
+    return_condition TEXT,
+    return_note TEXT
+);

@@ -57,6 +57,12 @@ html {
 
 body { margin: 0; }
 
+/* Внутри Telegram Mini App (data-tg-miniapp ставит TelegramMiniApp.astro) —
+   отступ шапки под безопасную зону (чёлка/статус-бар). Вне Telegram не влияет. */
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root[data-tg-miniapp] .site-header { padding-top: env(safe-area-inset-top); }
+}
+
 img { max-width: 100%; height: auto; display: block; }
 
 a {

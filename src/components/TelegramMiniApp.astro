@@ -1,0 +1,102 @@
+---
+// Глобальная нативная интеграция Telegram Mini App для сайта «Сказочный Край».
+// Монтируется в Base.astro, но НИЧЕГО не делает вне Telegram (обычные веб-
+// посетители даже не грузят telegram-web-app.js). Порт механизма abconsult-app
+// (src/components/TelegramMiniAppShell.tsx + src/lib/telegram-webapp-client.ts),
+// адаптированный под статический Astro-сайт (MPA, vanilla JS, тема сайта).
+//
+// Внутри Telegram: ready()/expand(), синхронизация цвета шапки/фона Telegram
+// под тёплый фон сайта (#fbfaf5), нативная кнопка «Назад» на не-корневых
+// страницах, поддержка deep-link ?startapp=base64url(путь).
+---
+<script is:inline>
+  (function () {
+    if (typeof window === "undefined") return;
+
+    var SCRIPT_SRC = "https://telegram.org/js/telegram-web-app.js";
+    var GROUND = "#fbfaf5"; // --ground сайта (светлая тема, тёмной нет)
+
+    // Запущены ли внутри Telegram Mini App: маркеры запуска в URL или initData,
+    // с кешем в sessionStorage (маркеры пропадают при переходах, а нативное
+    // поведение должно жить всю сессию). Без маркеров — обычный веб.
+    function isTelegramMiniApp() {
+      try {
+        if (window.sessionStorage.getItem("tg-miniapp") === "1") return true;
+      } catch (e) {}
+      var h = window.location.hash, s = window.location.search;
+      var inside =
+        h.indexOf("tgWebAppData") !== -1 ||
+        h.indexOf("tgWebAppPlatform") !== -1 ||
+        s.indexOf("tgWebAppStartParam") !== -1 ||
+        Boolean(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+      if (inside) { try { window.sessionStorage.setItem("tg-miniapp", "1"); } catch (e) {} }
+      return inside;
+    }
+
+    if (!isTelegramMiniApp()) return; // вне Telegram — не грузим SDK
+
+    // Идемпотентная загрузка telegram-web-app.js.
+    function ensureWebApp() {
+      return new Promise(function (resolve) {
+        if (window.Telegram && window.Telegram.WebApp) return resolve(window.Telegram.WebApp);
+        var done = function () { resolve((window.Telegram && window.Telegram.WebApp) || null); };
+        var existing = document.querySelector('script[src="' + SCRIPT_SRC + '"]');
+        if (existing) {
+          if (window.Telegram && window.Telegram.WebApp) return resolve(window.Telegram.WebApp);
+          existing.addEventListener("load", done, { once: true });
+          return;
+        }
+        var sc = document.createElement("script");
+        sc.src = SCRIPT_SRC; sc.async = true;
+        sc.onload = done; sc.onerror = function () { resolve(null); };
+        document.head.appendChild(sc);
+      });
+    }
+
+    // Достаёт start_param (deep-link) и разворачивает base64url(путь) в путь.
+    function startParamPath(wa) {
+      var raw = (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) || null;
+      if (!raw) {
+        var qs = new URLSearchParams(window.location.search);
+        raw = qs.get("startapp") || qs.get("tgWebAppStartParam");
+      }
+      if (!raw) return null;
+      try {
+        var b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+        var pad = b64.length % 4 === 0 ? "" : "====".slice(b64.length % 4);
+        var decoded = atob(b64 + pad);
+        // Только внутренний путь того же сайта — защита от open-redirect.
+        if (decoded.charAt(0) !== "/" || decoded.charAt(1) === "/") return null;
+        return decoded;
+      } catch (e) { return null; }
+    }
+
+    ensureWebApp().then(function (wa) {
+      if (!wa) return;
+      document.documentElement.dataset.tgMiniapp = "1";
+      try { wa.ready(); } catch (e) {}
+      try { wa.expand(); } catch (e) {}
+      try {
+        wa.setHeaderColor && wa.setHeaderColor(GROUND);
+        wa.setBackgroundColor && wa.setBackgroundColor(GROUND);
+      } catch (e) {}
+
+      // Deep-link: если открыли корень со startapp — перейти на нужную страницу.
+      var target = startParamPath(wa);
+      if (target && target !== window.location.pathname) {
+        window.location.replace(target);
+        return;
+      }
+
+      // Нативная «Назад» на всех не-корневых страницах (MPA: скрипт отрабатывает
+      // на каждой загрузке, состояние кнопки считаем по текущему пути).
+      var bb = wa.BackButton;
+      if (bb) {
+        try {
+          bb.onClick(function () { if (window.history.length > 1) window.history.back(); });
+          if (window.location.pathname === "/") bb.hide(); else bb.show();
+        } catch (e) {}
+      }
+    });
+  })();
+</script>

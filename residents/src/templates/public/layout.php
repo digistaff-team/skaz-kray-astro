@@ -8,15 +8,11 @@
     <link rel="stylesheet" href="/poselenie/assets/residents.css">
 </head>
 <body>
-<header class="res-header">
-    <a class="res-logo" href="/">Сказочный Край</a>
-</header>
-<main class="res-main">
+<?php require __DIR__ . '/site_header.php'; ?>
+<main id="main" class="site-mirror">
     <?php require __DIR__ . '/../partials/flash.php'; ?>
     <?= $content ?>
 </main>
-<footer class="res-footer">
-    <p>Поселение родовых поместий «Сказочный Край»</p>
-</footer>
+<?php require __DIR__ . '/site_footer.php'; ?>
 </body>
 </html>

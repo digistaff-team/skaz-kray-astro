@@ -29,4 +29,17 @@ function status_label(string $status): string
     };
 }
 
+/**
+ * "2026-08-29 10:00:00" -> "29 августа 2026". Формат идентичен ruDate()
+ * из src/lib/utils.js (внешний Astro-сайт) — для визуального единообразия
+ * публичных страниц раздела жителей с остальным сайтом.
+ */
+function ru_date(?string $s): string
+{
+    if (!$s) { return ''; }
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $s, $m)) { return $s; }
+    static $months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    return ((int) $m[3]) . ' ' . $months[((int) $m[2]) - 1] . ' ' . $m[1];
+}
+
 Database::connect(Config::get('db'));

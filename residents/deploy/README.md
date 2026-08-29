@@ -86,3 +86,23 @@ nginx -t && systemctl reload nginx
    mysql skazkray_residents < /var/www/skaz-residents/config/books-schema.sql
    ```
 2. Отдельных env/nginx-правок не нужно. Пункт меню «Книги» → `/poselenie/knigi`.
+
+## 10. Публичные страницы = дизайн сайта (site-mirror.css)
+`/dnevniki-pomestiy/` и `/yarmarka/` рендерятся раздельным `templates/public/layout.php`,
+который грузит `public/assets/site-mirror.css` — точную копию скомпилированного
+CSS внешнего Astro-сайта (не `residents.css`). Меню в шапке/подвале захардкожено
+в `templates/public/site_header.php` / `site_footer.php` — **синхронизировать
+вручную** при правке `src/data/nav.js` на сайте.
+
+**Регенерация `site-mirror.css` при изменении дизайна сайта:**
+```
+# 1) взять актуальные бандлы сайта (имена хешей меняются каждый билд —
+#    подсмотреть <link ... /_astro/_slug_.*.css> в HTML любой рубрики):
+curl -s https://skaz-kray.ru/_astro/_slug_.XXXX.css > b1.css   # global + Header/Footer
+curl -s https://skaz-kray.ru/_astro/_slug_.YYYY.css > b2.css   # Category/PostCard/Post
+# 2) снять Astro-скоуп и убрать @font-face из b1 (заменяются локальными):
+perl -0pe 's/^.*?:root\{/:root{/s' b1.css | perl -pe 's/\[data-astro-cid-[a-z0-9]+\]//g' > b1c.css
+perl -pe 's/\[data-astro-cid-[a-z0-9]+\]//g' b2.css > b2c.css
+# 3) собрать: <локальные @font-face> + b1c + b2c + служебные .pager/.archive-note
+#    (см. текущую шапку site-mirror.css). Шрифты уже лежат в public/assets/fonts/.
+```

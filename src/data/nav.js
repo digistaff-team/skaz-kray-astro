@@ -35,10 +35,8 @@ export const headerNav = [
   },
   { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   { title: 'Ярмарка', url: '/yarmarka/' },
-  { title: 'Инструменты', url: '/poselenie/instrumenty' },
-  { title: 'Книги', url: '/poselenie/knigi' },
-  { title: 'Кабинет жителя', url: '/poselenie/vhod' },
-  { title: 'Попечительский совет', url: '/sovet/vhod' },
+  // Внутренние разделы (вход/сервисы жителей и совета) намеренно НЕ в главном меню.
+  // Доступ к ним — по прямым ссылкам: /poselenie/vhod, /sovet/vhod.
   { title: 'Контакты', url: '/kontakty/' },
 ];
 

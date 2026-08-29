@@ -45,6 +45,15 @@
 </section>
 
 <section>
+    <h2>Совместные поездки</h2>
+    <p class="res-meta">Соседи подвозят соседей — предложите поездку или забронируйте место.</p>
+    <p>
+        <a class="res-btn" href="/poselenie/poezdki">Доска поездок</a>
+        <a class="res-btn res-btn--ghost" href="/poselenie/poezdki/moi">Мои поездки и брони</a>
+    </p>
+</section>
+
+<section>
     <h2>Мои товары и услуги</h2>
     <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
     <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>

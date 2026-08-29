@@ -15,6 +15,8 @@ use SkazResidents\Controller\ToolController;
 use SkazResidents\Controller\ToolLoanController;
 use SkazResidents\Controller\BookController;
 use SkazResidents\Controller\BookLoanController;
+use SkazResidents\Controller\TripController;
+use SkazResidents\Controller\TripBookingController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
@@ -104,6 +106,22 @@ $router->post('/poselenie/knigi-bron/{id}/vydat', [$bloan, 'give']);
 $router->post('/poselenie/knigi-bron/{id}/otklonit', [$bloan, 'decline']);
 $router->post('/poselenie/knigi-bron/{id}/vozvrat', [$bloan, 'returnLoan']);
 $router->post('/poselenie/knigi-bron/{id}/otmenit', [$bloan, 'cancel']);
+
+// ==== Совместные поездки (раздел жителей) ====
+$trip = new TripController();
+$tbook = new TripBookingController();
+$router->get('/poselenie/poezdki', [$trip, 'board']);
+$router->get('/poselenie/poezdki/novaya', [$trip, 'showCreate']);
+$router->post('/poselenie/poezdki/novaya', [$trip, 'create']);
+$router->get('/poselenie/poezdki/moi', [$trip, 'mine']);
+$router->post('/poselenie/poezdki/{id}/bron', [$tbook, 'book']);
+$router->post('/poselenie/poezdki/{id}/zavershit', [$trip, 'markDone']);
+$router->post('/poselenie/poezdki/{id}/otmenit', [$trip, 'cancelTrip']);
+$router->post('/poselenie/poezdki/{id}/udalit', [$trip, 'delete']);
+$router->get('/poselenie/poezdki/{id}', [$trip, 'show']);
+$router->post('/poselenie/bron/{id}/podtverdit', [$tbook, 'confirm']);
+$router->post('/poselenie/bron/{id}/otklonit', [$tbook, 'decline']);
+$router->post('/poselenie/bron/{id}/otmenit', [$tbook, 'cancel']);
 
 $public = new PublicController();
 $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);

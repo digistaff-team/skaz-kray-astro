@@ -140,3 +140,26 @@ CREATE TABLE book_loans (
     return_condition TEXT,
     return_note TEXT
 );
+CREATE TABLE trips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_id INTEGER NOT NULL,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    trip_date TEXT NOT NULL,
+    trip_time TEXT,
+    seats_total INTEGER NOT NULL DEFAULT 1,
+    seats_free INTEGER NOT NULL DEFAULT 1,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE trip_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL,
+    passenger_id INTEGER NOT NULL,
+    seats INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'requested',
+    message TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    decided_at TEXT
+);

@@ -207,3 +207,12 @@ a { color: var(--green); }
 .tool-mine-actions form { margin: 0; display: inline; }
 .tool-return summary { display: inline-block; list-style: none; cursor: pointer; margin-top: .5rem; }
 .tool-return summary::-webkit-details-marker { display: none; }
+
+/* ==== Совместные поездки ==== */
+.trip-card { display: block; text-decoration: none; color: var(--ink); }
+.trip-card:hover { text-decoration: none; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+.trip-route { font-family: var(--font-head); font-size: 1.15rem; font-weight: 700; color: var(--green); }
+.trip-arrow { color: var(--ochre); }
+.trip-meta { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin: .3rem 0; font-size: .9rem; }
+.trip-when { color: var(--ink); }
+.trip-seats { color: var(--green); background: #eef4ef; padding: .05rem .55rem; border-radius: 999px; font-size: .82rem; }

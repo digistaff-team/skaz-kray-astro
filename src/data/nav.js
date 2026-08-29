@@ -16,10 +16,10 @@ export const headerNav = [
     ],
   },
   { title: 'Новости', url: '/category/novosti/' },
-  { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
   {
     title: 'Статьи', url: '/category/stati/',
     children: [
+      { title: 'Дневники поместий', url: '/dnevniki-pomestiy/' },
       { title: 'Сказочная кухня', url: '/category/stati/cuisine/' },
       { title: '«Сказочные» репортажи', url: '/category/stati/skazochnye-reportazhi/' },
       { title: 'Копилка знаний', url: '/category/stati/kopilka-znanij/' },

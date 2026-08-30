@@ -5,7 +5,10 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use SkazResidents\Config;
 use SkazResidents\Database;
+use SkazResidents\Env;
 
+// Секреты из окружения (config/.env, вне git) — config.php читает их через getenv().
+Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
 
 $session = Config::get('session_name', 'skazres');

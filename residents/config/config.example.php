@@ -16,8 +16,10 @@ return [
         'from_name' => 'Сказочный Край',
     ],
     // Авто-логин жителя через Telegram Mini App (@SkazKray_bot).
+    // Секрет — токен — берётся из окружения (config/.env: SKAZKRAY_BOT_TOKEN),
+    // не хранится в этом файле. chat_id группы и ссылка — не секреты, можно тут.
     'telegram' => [
-        'bot_token'     => 'CHANGE_ME',               // токен @SkazKray_bot (BotFather)
+        'bot_token'     => getenv('SKAZKRAY_BOT_TOKEN') ?: '',
         'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
         'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
     ],

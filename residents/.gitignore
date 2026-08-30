@@ -1,4 +1,5 @@
 /vendor/
 /.phpunit.cache/
 /config/config.php
+/config/.env
 /public/uploads/

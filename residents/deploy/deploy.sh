@@ -9,6 +9,7 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"  # каталог residents/
 echo "Синхронизация кода в $SERVER:$DEST ..."
 rsync -az --delete \
   --exclude 'config/config.php' \
+  --exclude 'config/.env' \
   --exclude 'public/uploads/' \
   --exclude 'vendor/' \
   --exclude '.phpunit.cache/' \

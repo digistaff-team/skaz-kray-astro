@@ -27,7 +27,7 @@ function articleCollection(cat) {
       - { name: title, label: "Заголовок", widget: string }
       - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
       - { name: excerpt, label: "Краткое описание (для карточек)", widget: text, required: false }
-      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
+      - { name: cover, label: "Обложка (фото)", widget: tgimage, required: false }
       - { name: body, label: "Текст", widget: markdown }
       - { name: categories, widget: hidden, default: ["${cat.slug}"] }`;
 }

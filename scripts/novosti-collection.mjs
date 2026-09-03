@@ -13,5 +13,6 @@ export const novostiCollectionYaml = `  - name: novosti
     fields:
       - { name: title, label: "Заголовок новости", widget: string }
       - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
+      - { name: cover, label: "Обложка (URL картинки)", widget: string, required: false }
       - { name: body, label: "Текст новости", widget: markdown }
       - { name: categories, widget: hidden, default: ["novosti"] }`;

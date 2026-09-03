@@ -6,6 +6,10 @@ const { title, date, categories = [] } = entry.data;
 import { categories as cats, catUrl } from '../data/categories.js';
 const bySlug = Object.fromEntries(cats.map((c) => [c.slug, c]));
 const chips = categories.map((s) => bySlug[s]).filter(Boolean);
+// entry.body — сырой markdown/HTML-исходник, не готовый HTML; компилируем
+// через встроенный конвейер Astro (markdown-синтаксис из Decap CMS форматируется,
+// «сырые» HTML-блоки старых импортированных записей проходят как есть — CommonMark).
+const { Content } = await entry.render();
 ---
 <article class="post">
   <header class="post-head wrap">
@@ -24,7 +28,7 @@ const chips = categories.map((s) => bySlug[s]).filter(Boolean);
     </div>
   </header>
 
-  <div class="wrap post-body prose" set:html={entry.body}></div>
+  <div class="wrap post-body prose"><Content /></div>
 </article>
 
 <style>

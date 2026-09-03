@@ -2,6 +2,7 @@
 const { entry } = Astro.props;
 const { title } = entry.data;
 const hasBody = (entry.body || '').trim().length > 0;
+const { Content } = hasBody ? await entry.render() : { Content: null };
 ---
 <article class="page">
   <header class="page-head">
@@ -14,7 +15,7 @@ const hasBody = (entry.body || '').trim().length > 0;
   </header>
 
   {hasBody
-    ? <div class="wrap page-body prose" set:html={entry.body}></div>
+    ? <div class="wrap page-body prose"><Content /></div>
     : <div class="wrap page-body"><p class="empty">Материал этой страницы скоро появится.</p></div>}
 </article>
 

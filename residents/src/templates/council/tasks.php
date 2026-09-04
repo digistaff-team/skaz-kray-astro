@@ -25,7 +25,14 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         <label>Что сделать<input type="text" name="title" maxlength="300" required></label>
-        <label>Кто сделает<input type="text" name="assignee" maxlength="160"></label>
+        <label>Кто сделает
+            <select name="assignee">
+                <option value="<?= View::e($me) ?>" selected><?= View::e($me) ?></option>
+                <?php foreach ($members as $m): if ($m['name'] === $me) { continue; } ?>
+                    <option value="<?= View::e($m['name']) ?>"><?= View::e($m['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
         <label>До какого дня сделать<input type="date" name="due_date"></label>
         <label>Стоимость работ, ₽<input type="number" name="spent" min="0" step="1"></label>
         <label>Статус выполнения
@@ -81,7 +88,20 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
             <label>Что сделать<input type="text" name="title" maxlength="300" value="<?= View::e($t['title']) ?>"></label>
             <div class="sovet-edit-row">
-                <label>Кто сделает<input type="text" name="assignee" maxlength="160" value="<?= View::e($t['assignee']) ?>"></label>
+                <label>Кто сделает
+                    <select name="assignee">
+                        <option value="">— не назначен —</option>
+                        <?php
+                            $names = array_column($members, 'name');
+                            $cur = (string) $t['assignee'];
+                            if ($cur !== '' && !in_array($cur, $names, true)): ?>
+                            <option value="<?= View::e($cur) ?>" selected><?= View::e($cur) ?></option>
+                        <?php endif; ?>
+                        <?php foreach ($members as $m): ?>
+                            <option value="<?= View::e($m['name']) ?>"<?= $cur === $m['name'] ? ' selected' : '' ?>><?= View::e($m['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
                 <label>Приоритет
                     <select name="priority">
                         <?php foreach (['низкая','средняя','высокая'] as $p): ?>

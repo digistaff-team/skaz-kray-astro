@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{CouncilAuth, Csrf, Flash, View};
+use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View};
 use SkazResidents\Repository\CouncilTaskRepository;
 
 /**
@@ -32,6 +32,7 @@ final class TaskController
             'archive' => $this->tasks->listWithSubtasks(true, $sort),
             'sort'    => $sort,
             'me'      => CouncilAuth::name(),
+            'members' => CouncilData::members(),
         ], 'Текущие задачи', self::LAYOUT);
     }
 

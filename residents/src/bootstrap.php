@@ -82,4 +82,16 @@ function is_mobile_ua(): bool
     return (bool) preg_match('/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i', $ua);
 }
 
+/**
+ * URL картинки записи: фото в Telegram-канале хранятся как «tg:<file_id>» и
+ * отдаются через /tg-media/<file_id>.jpg; локальные — из uploads_url.
+ */
+function entry_image_url(string $path): string
+{
+    if (str_starts_with($path, 'tg:')) {
+        return '/tg-media/' . substr($path, 3) . '.jpg';
+    }
+    return rtrim((string) \SkazResidents\Config::get('uploads_url'), '/') . '/' . $path;
+}
+
 Database::connect(Config::get('db'));

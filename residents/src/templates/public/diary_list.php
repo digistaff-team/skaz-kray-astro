@@ -24,7 +24,7 @@ $pages = (int) ceil($total / $perPage);
                     <article class="pcard">
                         <?php if (!empty($e['images'])): ?>
                             <a href="/dnevniki-pomestiy/<?= $id ?>" class="pcard-media" tabindex="-1" aria-hidden="true">
-                                <img src="<?= $u ?>/<?= View::e($e['images'][0]['path']) ?>" alt="" loading="lazy">
+                                <img src="<?= View::e(entry_image_url($e['images'][0]['path'])) ?>" alt="" loading="lazy">
                             </a>
                         <?php endif; ?>
                         <div class="pcard-body">

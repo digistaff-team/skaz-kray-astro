@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
+use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{DiaryRepository, ImageRepository};
 
 final class DiaryController
@@ -120,7 +120,9 @@ final class DiaryController
     {
         $dir = rtrim((string) Config::get('uploads_dir'), '/\\');
         foreach ($this->images->listFor('entry', $ownerId) as $img) {
-            @unlink($dir . '/' . basename((string) $img['path']));
+            $path = (string) $img['path'];
+            if (str_starts_with($path, 'tg:')) { continue; } // фото в Telegram-канале, локального файла нет
+            @unlink($dir . '/' . basename($path));
         }
     }
 
@@ -149,6 +151,14 @@ final class DiaryController
         $files = $this->normalizeFiles($_FILES['photos']);
         $sort = count($this->images->listFor($ownerType, $ownerId));
         foreach ($files as $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) { continue; }
+            // Фото дневника уходят в общий Telegram-канал (как новости) и отдаются через /tg-media/.
+            $fileId = TelegramMedia::upload($file);
+            if ($fileId !== null) {
+                $this->images->add($ownerType, $ownerId, 'tg:' . $fileId, $sort++);
+                continue;
+            }
+            // Фолбэк на локальное хранилище, если Telegram недоступен.
             [$name, $err] = Upload::saveImage($file, $dir);
             if ($name !== null) {
                 $this->images->add($ownerType, $ownerId, $name, $sort++);

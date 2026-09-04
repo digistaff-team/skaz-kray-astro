@@ -13,7 +13,7 @@ $pages = (int) ceil($total / $perPage);
         </h2>
         <p class="res-meta"><?= View::e($e['family_name']) ?> · <?= View::e(substr((string) $e['published_at'], 0, 10)) ?></p>
         <?php if (!empty($e['images'])): ?>
-            <img src="<?= $u ?>/<?= View::e($e['images'][0]['path']) ?>" alt="">
+            <img src="<?= View::e(entry_image_url($e['images'][0]['path'])) ?>" alt="">
         <?php endif; ?>
         <p><?= View::e(mb_strimwidth(strip_tags((string) $e['body']), 0, 300, '…')) ?></p>
         <a href="/poselenie/dnevniki/<?= (int) $e['id'] ?>">Читать целиком →</a>

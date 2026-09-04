@@ -28,7 +28,7 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
     <?php if (!empty($images)): ?>
         <div class="res-meta">Уже загружено:</div>
         <?php foreach ($images as $img): ?>
-            <img src="<?= View::e(rtrim((string) \SkazResidents\Config::get('uploads_url'), '/')) ?>/<?= View::e($img['path']) ?>" alt="" style="max-width:120px">
+            <img src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" style="max-width:120px">
         <?php endforeach; ?>
     <?php endif; ?>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить и отправить на проверку' : 'Отправить на проверку' ?></button>

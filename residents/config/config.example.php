@@ -23,6 +23,13 @@ return [
         'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
         'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
     ],
+    // Фото дневника уходят в приватный Telegram-канал «Skaz-Kray Media» (тот же,
+    // что у новостей блога) и отдаются через /tg-media/<file_id>.jpg. Чтобы не
+    // дублировать секрет, на проде подключаем общий конфиг того же канала:
+    //   'tg_media' => require '/var/www/new.skaz-kray.ru/html/tg-media/config.php',
+    // (файл возвращает ['bot_token'=>..., 'chat_id'=>...]). Без ключа фото падают
+    // в локальный uploads (фолбэк).
+    'tg_media'     => ['bot_token' => '', 'chat_id' => ''],
     'base_url'     => 'https://skaz-kray.ru',
     'uploads_dir'  => __DIR__ . '/../public/uploads',   // куда пишем файлы
     'uploads_url'  => '/poselenie/uploads',             // как отдаём (nginx)

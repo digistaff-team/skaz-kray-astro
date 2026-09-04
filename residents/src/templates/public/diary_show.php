@@ -15,7 +15,7 @@ $u = PublicController::uploadsUrl();
 
     <div class="wrap post-body prose">
         <?php foreach ($entry['images'] as $img): ?>
-            <img src="<?= $u ?>/<?= View::e($img['path']) ?>" alt="">
+            <img src="<?= View::e(entry_image_url($img['path'])) ?>" alt="">
         <?php endforeach; ?>
         <p><?= nl2br(View::e($entry['body'])) ?></p>
     </div>

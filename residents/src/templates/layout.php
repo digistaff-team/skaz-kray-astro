@@ -54,7 +54,6 @@
 </main>
 <footer class="res-footer">
     <p>Поселение родовых поместий «Сказочный Край»</p>
-    <?php if (Auth::id() !== null): ?><a class="footer-logout" href="/poselenie/vyhod">Выход</a><?php endif; ?>
 </footer>
 </body>
 </html>

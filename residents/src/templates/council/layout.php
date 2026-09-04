@@ -47,7 +47,6 @@
     <?= $content ?>
 </main>
 <footer class="res-footer">
-    <?php if (CouncilAuth::id() !== null): ?><a class="footer-logout" href="/sovet/vyhod">Выход</a><?php endif; ?>
 </footer>
 </body>
 </html>

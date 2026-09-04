@@ -23,9 +23,9 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
     <form class="res-form" method="post" action="/sovet/zadachi/novaya">
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-        <label>Задача<input type="text" name="title" maxlength="300" required></label>
-        <label>Исполнитель<input type="text" name="assignee" maxlength="160"></label>
-        <label>Комментарий<textarea name="description"></textarea></label>
+        <label>Что сделать<input type="text" name="title" maxlength="300" required></label>
+        <label>Кто сделает<input type="text" name="assignee" maxlength="160"></label>
+        <label>Как сделать и что учесть<textarea name="description"></textarea></label>
         <button class="res-btn" type="submit">Добавить</button>
     </form>
 </details>
@@ -69,9 +69,9 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
 
         <form class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-            <label>Задача<input type="text" name="title" maxlength="300" value="<?= View::e($t['title']) ?>"></label>
+            <label>Что сделать<input type="text" name="title" maxlength="300" value="<?= View::e($t['title']) ?>"></label>
             <div class="sovet-edit-row">
-                <label>Исполнитель<input type="text" name="assignee" maxlength="160" value="<?= View::e($t['assignee']) ?>"></label>
+                <label>Кто сделает<input type="text" name="assignee" maxlength="160" value="<?= View::e($t['assignee']) ?>"></label>
                 <label>Приоритет
                     <select name="priority">
                         <?php foreach (['низкая','средняя','высокая'] as $p): ?>
@@ -91,7 +91,7 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
                 <label>Прогресс, %<input type="number" name="progress" min="0" max="100" step="5" value="<?= (int) $t['progress'] ?>"></label>
                 <label>Затрачено, ₽<input type="number" name="spent" min="0" step="1" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             </div>
-            <label>Комментарий<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
+            <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
             <label>Контакты специалистов<textarea name="contacts" placeholder="Электрик Виктор, +7 900 000-00-00"><?= View::e($t['contacts'] ?? '') ?></textarea></label>
             <label>Ссылки на товары<textarea name="links" placeholder="https://…"><?= View::e($t['links'] ?? '') ?></textarea></label>
             <button class="res-btn" type="submit">Сохранить</button>

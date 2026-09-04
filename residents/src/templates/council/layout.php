@@ -10,6 +10,8 @@
 <body>
 <header class="res-header">
     <a class="res-logo" href="/sovet">Попечительский совет<span class="sovet-sub">внутренний портал</span></a>
+    <details class="res-menu">
+    <summary class="res-menu-btn" aria-label="Меню" title="Меню"><span class="res-menu-ico"></span></summary>
     <nav class="res-nav">
         <?php if (CouncilAuth::id() !== null): ?>
             <a href="/sovet">Главная</a>
@@ -24,6 +26,7 @@
             <a href="/sovet/vhod">Вход</a>
         <?php endif; ?>
     </nav>
+    </details>
 </header>
 <main class="res-main sovet-main">
     <?php require __DIR__ . '/../partials/flash.php'; ?>

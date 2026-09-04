@@ -74,6 +74,7 @@ CREATE TABLE council_tasks (
     spent REAL NOT NULL DEFAULT 0,
     contacts TEXT,
     links TEXT,
+    due_date TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TEXT
 );

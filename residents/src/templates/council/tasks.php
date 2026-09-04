@@ -4,10 +4,11 @@ use SkazResidents\{Csrf, View};
 /** Компактная карточка задачи (активная). */
 $priorityClass = fn(string $p) => 'sovet-pri--' . ($p === 'высокая' ? 'high' : ($p === 'низкая' ? 'low' : 'mid'));
 $statusClass   = fn(string $s) => 'sovet-st--' . ($s === 'выполнена' ? 'done' : ($s === 'в работе' ? 'progress' : 'new'));
-$sorts = ['priority' => 'по важности', 'created' => 'по дате', 'progress' => 'по прогрессу', 'spent' => 'по расходам'];
+$statusLabel   = fn(string $s) => ['новая' => 'Поставлена', 'в работе' => 'В работе', 'выполнена' => 'Выполнена'][$s] ?? $s;
+$sorts = ['created' => 'по дате', 'progress' => 'по прогрессу', 'spent' => 'по расходам'];
 ?>
 <h1>Текущие задачи</h1>
-<p class="res-meta">Живой список задач по содержанию Терема. Любой член совета может добавить задачу, взять её в работу, отметить выполненной.</p>
+<p class="res-meta">Живой список задач по содержанию Терема.<br>Любой член совета может выбрать себе задачу, взять её в работу, отметить выполненной.</p>
 
 <div class="sovet-toolbar">
     <div class="sovet-sorts">
@@ -25,6 +26,15 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         <label>Что сделать<input type="text" name="title" maxlength="300" required></label>
         <label>Кто сделает<input type="text" name="assignee" maxlength="160"></label>
+        <label>До какого дня сделать<input type="date" name="due_date"></label>
+        <label>Стоимость работ, ₽<input type="number" name="spent" min="0" step="1"></label>
+        <label>Статус выполнения
+            <select name="status">
+                <option value="новая" selected>Поставлена</option>
+                <option value="в работе">В работе</option>
+                <option value="выполнена">Выполнена</option>
+            </select>
+        </label>
         <label>Как сделать и что учесть<textarea name="description"></textarea></label>
         <button class="res-btn" type="submit">Добавить</button>
     </form>
@@ -39,7 +49,7 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
         <summary class="sovet-task-head">
             <span class="sovet-pri <?= $priorityClass($t['priority']) ?>"><?= $t['priority'] === 'высокая' ? '🔥 ' : '' ?><?= View::e($t['priority']) ?></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
-            <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($t['status']) ?></span>
+            <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($statusLabel($t['status'])) ?></span>
             <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>
         </summary>
 
@@ -48,7 +58,7 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
             · Автор: <?= $t['author'] !== '' ? View::e($t['author']) : '—' ?>
             · Подзадачи: <?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?>
             <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php endif; ?>
-            · Прогресс: <?= (int) $t['progress'] ?>%
+            · Прогресс: <?= (int) $t['progress'] ?>%<?php if (!empty($t['due_date'])): ?> · Срок: <?= View::e(ru_date((string) $t['due_date'])) ?><?php endif; ?>
         </p>
         <?php if (!empty($t['description'])): ?><p class="sovet-task-desc"><?= nl2br(View::e($t['description'])) ?></p><?php endif; ?>
 
@@ -79,10 +89,10 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label>Статус
+                <label>Статус выполнения
                     <select name="status">
                         <?php foreach (['новая','в работе','выполнена'] as $s): ?>
-                            <option value="<?= $s ?>"<?= $t['status'] === $s ? ' selected' : '' ?>><?= $s ?></option>
+                            <option value="<?= $s ?>"<?= $t['status'] === $s ? ' selected' : '' ?>><?= $statusLabel($s) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
@@ -91,6 +101,7 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
                 <label>Прогресс, %<input type="number" name="progress" min="0" max="100" step="5" value="<?= (int) $t['progress'] ?>"></label>
                 <label>Затрачено, ₽<input type="number" name="spent" min="0" step="1" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             </div>
+            <label>До какого дня сделать<input type="date" name="due_date" value="<?= View::e($t['due_date'] ?? '') ?>"></label>
             <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
             <label>Контакты специалистов<textarea name="contacts" placeholder="Электрик Виктор, +7 900 000-00-00"><?= View::e($t['contacts'] ?? '') ?></textarea></label>
             <label>Ссылки на товары<textarea name="links" placeholder="https://…"><?= View::e($t['links'] ?? '') ?></textarea></label>

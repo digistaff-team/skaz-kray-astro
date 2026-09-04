@@ -46,13 +46,21 @@ final class TaskController
         }
         $priority = $this->pickPriority($_POST['priority'] ?? '');
         $desc = trim($_POST['description'] ?? '');
-        $this->tasks->create(
+        $id = $this->tasks->create(
             mb_substr($title, 0, 300),
             $desc !== '' ? $desc : null,
             trim($_POST['author'] ?? '') ?: CouncilAuth::name(),
             trim($_POST['assignee'] ?? ''),
-            $priority
+            $priority,
+            $this->pickDate($_POST['due_date'] ?? '')
         );
+        $patch = [];
+        if (isset($_POST['status']) && in_array($_POST['status'], self::STATUSES, true)) {
+            $patch['status'] = $_POST['status'];
+            if ($_POST['status'] === 'выполнена') { $patch['progress'] = 100; }
+        }
+        if (isset($_POST['spent'])) { $patch['spent'] = max(0, (float) str_replace(',', '.', (string) $_POST['spent'])); }
+        if ($patch) { $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s')); }
         Flash::set('success', 'Задача добавлена.');
         $this->back();
     }
@@ -72,6 +80,7 @@ final class TaskController
         if (isset($_POST['links']))       { $patch['links']       = trim($_POST['links']) ?: null; }
         if (isset($_POST['progress']))    { $patch['progress']    = (int) $_POST['progress']; }
         if (isset($_POST['spent']))       { $patch['spent']       = max(0, (float) str_replace(',', '.', (string) $_POST['spent'])); }
+        if (isset($_POST['due_date']))    { $patch['due_date']    = $this->pickDate($_POST['due_date']); }
         if (isset($_POST['priority']) && in_array($_POST['priority'], self::PRIORITIES, true)) { $patch['priority'] = $_POST['priority']; }
         if (isset($_POST['status'])   && in_array($_POST['status'],   self::STATUSES,   true)) {
             $patch['status'] = $_POST['status'];
@@ -175,6 +184,13 @@ final class TaskController
     private function pickPriority(string $v): string
     {
         return in_array($v, self::PRIORITIES, true) ? $v : 'средняя';
+    }
+
+    /** Валидная дата YYYY-MM-DD или null. */
+    private function pickDate(string $v): ?string
+    {
+        $v = trim($v);
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
     }
 
     private function guard(): void

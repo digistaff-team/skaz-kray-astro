@@ -12,7 +12,7 @@ use PDO;
  */
 final class CouncilTaskRepository
 {
-    private const ALLOWED = ['title','description','author','assignee','priority','status','progress','spent','contacts','links'];
+    private const ALLOWED = ['title','description','author','assignee','priority','status','progress','spent','contacts','links','due_date'];
     private const PRIORITY_RANK = ['высокая' => 0, 'средняя' => 1, 'низкая' => 2];
 
     private PDO $db;
@@ -22,13 +22,13 @@ final class CouncilTaskRepository
         $this->db = Database::pdo();
     }
 
-    public function create(string $title, ?string $description, string $author, string $assignee, string $priority): int
+    public function create(string $title, ?string $description, string $author, string $assignee, string $priority, ?string $dueDate = null): int
     {
         $st = $this->db->prepare(
-            'INSERT INTO council_tasks (title, description, author, assignee, priority)
-             VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO council_tasks (title, description, author, assignee, priority, due_date)
+             VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $st->execute([$title, $description, $author, $assignee, $priority]);
+        $st->execute([$title, $description, $author, $assignee, $priority, $dueDate]);
         return (int) $this->db->lastInsertId();
     }
 

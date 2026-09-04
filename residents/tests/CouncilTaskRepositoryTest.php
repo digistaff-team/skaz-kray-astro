@@ -91,4 +91,16 @@ final class CouncilTaskRepositoryTest extends TestCase
         $this->assertNull($this->repo->find($id));
         $this->assertSame([], $this->repo->listWithSubtasks(false, 'priority'));
     }
+
+    public function test_due_date_create_update_and_clear(): void
+    {
+        $id = $this->repo->create('Задача', null, 'А', '', 'средняя', '2026-10-01');
+        $this->assertSame('2026-10-01', $this->repo->find($id)['due_date']);
+
+        $this->repo->updateFields($id, ['due_date' => '2026-11-15'], '2026-09-01 12:00:00');
+        $this->assertSame('2026-11-15', $this->repo->find($id)['due_date']);
+
+        $this->repo->updateFields($id, ['due_date' => null], '2026-09-01 12:00:00');
+        $this->assertNull($this->repo->find($id)['due_date']);
+    }
 }

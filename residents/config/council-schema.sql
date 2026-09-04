@@ -28,6 +28,7 @@ CREATE TABLE council_tasks (
     spent        DECIMAL(12,2) NOT NULL DEFAULT 0,          -- затрачено, руб
     contacts     MEDIUMTEXT   NULL,                         -- контакты специалистов
     links        MEDIUMTEXT   NULL,                         -- ссылки на товары
+    due_date     DATE         NULL,                         -- до какого дня сделать
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at DATETIME     NULL,
     INDEX idx_council_tasks_status (status, created_at)

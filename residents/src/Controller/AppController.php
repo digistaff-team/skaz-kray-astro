@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, CouncilAuth, Config, View};
+use SkazResidents\{Auth, CouncilAuth, View};
 use SkazResidents\Service\AppDashboard;
 
 /**

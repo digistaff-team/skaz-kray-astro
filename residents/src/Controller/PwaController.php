@@ -22,7 +22,7 @@ final class PwaController
             'scope'            => '/poselenie/',
             'display'          => 'standalone',
             'orientation'      => 'portrait',
-            'background_color' => '#fbfaf5',
+            'background_color' => '#fbfaf6',
             'theme_color'      => '#008757',
             'icons'            => [
                 ['src' => '/poselenie/assets/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],

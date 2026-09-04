@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= View::e($title) ?> — Сказочный Край</title>
-    <link rel="stylesheet" href="/poselenie/assets/residents.css">
+    <link rel="stylesheet" href="/poselenie/assets/residents.css?v=<?= asset_ver('assets/residents.css') ?>">
 </head>
 <body>
 <header class="res-header">

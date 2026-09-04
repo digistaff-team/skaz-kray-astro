@@ -9,7 +9,7 @@ namespace SkazResidents\Controller;
  */
 final class PwaController
 {
-    private const CACHE_VERSION = 'skazapp-v1';
+    private const CACHE_VERSION = 'skazapp-v2';
 
     public function manifest(): void
     {

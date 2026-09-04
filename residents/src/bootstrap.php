@@ -64,4 +64,15 @@ function diary_status_line(array $d): string
     return 'Ваш дневник: последняя запись ' . $st;
 }
 
+/**
+ * Версия статик-ассета по времени изменения файла — для кэш-бастинга
+ * (nginx отдаёт /poselenie/assets/* с 30-дневным кэшем; без ?v= обновления
+ * стилей не доходят до вернувшихся посетителей). $rel — путь от public/.
+ */
+function asset_ver(string $rel): string
+{
+    $m = @filemtime(__DIR__ . '/../public/' . ltrim($rel, '/'));
+    return $m ? (string) $m : '1';
+}
+
 Database::connect(Config::get('db'));

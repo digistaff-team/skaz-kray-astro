@@ -45,8 +45,6 @@
     <span class="app-offline-dot"></span>
     <span>Сети нет. Показываем сохранённое на <?= View::e($savedAt) ?>, изменения уйдут при связи.</span>
   </div>
-
-  <a class="app-logout" href="/poselenie/vyhod">Выход</a>
 </div>
 
 <script>

@@ -52,7 +52,7 @@ final class AppDashboardTest extends TestCase
 
         $this->assertSame(2, $r['diary']['count']);
         $this->assertSame('Как мы копали пруд', $r['diary']['latestTitle']);
-        $this->assertSame('pending', $r['diary']['latestStatus']);
+        $this->assertSame('published', $r['diary']['latestStatus']); // residents публикуется сразу
 
         // Совет-специфики в модели больше нет.
         $this->assertArrayNotHasKey('meeting', $r);

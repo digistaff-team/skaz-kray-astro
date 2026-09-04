@@ -2,7 +2,7 @@
 $isEdit = !empty($entry['id']);
 $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat' : '/poselenie/dnevnik/novaya';
 ?>
-<h1><?= $isEdit ? 'Редактирование записи' : 'Новая запись дневника' ?></h1>
+<h1><?= $isEdit ? 'Редактирование записи' : 'Новая запись в дневнике' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>
     <label>Заголовок

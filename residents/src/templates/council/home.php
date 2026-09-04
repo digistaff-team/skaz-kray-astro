@@ -43,7 +43,7 @@
 </div>
 
 <div class="res-card">
-    <h2>Протоколы собраний</h2>
+    <h2>Протоколы встреч</h2>
     <ul class="sovet-doclist">
         <?php foreach ($protocols as $p): ?>
             <li><a href="<?= View::e($p['href']) ?>" target="_blank" rel="noopener"><?= View::e($p['title']) ?></a></li>

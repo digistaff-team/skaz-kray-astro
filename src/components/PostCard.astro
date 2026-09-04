@@ -1,7 +1,7 @@
 ---
-import { ruDate, excerptFrom, firstImage } from '../lib/utils.js';
+import { ruDate, excerptFrom, firstImage, postSlug } from '../lib/utils.js';
 const { entry } = Astro.props;
-const url = `/${entry.slug}/`;
+const url = `/${postSlug(entry)}/`;
 const img = firstImage(entry);
 const excerpt = excerptFrom(entry, 160);
 ---

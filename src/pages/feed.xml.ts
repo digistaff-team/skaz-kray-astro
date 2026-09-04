@@ -1,6 +1,7 @@
 import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
+import { postSlug } from '../lib/utils.js';
 
 // RSS at /feed.xml; nginx internally rewrites the legacy WP URL /feed/ to it,
 // so existing subscribers keep working.
@@ -15,7 +16,7 @@ export async function GET(context: APIContext) {
       title: p.data.title,
       pubDate: new Date(String(p.data.date).replace(' ', 'T')),
       description: p.data.excerpt || '',
-      link: `/${p.slug}/`,
+      link: `/${postSlug(p)}/`,
     })),
     customData: '<language>ru-RU</language>',
   });

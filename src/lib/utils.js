@@ -14,6 +14,29 @@ export function sortByDateDesc(a, b) {
   return String(b.data.date).localeCompare(String(a.data.date));
 }
 
+// Транслитерация кириллического слага в латиницу для «красивых» URL
+// (кириллица в ссылке при пересылке превращается в %D0%BC%D1%8B…).
+// ВАЖНО: слаги, уже состоящие только из [a-z0-9-], возвращаются БЕЗ изменений —
+// так URL старых постов 2013–2016 (латиница из WordPress) не меняются, и
+// внешние ссылки/SEO не ломаются. Транслитерируются только новые кириллические.
+const TRANSLIT = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z',
+  и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r',
+  с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch',
+  ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+export function postSlug(input) {
+  const raw = typeof input === 'string' ? input : (input && input.slug) || '';
+  if (/^[a-z0-9-]+$/.test(raw)) { return raw; } // старые ASCII-слаги — как есть
+  let out = '';
+  for (const ch of raw.toLowerCase()) {
+    if (Object.prototype.hasOwnProperty.call(TRANSLIT, ch)) { out += TRANSLIT[ch]; }
+    else if (/[a-z0-9]/.test(ch)) { out += ch; }
+    else { out += '-'; }
+  }
+  return out.replace(/-+/g, '-').replace(/^-|-$/g, '');
+}
+
 // Decode HTML entities (numeric refs like &#x1f333; for emoji, plus common named ones)
 function decodeEntities(str) {
   return str

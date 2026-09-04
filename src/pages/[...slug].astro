@@ -5,7 +5,7 @@ import PageArticle from '../components/PageArticle.astro';
 import PostArticle from '../components/PostArticle.astro';
 import CategoryList from '../components/CategoryList.astro';
 import { categories, catUrl } from '../data/categories.js';
-import { sortByDateDesc, excerptFrom } from '../lib/utils.js';
+import { sortByDateDesc, excerptFrom, postSlug } from '../lib/utils.js';
 
 export async function getStaticPaths() {
   const pages = await getCollection('pages');
@@ -25,8 +25,17 @@ export async function getStaticPaths() {
     add(slug, { type: 'page', entry });
   }
 
-  // Posts at /<slug>/
-  for (const entry of posts) add(entry.slug, { type: 'post', entry });
+  // Posts at /<slug>/ — слаг транслитерируется в латиницу (postSlug), чтобы
+  // кириллические URL новых постов не выглядели как %D0%BC%D1%8B… при пересылке.
+  // Если исходный (кириллический) слаг отличается от латинского — генерируем
+  // на старом адресе редирект-заглушку (пост мог быть уже расшарен).
+  for (const entry of posts) {
+    const slug = postSlug(entry);
+    add(slug, { type: 'post', entry });
+    if (entry.slug !== slug) {
+      add(entry.slug, { type: 'redirect', to: `/${slug}/` });
+    }
+  }
 
   // Category listings at /category/<nested>/
   const postsByCat = {};
@@ -50,10 +59,12 @@ export async function getStaticPaths() {
   return paths;
 }
 
-const { type, entry, cat, posts, children } = Astro.props;
+const { type, entry, cat, posts, children, to } = Astro.props;
 
 let title, description;
-if (type === 'category') {
+if (type === 'redirect') {
+  // no-op — разметка ниже отдаёт мгновенный редирект на латинский URL
+} else if (type === 'category') {
   title = cat.name;
   description = `Записи в рубрике «${cat.name}» — поселение родовых поместий Сказочный Край.`;
 } else {
@@ -61,8 +72,21 @@ if (type === 'category') {
   description = entry.data.seoDescription || (type === 'post' ? excerptFrom(entry, 160) : undefined);
 }
 ---
-<Base title={title} description={description}>
-  {type === 'page' && <PageArticle entry={entry} />}
-  {type === 'post' && <PostArticle entry={entry} />}
-  {type === 'category' && <CategoryList cat={cat} posts={posts} children={children} />}
-</Base>
+{type === 'redirect' ? (
+  <html lang="ru">
+    <head>
+      <meta charset="utf-8" />
+      <meta http-equiv="refresh" content={`0; url=${to}`} />
+      <link rel="canonical" href={to} />
+      <meta name="robots" content="noindex" />
+      <title>Переход…</title>
+    </head>
+    <body><p>Страница переехала: <a href={to}>{to}</a></p></body>
+  </html>
+) : (
+  <Base title={title} description={description}>
+    {type === 'page' && <PageArticle entry={entry} />}
+    {type === 'post' && <PostArticle entry={entry} />}
+    {type === 'category' && <CategoryList cat={cat} posts={posts} children={children} />}
+  </Base>
+)}

@@ -24,6 +24,8 @@ use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
 use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
 use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController;
 use SkazResidents\Controller\BudgetController;
+use SkazResidents\Controller\AppController;
+use SkazResidents\Controller\PwaController;
 
 $router = new Router();
 
@@ -135,6 +137,14 @@ $router->post('/poselenie/bron/{id}/otmenit', [$tbook, 'cancel']);
 // Бюджет Общего дома — read-only отчёт для всех авторизованных жителей.
 $budget = new BudgetController();
 $router->get('/poselenie/byudzhet', [$budget, 'index']);
+
+// Мобильный PWA: лаунчер, офлайн-страница, manifest и service worker.
+$app = new AppController();
+$router->get('/poselenie/app', [$app, 'home']);
+$router->get('/poselenie/offline', [$app, 'offline']);
+$pwa = new PwaController();
+$router->get('/poselenie/manifest.webmanifest', [$pwa, 'manifest']);
+$router->get('/poselenie/sw.js', [$pwa, 'serviceWorker']);
 
 $public = new PublicController();
 $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);

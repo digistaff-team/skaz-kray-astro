@@ -33,7 +33,7 @@ export async function getStaticPaths() {
     const slug = postSlug(entry);
     add(slug, { type: 'post', entry });
     if (entry.slug !== slug) {
-      add(entry.slug, { type: 'redirect', to: `/${slug}/` });
+      add(entry.slug, { type: 'redirect', to: `/${slug}/`, entry });
     }
   }
 
@@ -63,7 +63,11 @@ const { type, entry, cat, posts, children, to } = Astro.props;
 
 let title, description, ogImage;
 if (type === 'redirect') {
-  // no-op — разметка ниже отдаёт мгновенный редирект на латинский URL
+  // Заглушка тоже несёт OG-теги: соцсети-скраперы НЕ переходят по meta-refresh,
+  // поэтому карточку рисуют из тегов самой заглушки. Берём их из поста.
+  title = entry.data.title;
+  description = entry.data.seoDescription || excerptFrom(entry, 160);
+  ogImage = entry.data.cover || firstImage(entry) || undefined;
 } else if (type === 'category') {
   title = cat.name;
   description = `Записи в рубрике «${cat.name}» — поселение родовых поместий Сказочный Край.`;
@@ -80,9 +84,20 @@ if (type === 'redirect') {
     <head>
       <meta charset="utf-8" />
       <meta http-equiv="refresh" content={`0; url=${to}`} />
-      <link rel="canonical" href={to} />
-      <meta name="robots" content="noindex" />
-      <title>Переход…</title>
+      <link rel="canonical" href={new URL(to, Astro.site).href} />
+      <title>{`${title} — Сказочный Край`}</title>
+      <meta name="description" content={description} />
+      <meta property="og:type" content="article" />
+      <meta property="og:locale" content="ru_RU" />
+      <meta property="og:site_name" content="Сказочный Край" />
+      <meta property="og:title" content={`${title} — Сказочный Край`} />
+      <meta property="og:description" content={description} />
+      <meta property="og:url" content={new URL(to, Astro.site).href} />
+      <meta property="og:image" content={new URL(ogImage || '/images/logo.jpg', Astro.site).href} />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={`${title} — Сказочный Край`} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={new URL(ogImage || '/images/logo.jpg', Astro.site).href} />
     </head>
     <body><p>Страница переехала: <a href={to}>{to}</a></p></body>
   </html>

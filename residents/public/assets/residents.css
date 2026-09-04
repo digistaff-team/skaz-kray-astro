@@ -343,3 +343,26 @@ a { color: var(--green); }
   .footer-logout { display: inline-block; margin-top: .5rem; color: var(--green); font-weight: 700; }
 }
 .app-logout { display: block; text-align: center; margin: 1.6rem 0 .4rem; color: var(--muted); font-weight: 700; }
+
+/* ==== App-native вид внутренних страниц на мобильном (по макету «Мобильное приложение») ==== */
+@media (max-width: 760px) {
+  /* Компактные серифные заголовки, как в приложении (десктопные 2em слишком крупны) */
+  .res-main h1, .sovet-main h1 { font-size: 1.45rem; line-height: 1.25; margin-bottom: .6rem; }
+  .res-main h2, .sovet-main h2 { font-size: 1.15rem; }
+  .res-main h3, .sovet-main h3 { font-size: 1rem; }
+
+  /* Карточки — мягкий бордюр и радиус 14, как в макете */
+  .res-card, .tool-card, .trip-card { border-color: #e6e4d8; border-radius: 14px; }
+
+  /* Кнопки — крупные пилюли (тап-таргет), первичные секционные — во всю ширину */
+  .res-btn { min-height: 52px; display: inline-flex; align-items: center; justify-content: center;
+             border-radius: 999px; padding: .6rem 1.4rem; margin-top: 1rem; font-size: 15px; }
+  section > p:first-of-type > .res-btn:first-child:last-child { display: flex; width: 100%; }
+  .sovet-hero-actions .res-btn { flex: 1; }
+
+  /* Компактные быстрые действия на доске задач — тоже крупнее */
+  .sovet-quick .res-btn { min-height: 44px; }
+
+  /* Строки списков — комфортнее для пальца */
+  .sovet-doclist li, .sovet-roster li { min-height: 52px; }
+}

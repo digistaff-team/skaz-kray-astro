@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= View::e($title) ?> — Сказочный Край</title>
     <link rel="stylesheet" href="/poselenie/assets/residents.css">
+    <link rel="manifest" href="/poselenie/manifest.webmanifest">
+    <meta name="theme-color" content="#008757">
+    <link rel="apple-touch-icon" href="/poselenie/assets/icons/icon-192.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/poselenie/sw.js').catch(function () {});
+        });
+      }
+    </script>
 </head>
 <body>
 <header class="res-header">
@@ -21,6 +31,7 @@
         <a href="/poselenie/knigi">Книги</a>
         <a href="/poselenie/poezdki">Поездки</a>
         <?php if (Auth::id() !== null): ?>
+            <a href="/poselenie/app">Приложение</a>
             <a href="/poselenie/byudzhet">Бюджет</a>
             <a href="/poselenie/">Кабинет</a>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>

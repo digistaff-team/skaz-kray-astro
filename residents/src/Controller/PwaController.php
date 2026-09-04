@@ -9,7 +9,7 @@ namespace SkazResidents\Controller;
  */
 final class PwaController
 {
-    private const CACHE_VERSION = 'skazapp-v2';
+    private const CACHE_VERSION = 'skazapp-v3';
 
     public function manifest(): void
     {
@@ -19,7 +19,7 @@ final class PwaController
             'short_name'       => 'Сказочный Край',
             'lang'             => 'ru',
             'start_url'        => '/poselenie/app',
-            'scope'            => '/poselenie/',
+            'scope'            => '/',
             'display'          => 'standalone',
             'orientation'      => 'portrait',
             'background_color' => '#fbfaf6',
@@ -36,6 +36,7 @@ final class PwaController
     {
         header('Content-Type: text/javascript; charset=utf-8');
         header('Cache-Control: no-cache');
+        header('Service-Worker-Allowed: /');
         $v = self::CACHE_VERSION;
         echo <<<JS
 const CACHE = '{$v}';
@@ -66,7 +67,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return; // POST-действия — только в сеть
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (!url.pathname.startsWith('/poselenie/')) return; // вне scope
+  if (!(url.pathname.startsWith('/poselenie/') || url.pathname.startsWith('/sovet/'))) return; // вне scope
 
   // Навигация: сеть-первым, при офлайне — кэш страницы, иначе офлайн-страница.
   if (req.mode === 'navigate') {

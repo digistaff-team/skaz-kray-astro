@@ -117,6 +117,9 @@ a { color: var(--green); }
 .sovet-newtask { margin-bottom: 1.4rem; }
 .sovet-newtask > summary { display: inline-block; list-style: none; cursor: pointer; }
 .sovet-newtask > summary::-webkit-details-marker { display: none; }
+.sovet-newtask[open] > summary { display: none; }
+.sovet-form-actions { display: flex; gap: 10px; margin-top: 1rem; }
+.sovet-form-actions .res-btn { margin-top: 0; }
 .sovet-empty { padding: 1.5rem 0; }
 
 .sovet-task { padding: 0; }

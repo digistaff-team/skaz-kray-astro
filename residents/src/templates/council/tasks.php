@@ -43,7 +43,10 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </select>
         </label>
         <label>Как сделать и что учесть<textarea name="description"></textarea></label>
-        <button class="res-btn" type="submit">Добавить</button>
+        <div class="sovet-form-actions">
+            <button class="res-btn" type="submit">Добавить</button>
+            <button class="res-btn res-btn--ghost" type="button" onclick="this.closest('details').removeAttribute('open')">Отменить</button>
+        </div>
     </form>
 </details>
 

@@ -37,25 +37,7 @@
 </section>
 
 <section class="cab-sec">
-    <h2>Мои товары и услуги</h2>
-    <p><a class="res-btn cab-btn-primary" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
-    <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>
-    <?php foreach ($products as $p): ?>
-        <div class="res-card cab-item">
-            <div class="cab-item-head">
-                <strong class="cab-item-title"><?= View::e($p['title']) ?></strong>
-                <span class="res-status res-status--<?= View::e($p['status']) ?>"><?= View::e(status_label($p['status'])) ?></span>
-            </div>
-            <?php if ($p['status'] === 'rejected' && $p['reject_reason']): ?>
-                <div class="res-flash res-flash--error">Причина: <?= View::e($p['reject_reason']) ?></div>
-            <?php endif; ?>
-            <div class="cab-item-actions">
-                <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Изменить</a>
-                <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onsubmit="return confirm('Удалить?')">
-                    <?= Csrf::field() ?>
-                    <button type="submit" class="res-btn res-btn--muted">Удалить</button>
-                </form>
-            </div>
-        </div>
-    <?php endforeach; ?>
+    <h2>Товары и услуги</h2>
+    <p class="res-meta">Внутрипоселенческий рынок: посмотрите, что предлагают соседи, или разместите своё.</p>
+    <p><a class="res-btn" href="/poselenie/yarmarka">Товары соседей</a> <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka/moya">Моя витрина</a></p>
 </section>

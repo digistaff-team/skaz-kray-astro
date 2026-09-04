@@ -35,6 +35,7 @@ CREATE TABLE products (
     description   MEDIUMTEXT   NOT NULL,
     price         VARCHAR(80)  NULL,                          -- свободный текст; NULL = по договорённости
     contact       VARCHAR(200) NOT NULL,
+    visibility    VARCHAR(16)  NOT NULL DEFAULT 'public',      -- residents (соседям) | public (на сайте)
     status        VARCHAR(16)  NOT NULL DEFAULT 'pending',
     reject_reason VARCHAR(500) NULL,
     created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

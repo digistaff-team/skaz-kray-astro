@@ -29,6 +29,7 @@ CREATE TABLE products (
     description TEXT NOT NULL,
     price TEXT,
     contact TEXT NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'public',
     status TEXT NOT NULL DEFAULT 'pending',
     reject_reason TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

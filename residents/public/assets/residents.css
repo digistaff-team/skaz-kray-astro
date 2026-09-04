@@ -390,6 +390,15 @@ a { color: var(--green); }
 .cab-thing-name { font-weight: 700; }
 .cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }
 
+/* ==== Рынок «Товары соседей» ==== */
+.market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+.market-card { display: flex; flex-direction: column; gap: .3rem; }
+.market-photo { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; }
+.market-title { font-weight: 700; font-size: 1rem; }
+.market-price { color: var(--green); font-weight: 700; }
+.market-meta { font-size: .82rem; color: var(--muted); }
+.market-vis { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; }
+
 /* ==== Совет: кнопки-действия со счётчиком + полоска прогресса задачи ==== */
 .sovet-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.4rem; }
 .sovet-action { display: flex; align-items: center; justify-content: space-between; }

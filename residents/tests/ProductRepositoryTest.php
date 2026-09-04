@@ -49,4 +49,24 @@ final class ProductRepositoryTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertArrayHasKey('family_name', $rows[0]);
     }
+
+    public function test_residents_published_immediately(): void
+    {
+        $id = $this->repo->create($this->familyId, 'Саженцы', 'D', null, 'C', '2026-08-28 09:00:00', 'residents');
+        $p = $this->repo->findById($id);
+        $this->assertSame('published', $p['status']); // «только соседи» — сразу
+        $this->assertSame('residents', $p['visibility']);
+        $this->assertSame('2026-08-28 09:00:00', $p['published_at']);
+    }
+
+    public function test_list_available_has_both_visibilities_external_only_public(): void
+    {
+        $this->repo->create($this->familyId, 'Соседям', 'D', null, 'C', '2026-08-28 09:00:00', 'residents'); // published
+        $pub = $this->repo->create($this->familyId, 'На сайт', 'D', null, 'C', '2026-08-28 09:30:00', 'public'); // pending
+        $this->repo->approve($pub, '2026-08-28 10:00:00'); // published
+        $this->repo->create($this->familyId, 'Черновик', 'D', null, 'C', '2026-08-28 09:45:00', 'public'); // pending
+
+        $this->assertCount(2, $this->repo->listAvailable(10, 0)); // рынок: residents + одобренный public
+        $this->assertCount(1, $this->repo->listPublished(10, 0)); // внешняя лента: только public
+    }
 }

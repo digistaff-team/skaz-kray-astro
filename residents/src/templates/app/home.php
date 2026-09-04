@@ -23,7 +23,6 @@
 
   <div class="app-sec-label">Разделы</div>
   <div class="app-grid">
-    <a class="app-tile" href="/poselenie"><b>Мой<br>кабинет</b><span>дневник и мои вещи</span></a>
     <a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a>
     <a class="app-tile" href="/sovet"><b>Попечительский совет</b><span>внутренний портал</span></a>
     <a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a>
@@ -37,6 +36,8 @@
     <span class="app-offline-dot"></span>
     <span>Сети нет. Показываем сохранённое на <?= View::e($savedAt) ?>, изменения уйдут при связи.</span>
   </div>
+
+  <a class="app-logout" href="/poselenie/vyhod">Выход</a>
 </div>
 
 <script>

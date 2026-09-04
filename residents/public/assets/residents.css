@@ -331,6 +331,15 @@ a { color: var(--green); }
 /* ==== Мобильное = приложение: уплотнение на телефоне (десктоп не трогаем) ==== */
 @media (max-width: 600px) {
   .res-main, .sovet-main { padding: 1rem 0.9rem; }
-  .res-header { padding: 0.8rem 1rem; }
   .res-card { border-radius: 12px; }
 }
+/* В приложении (на мобильном) хедер не нужен — прячем его на всех страницах
+   разделов; «Выход» уезжает в подвал/лаунчер. На десктопе шапка остаётся. */
+@media (max-width: 760px) {
+  .res-header { display: none; }
+}
+.footer-logout { display: none; }
+@media (max-width: 760px) {
+  .footer-logout { display: inline-block; margin-top: .5rem; color: var(--green); font-weight: 700; }
+}
+.app-logout { display: block; text-align: center; margin: 1.6rem 0 .4rem; color: var(--muted); font-weight: 700; }

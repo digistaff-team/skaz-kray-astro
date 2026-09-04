@@ -8,7 +8,9 @@
 </head>
 <body>
   <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
-  <!-- Виджет загрузки фото в Telegram-канал (поле «Обложка»). -->
-  <script src="/cms-tg-image.js"></script>
+  <!-- Виджеты загрузки фото в Telegram-канал (обложка + галерея).
+       ?v — cache-buster: браузеры, закэшировавшие старую версию скрипта
+       (до появления виджета галереи), при бампе версии берут свежий URL. -->
+  <script src="/cms-tg-image.js?v=2"></script>
 </body>
 </html>

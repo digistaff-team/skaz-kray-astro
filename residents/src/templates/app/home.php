@@ -21,10 +21,19 @@
     </a>
   <?php endif; ?>
 
+  <?php if (!empty($dash['otherDiaries'])): ?>
+    <div class="app-sec-label">Новое в дневниках соседей</div>
+    <?php foreach ($dash['otherDiaries'] as $od): ?>
+      <a class="app-diary app-diary--other" href="/poselenie/dnevniki/<?= (int) $od['id'] ?>">
+        <b><?= View::e($od['family']) ?></b>
+        <span><?= View::e($od['title']) ?></span>
+      </a>
+    <?php endforeach; ?>
+  <?php endif; ?>
+
   <div class="app-sec-label">Разделы</div>
   <div class="app-grid">
     <a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a>
-    <a class="app-tile" href="/sovet"><b>Попечительский совет</b><span>внутренний портал</span></a>
     <a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a>
     <a class="app-tile" href="/poselenie/knigi"><b>Книги</b><span>на полке <?= (int) $dash['counts']['books'] ?></span></a>
     <a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a>

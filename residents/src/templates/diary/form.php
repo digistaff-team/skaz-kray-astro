@@ -17,10 +17,10 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
         <input type="checkbox" name="is_public" value="1"<?= !empty($entry['is_public']) ? ' checked' : '' ?>>
         Опубликовать на внешнем сайте (в разделе «Дневники поместий» для всех посетителей)
     </label>
-    <p class="res-meta">Без галочки запись видна только жителям поселения на внутреннем портале.</p>
-    <label>Фотографии (JPEG/PNG/WebP, до 5 МБ)
-        <input type="file" name="photos[]" accept="image/*" multiple>
+    <label>Добавить фото (JPEG/PNG/WebP, до 5 МБ)
+        <input type="file" name="photos[]" id="diaryPhotos" accept="image/*" multiple>
     </label>
+    <div id="diaryPhotoPreview" class="photo-preview"></div>
     <?php if (!empty($images)): ?>
         <div class="res-meta">Уже загружено:</div>
         <?php foreach ($images as $img): ?>
@@ -29,3 +29,20 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
     <?php endif; ?>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить и отправить на проверку' : 'Отправить на проверку' ?></button>
 </form>
+<script>
+(function () {
+  var inp = document.getElementById('diaryPhotos'), box = document.getElementById('diaryPhotoPreview');
+  if (!inp || !box) { return; }
+  inp.addEventListener('change', function () {
+    box.innerHTML = '';
+    Array.prototype.forEach.call(inp.files, function (f) {
+      if (!/^image\//.test(f.type)) { return; }
+      var img = document.createElement('img');
+      img.className = 'photo-thumb';
+      img.src = URL.createObjectURL(f);
+      img.onload = function () { URL.revokeObjectURL(img.src); };
+      box.appendChild(img);
+    });
+  });
+})();
+</script>

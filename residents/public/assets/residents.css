@@ -297,6 +297,8 @@ a { color: var(--green); }
 .app-diary { margin-bottom: 14px; background: #f5ecdd; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); }
 .app-diary b { font-weight: 700; font-size: 15px; }
 .app-diary span { font-size: 14px; color: var(--muted); }
+.app-diary--other { background: #fff; border: 1px solid #e6e4d8; }
+.app-diary--other b { color: #036844; }
 
 .app-sec-label { padding: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .app-grid { padding: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -410,3 +412,7 @@ a { color: var(--green); }
 .res-form label { font-size: .9rem; font-weight: 600; margin-top: .8rem; }
 .res-form input, .res-form select, .res-form textarea { font-size: 16px; }
 .res-form select { width: 100%; padding: .55rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+
+/* Превью выбранных фото (в формах дневника и др.) */
+.photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+.photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e4d8; }

@@ -26,12 +26,21 @@ final class AppDashboard
         usort($entries, static fn($a, $b) => (int) $b['id'] <=> (int) $a['id']);
         $latest = $entries[0] ?? null;
 
+        // Две свежие опубликованные записи из дневников ДРУГИХ поместий.
+        $others = [];
+        foreach ($this->diary->listPublished(6, 0) as $e) {
+            if ((int) $e['family_id'] === $familyId) { continue; }
+            $others[] = ['id' => (int) $e['id'], 'title' => (string) $e['title'], 'family' => (string) ($e['family_name'] ?? '')];
+            if (count($others) >= 2) { break; }
+        }
+
         return [
             'diary' => [
                 'count'        => count($entries),
                 'latestTitle'  => $latest['title'] ?? null,
                 'latestStatus' => $latest['status'] ?? null,
             ],
+            'otherDiaries' => $others,
             'counts' => [
                 'toolsFree' => count($this->tools->listCatalog('', '', 'available')),
                 'books'     => count($this->books->listCatalog('', '', '')),

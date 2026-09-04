@@ -7,8 +7,8 @@ use SkazResidents\Service\AppDashboard;
 
 /**
  * Мобильный лаунчер /poselenie/app и офлайн-страница /poselenie/offline.
- * Гард — Auth::requireLogin() (нужны имя жителя и статус дневника). Плитки/действия
- * совета показываются только при активной council-сессии (CouncilAuth::id()).
+ * Гард — Auth::requireLogin() (нужны имя жителя и статус дневника). Плитка «Совет»
+ * ведёт на /sovet (раздельный вход совета — там своя сессия).
  */
 final class AppController
 {

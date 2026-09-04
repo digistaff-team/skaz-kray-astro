@@ -5,7 +5,8 @@ namespace SkazResidents\Controller;
 /**
  * Отдаёт PWA-манифест и service worker как статические ответы с корректным MIME.
  * Через PHP front-controller — чтобы не править nginx. sw.js — no-cache (браузер
- * должен получать свежую версию). Публичны (без ПДн). SW scope — /poselenie/.
+ * должен получать свежую версию). Публичны (без ПДн). SW scope — / (единый PWA
+ * на оба раздела: /poselenie и /sovet; заголовок Service-Worker-Allowed: /).
  */
 final class PwaController
 {

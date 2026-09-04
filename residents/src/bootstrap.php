@@ -75,4 +75,11 @@ function asset_ver(string $rel): string
     return $m ? (string) $m : '1';
 }
 
+/** Грубое определение мобильного браузера по User-Agent (для выбора посадочной). */
+function is_mobile_ua(): bool
+{
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    return (bool) preg_match('/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i', $ua);
+}
+
 Database::connect(Config::get('db'));

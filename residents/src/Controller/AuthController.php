@@ -85,7 +85,7 @@ final class AuthController
         }
 
         Auth::login($family);
-        header('Location: /poselenie/');
+        header('Location: ' . (is_mobile_ua() ? '/poselenie/app' : '/poselenie/'));
     }
 
     public function logout(): void

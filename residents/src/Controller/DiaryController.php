@@ -32,10 +32,12 @@ final class DiaryController
         unset($e);
         View::render('diary/feed_list', [
             'entries' => $entries,
+            // Управление своими записями (любой статус) — только на первой странице.
+            'mine'    => $page === 1 ? $this->diary->listByFamily(Auth::id()) : [],
             'page'    => $page,
             'total'   => $this->diary->countPublished(),
             'perPage' => self::PER_PAGE,
-        ], 'Дневники поместий');
+        ], 'Дневник');
     }
 
     public function feedShow(array $params): void
@@ -71,7 +73,7 @@ final class DiaryController
             'residents' => 'Запись опубликована в ленте дневников поселения.',
             default     => 'Запись отправлена на проверку редактору сайта.',
         });
-        header('Location: /poselenie/');
+        header('Location: /poselenie/dnevniki');
     }
 
     public function showEdit(array $params): void
@@ -104,7 +106,7 @@ final class DiaryController
             'residents' => 'Запись обновлена и опубликована в ленте.',
             default     => 'Изменения отправлены на проверку редактору сайта.',
         });
-        header('Location: /poselenie/');
+        header('Location: /poselenie/dnevniki');
     }
 
     public function delete(array $params): void
@@ -116,7 +118,7 @@ final class DiaryController
         $this->images->deleteFor('entry', (int) $entry['id']);
         $this->diary->delete((int) $entry['id']);
         Flash::set('success', 'Запись удалена.');
-        header('Location: /poselenie/');
+        header('Location: /poselenie/dnevniki');
     }
 
     /** Удаление одного уже загруженного фото записи (в режиме редактирования). */

@@ -23,7 +23,7 @@ final class TgAuthController
     /** Страница-вход Mini App: грузит Telegram SDK и отправляет initData. */
     public function entry(): void
     {
-        if (Auth::id() !== null) { header('Location: /poselenie/'); return; }
+        if (Auth::id() !== null) { header('Location: /poselenie/app'); return; }
         View::render('tg/entry', [], 'Вход через Telegram');
     }
 
@@ -64,7 +64,7 @@ final class TgAuthController
         }
 
         Auth::login($family);
-        echo json_encode(['ok' => true, 'redirect' => '/poselenie/']);
+        echo json_encode(['ok' => true, 'redirect' => '/poselenie/app']);
     }
 
     /** Экран «подпишитесь на группу жителей». */

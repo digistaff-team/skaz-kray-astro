@@ -10,7 +10,7 @@
 
   <?php $d = $dash['diary']; ?>
   <?php if ($d['count'] > 0): ?>
-    <a class="app-diary" href="/poselenie">
+    <a class="app-diary" href="/poselenie/dnevniki">
       <b><?= View::e(diary_status_line($d)) ?></b>
       <span><?= View::e($d['latestTitle']) ?></span>
     </a>

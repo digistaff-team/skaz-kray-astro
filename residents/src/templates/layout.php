@@ -39,7 +39,6 @@
         <?php if (Auth::id() !== null): ?>
             <a href="/poselenie/app">Приложение</a>
             <a href="/poselenie/byudzhet">Бюджет</a>
-            <a href="/poselenie/">Кабинет</a>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>
             <a href="/poselenie/vyhod">Выход</a>
         <?php else: ?>

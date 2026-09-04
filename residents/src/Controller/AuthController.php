@@ -85,7 +85,7 @@ final class AuthController
         }
 
         Auth::login($family);
-        header('Location: ' . (is_mobile_ua() ? '/poselenie/app' : '/poselenie/'));
+        header('Location: /poselenie/app'); // единый домашний экран для всех устройств
     }
 
     public function logout(): void

@@ -47,7 +47,6 @@
     <?= $content ?>
 </main>
 <footer class="res-footer">
-    <p>Попечительский совет Общего дома · Поселение «Сказочный Край»</p>
     <?php if (CouncilAuth::id() !== null): ?><a class="footer-logout" href="/sovet/vyhod">Выход</a><?php endif; ?>
 </footer>
 </body>

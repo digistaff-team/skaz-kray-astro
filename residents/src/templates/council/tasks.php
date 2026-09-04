@@ -27,10 +27,18 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         <label>Что сделать<input type="text" name="title" maxlength="300" required></label>
         <label>Кто сделает
             <select name="assignee">
-                <option value="<?= View::e($me) ?>" selected><?= View::e($me) ?></option>
-                <?php foreach ($members as $m): if ($m['name'] === $me) { continue; } ?>
-                    <option value="<?= View::e($m['name']) ?>"><?= View::e($m['name']) ?></option>
-                <?php endforeach; ?>
+                <?php $names = array_column($members, 'name'); ?>
+                <?php if (in_array($me, $names, true)): ?>
+                    <option value="<?= View::e($me) ?>" selected><?= View::e($me) ?></option>
+                    <?php foreach ($members as $m): if ($m['name'] === $me) { continue; } ?>
+                        <option value="<?= View::e($m['name']) ?>"><?= View::e($m['name']) ?></option>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <option value="" selected>— не назначен —</option>
+                    <?php foreach ($members as $m): ?>
+                        <option value="<?= View::e($m['name']) ?>"><?= View::e($m['name']) ?></option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </select>
         </label>
         <label>До какого дня сделать<input type="date" name="due_date"></label>

@@ -413,6 +413,12 @@ a { color: var(--green); }
 .res-form input, .res-form select, .res-form textarea { font-size: 16px; }
 .res-form select { width: 100%; padding: .55rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
 
+/* Кнопка выбора фото (скрывает нативный input и его «Файл не выбран») */
+.res-form .file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+    padding: .6rem 1.4rem; margin-top: 1rem; border-radius: 999px; border: 1.5px solid var(--green);
+    color: var(--green); font-weight: 700; font-size: 15px; cursor: pointer; }
+.res-form .file-btn input { display: none; }
+
 /* Превью выбранных фото (в формах дневника и др.) */
 .photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e4d8; }

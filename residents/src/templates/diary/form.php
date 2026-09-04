@@ -21,8 +21,8 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
             <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>Все на сайте</option>
         </select>
     </label>
-    <label>Добавить фото (JPEG/PNG/WebP, до 5 МБ)
-        <input type="file" name="photos[]" id="diaryPhotos" accept="image/*" multiple>
+    <label class="file-btn">Добавить фото
+        <input type="file" name="photos[]" id="diaryPhotos" accept="image/*" multiple hidden>
     </label>
     <div id="diaryPhotoPreview" class="photo-preview"></div>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Отправить' ?></button>

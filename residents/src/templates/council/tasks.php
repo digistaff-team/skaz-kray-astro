@@ -48,6 +48,7 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
             <span class="sovet-pri <?= $priorityClass($t['priority']) ?>"><?= $t['priority'] === 'высокая' ? '🔥 ' : '' ?><?= View::e($t['priority']) ?></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
             <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($t['status']) ?></span>
+            <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>
         </summary>
 
         <p class="sovet-task-meta">

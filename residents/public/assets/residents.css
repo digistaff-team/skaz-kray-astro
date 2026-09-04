@@ -383,3 +383,10 @@ a { color: var(--green); }
 .cab-thing:active { background: #e7f2ec; }
 .cab-thing-name { font-weight: 700; }
 .cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }
+
+/* ==== Совет: кнопки-действия со счётчиком + полоска прогресса задачи ==== */
+.sovet-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.4rem; }
+.sovet-action { display: flex; align-items: center; justify-content: space-between; }
+.sovet-action-n { font-weight: 700; opacity: .9; }
+.sovet-progress { flex-basis: 100%; height: 8px; background: #f3f1e8; border-radius: 999px; overflow: hidden; margin-top: .3rem; }
+.sovet-progress-fill { display: block; height: 100%; background: var(--green); border-radius: 999px; }

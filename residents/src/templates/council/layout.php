@@ -15,6 +15,7 @@
             <a href="/sovet">Главная</a>
             <a href="/sovet/napravleniya">Направления</a>
             <a href="/sovet/zadachi">Текущие задачи</a>
+            <a href="/sovet/buhgalteriya">Бухгалтерия</a>
             <?php if (CouncilAuth::isAdmin()): ?><a href="/sovet/upravlenie">Участники</a><?php endif; ?>
             <a href="/sovet/parol">Пароль</a>
             <a href="/sovet/vyhod">Выход</a>

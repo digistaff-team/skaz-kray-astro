@@ -54,6 +54,12 @@
 </section>
 
 <section>
+    <h2>Бюджет Общего дома</h2>
+    <p class="res-meta">Открытый помесячный отчёт Попечительского совета — куда идут наши взносы: приход, расход по статьям, остаток каждого месяца.</p>
+    <p><a class="res-btn" href="/poselenie/byudzhet">Смотреть бюджет</a></p>
+</section>
+
+<section>
     <h2>Мои товары и услуги</h2>
     <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
     <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>

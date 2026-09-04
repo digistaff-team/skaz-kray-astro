@@ -22,6 +22,8 @@ use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
 use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
+use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController;
+use SkazResidents\Controller\BudgetController;
 
 $router = new Router();
 
@@ -130,6 +132,10 @@ $router->post('/poselenie/bron/{id}/podtverdit', [$tbook, 'confirm']);
 $router->post('/poselenie/bron/{id}/otklonit', [$tbook, 'decline']);
 $router->post('/poselenie/bron/{id}/otmenit', [$tbook, 'cancel']);
 
+// Бюджет Общего дома — read-only отчёт для всех авторизованных жителей.
+$budget = new BudgetController();
+$router->get('/poselenie/byudzhet', [$budget, 'index']);
+
 $public = new PublicController();
 $router->get('/dnevniki-pomestiy', [$public, 'diaryList']);
 $router->get('/dnevniki-pomestiy/{id}', [$public, 'diaryShow']);
@@ -171,6 +177,17 @@ $router->get('/sovet/upravlenie', [$cAdmin, 'index']);
 $router->post('/sovet/upravlenie/dobavit', [$cAdmin, 'add']);
 $router->post('/sovet/upravlenie/sbros-parolya', [$cAdmin, 'resetPassword']);
 $router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
+
+// Бухгалтерия совета — операции бюджета (все члены) + справочник статей (админ).
+$cLedger = new CouncilLedgerController();
+$router->get('/sovet/buhgalteriya', [$cLedger, 'index']);
+$router->post('/sovet/buhgalteriya/operaciya', [$cLedger, 'create']);
+$router->post('/sovet/buhgalteriya/operaciya/{id}/obnovit', [$cLedger, 'update']);
+$router->post('/sovet/buhgalteriya/operaciya/{id}/udalit', [$cLedger, 'delete']);
+$router->get('/sovet/buhgalteriya/statyi', [$cLedger, 'categories']);
+$router->post('/sovet/buhgalteriya/statyi/dobavit', [$cLedger, 'addCategory']);
+$router->post('/sovet/buhgalteriya/statyi/{id}/pereimenovat', [$cLedger, 'renameCategory']);
+$router->post('/sovet/buhgalteriya/statyi/{id}/arhiv', [$cLedger, 'toggleCategory']);
 
 $found = $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 if (!$found) {

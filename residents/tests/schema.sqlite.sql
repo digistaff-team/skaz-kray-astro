@@ -164,3 +164,21 @@ CREATE TABLE trip_bookings (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     decided_at TEXT
 );
+CREATE TABLE council_ledger_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,                 -- income | expense
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE council_ledger_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,                 -- income | expense (дублирует kind статьи)
+    category_id INTEGER NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    entry_date TEXT NOT NULL,           -- YYYY-MM-DD
+    note TEXT NOT NULL DEFAULT '',
+    author TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -11,8 +11,8 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
 <?php else: ?>
 
 <div class="ledger-tiles">
-    <div class="ledger-tile ledger-tile--in"><div class="label">Собрано, <?= View::e($report['selectedLabel']) ?></div><div class="val"><?= View::e($fmt($report['monthIncome'] ?? 0.0)) ?></div></div>
-    <div class="ledger-tile ledger-tile--out"><div class="label">Потрачено, <?= View::e($report['selectedLabel']) ?></div><div class="val"><?= View::e($fmt($report['monthExpense'] ?? 0.0)) ?></div></div>
+    <div class="ledger-tile ledger-tile--in"><div class="label">Доход, <?= View::e($report['selectedLabel']) ?></div><div class="val"><?= View::e($fmt($report['monthIncome'] ?? 0.0)) ?></div></div>
+    <div class="ledger-tile ledger-tile--out"><div class="label">Расходы, <?= View::e($report['selectedLabel']) ?></div><div class="val"><?= View::e($fmt($report['monthExpense'] ?? 0.0)) ?></div></div>
     <?php $mb = $report['monthBalance'] ?? 0.0; ?>
     <div class="ledger-tile ledger-tile--bal <?= $mb < 0 ? 'neg' : '' ?>"><div class="label">Остаток месяца</div><div class="val"><?= View::e($sign($mb)) ?></div></div>
 </div>
@@ -20,8 +20,9 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
 <div class="res-card">
     <h2 style="font-size:1.1rem;margin:0 0 .4rem">Помесячно</h2>
     <p class="ledger-hint">Доход поступает ежемесячно. В отдельные месяцы крупные траты превышают доход — остаток месяца уходит в минус, это нормально.</p>
+    <div class="months-scroll">
     <table class="months">
-        <thead><tr><th>Месяц</th><th>Собрано</th><th>Потрачено</th><th>Остаток месяца</th></tr></thead>
+        <thead><tr><th>Месяц</th><th>Доход</th><th>Расходы</th><th>Остаток месяца</th></tr></thead>
         <tbody>
             <?php foreach ($report['months'] as $m): ?>
                 <tr>
@@ -43,6 +44,7 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
             </tr>
         </tfoot>
     </table>
+    </div>
 </div>
 
 <div class="res-card">

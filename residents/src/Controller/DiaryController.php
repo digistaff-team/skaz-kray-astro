@@ -66,9 +66,11 @@ final class DiaryController
         $now = date('Y-m-d H:i:s');
         $id = $this->diary->create(Auth::id(), $data['title'], $data['body'], $data['visibility'], $now);
         $this->handleUploads('entry', $id);
-        Flash::set('success', $data['visibility'] === 'private'
-            ? 'Личная запись сохранена (видна только вам).'
-            : 'Запись отправлена на проверку редактору.');
+        Flash::set('success', match ($data['visibility']) {
+            'private'   => 'Личная запись сохранена — видна только вам.',
+            'residents' => 'Запись опубликована в ленте дневников поселения.',
+            default     => 'Запись отправлена на проверку редактору сайта.',
+        });
         header('Location: /poselenie/');
     }
 
@@ -97,9 +99,11 @@ final class DiaryController
         }
         $this->diary->update((int) $entry['id'], $data['title'], $data['body'], $data['visibility'], date('Y-m-d H:i:s'));
         $this->handleUploads('entry', (int) $entry['id']);
-        Flash::set('success', $data['visibility'] === 'private'
-            ? 'Личная запись сохранена (видна только вам).'
-            : 'Изменения отправлены на повторную проверку.');
+        Flash::set('success', match ($data['visibility']) {
+            'private'   => 'Личная запись сохранена — видна только вам.',
+            'residents' => 'Запись обновлена и опубликована в ленте.',
+            default     => 'Изменения отправлены на проверку редактору сайта.',
+        });
         header('Location: /poselenie/');
     }
 
@@ -113,6 +117,26 @@ final class DiaryController
         $this->diary->delete((int) $entry['id']);
         Flash::set('success', 'Запись удалена.');
         header('Location: /poselenie/');
+    }
+
+    /** Удаление одного уже загруженного фото записи (в режиме редактирования). */
+    public function deletePhoto(array $params): void
+    {
+        Auth::requireLogin();
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        $entry = $this->ownedOr404((int) $params['id']);
+        $imgId = (int) ($params['img'] ?? 0);
+        foreach ($this->images->listFor('entry', (int) $entry['id']) as $img) {
+            if ((int) $img['id'] !== $imgId) { continue; }
+            $path = (string) $img['path'];
+            if (!str_starts_with($path, 'tg:')) { // фото в Telegram-канале локально не хранится
+                @unlink(rtrim((string) Config::get('uploads_dir'), '/\\') . '/' . basename($path));
+            }
+            $this->images->deleteById($imgId);
+            Flash::set('info', 'Фото удалено.');
+            break;
+        }
+        header('Location: /poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat');
     }
 
     /** Удаляет физические файлы фото записи из uploads_dir (строки БД чистит deleteFor). */

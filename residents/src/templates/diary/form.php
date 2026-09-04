@@ -25,28 +25,43 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
         <input type="file" name="photos[]" id="diaryPhotos" accept="image/*" multiple>
     </label>
     <div id="diaryPhotoPreview" class="photo-preview"></div>
-    <?php if (!empty($images)): ?>
-        <div class="res-meta">Уже загружено:</div>
-        <?php foreach ($images as $img): ?>
-            <img src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" style="max-width:120px">
-        <?php endforeach; ?>
-    <?php endif; ?>
-    <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить и отправить на проверку' : 'Отправить на проверку' ?></button>
+    <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Отправить' ?></button>
 </form>
+
+<?php if (!empty($images)): ?>
+    <div class="res-meta" style="margin-top:1rem">Уже загружено (нажмите ×, чтобы удалить):</div>
+    <div class="photo-preview">
+        <?php foreach ($images as $img): ?>
+            <form class="photo-uploaded" method="post" action="/poselenie/dnevnik/<?= (int) $entry['id'] ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+                <?= Csrf::field() ?>
+                <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="">
+                <button type="submit" class="photo-del" title="Удалить фото">×</button>
+            </form>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+
 <script>
 (function () {
   var inp = document.getElementById('diaryPhotos'), box = document.getElementById('diaryPhotoPreview');
-  if (!inp || !box) { return; }
+  if (!inp || !box || typeof DataTransfer === 'undefined') { return; }
+  var dt = new DataTransfer();
   inp.addEventListener('change', function () {
-    box.innerHTML = '';
-    Array.prototype.forEach.call(inp.files, function (f) {
-      if (!/^image\//.test(f.type)) { return; }
-      var img = document.createElement('img');
-      img.className = 'photo-thumb';
-      img.src = URL.createObjectURL(f);
-      img.onload = function () { URL.revokeObjectURL(img.src); };
-      box.appendChild(img);
-    });
+    // Накопительно добавляем выбранные фото (можно выбирать несколько раз).
+    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type)) { dt.items.add(f); } });
+    inp.files = dt.files;
+    render();
   });
+  function render() {
+    box.innerHTML = '';
+    Array.prototype.forEach.call(dt.files, function (f, idx) {
+      var wrap = document.createElement('span'); wrap.className = 'photo-uploaded';
+      var img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(f);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'photo-del'; btn.textContent = '×'; btn.title = 'Убрать';
+      btn.addEventListener('click', function () { dt.items.remove(idx); inp.files = dt.files; render(); });
+      wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
+    });
+  }
 })();
 </script>

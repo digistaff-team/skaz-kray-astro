@@ -17,13 +17,23 @@ final class DiaryRepositoryTest extends TestCase
         $this->repo = new DiaryRepository();
     }
 
-    public function test_create_is_pending(): void
+    public function test_create_public_is_pending(): void
     {
-        $id = $this->repo->create($this->familyId, 'Весна', 'Посадили сад', 'residents', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'Весна', 'Посадили сад', 'public', '2026-08-28 09:00:00');
         $e = $this->repo->findById($id);
-        $this->assertSame('pending', $e['status']);
+        $this->assertSame('pending', $e['status']); // «Все на сайте» — на проверку
         $this->assertNull($e['published_at']);
+        $this->assertSame(1, (int) $e['is_public']);
+    }
+
+    public function test_residents_published_immediately(): void
+    {
+        $id = $this->repo->create($this->familyId, 'Соседям', 'B', 'residents', '2026-08-28 09:00:00');
+        $e = $this->repo->findById($id);
+        $this->assertSame('published', $e['status']); // «Только соседи» — сразу в ленте
+        $this->assertSame('2026-08-28 09:00:00', $e['published_at']);
         $this->assertSame(0, (int) $e['is_public']);
+        $this->assertCount(1, $this->repo->listPublished(10, 0));
     }
 
     public function test_create_public(): void
@@ -35,7 +45,7 @@ final class DiaryRepositoryTest extends TestCase
 
     public function test_approve_publishes(): void
     {
-        $id = $this->repo->create($this->familyId, 'T', 'B', 'residents', '2026-08-28 09:00:00');
+        $id = $this->repo->create($this->familyId, 'T', 'B', 'public', '2026-08-28 09:00:00');
         $this->repo->approve($id, '2026-08-28 10:00:00');
         $e = $this->repo->findById($id);
         $this->assertSame('published', $e['status']);
@@ -63,11 +73,10 @@ final class DiaryRepositoryTest extends TestCase
         $this->assertSame(1, (int) $e['is_public']);
     }
 
-    public function test_list_published_only(): void
+    public function test_list_published_excludes_pending(): void
     {
-        $p = $this->repo->create($this->familyId, 'Опубл', 'B', 'residents', '2026-08-28 09:00:00');
-        $this->repo->approve($p, '2026-08-28 10:00:00');
-        $this->repo->create($this->familyId, 'Черновик', 'B', 'residents', '2026-08-28 09:30:00');
+        $this->repo->create($this->familyId, 'Опубл', 'B', 'residents', '2026-08-28 09:00:00'); // сразу published
+        $this->repo->create($this->familyId, 'Черновик', 'B', 'public', '2026-08-28 09:30:00'); // pending, не одобрена
         $rows = $this->repo->listPublished(10, 0);
         $this->assertCount(1, $rows);
         $this->assertSame('Опубл', $rows[0]['title']);

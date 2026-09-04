@@ -416,3 +416,11 @@ a { color: var(--green); }
 /* Превью выбранных фото (в формах дневника и др.) */
 .photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e4d8; }
+.photo-uploaded { position: relative; display: inline-block; margin: 0; }
+.photo-del { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%;
+             border: 0; background: #c0392b; color: #fff; font-size: 14px; line-height: 20px; text-align: center;
+             cursor: pointer; padding: 0; }
+
+/* Помесячная таблица бюджета: горизонтальный скролл, колонка «Месяц» закреплена */
+.months-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.months th:first-child, .months td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; }

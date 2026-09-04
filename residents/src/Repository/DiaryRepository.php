@@ -15,15 +15,17 @@ final class DiaryRepository
     }
 
     /**
-     * Видимость: private (только автор, публикуется сразу без модерации) |
-     * residents (жителям на внутреннем портале) | public (всем на внешнем сайте).
+     * Видимость: private («Только я» — только автор в своём дневнике) |
+     * residents («Только соседи» — сразу в ленте дневников жителей) |
+     * public («Все на сайте» — на проверку редактору, затем на внешний сайт).
+     * На модерацию идёт ТОЛЬКО public; private и residents публикуются сразу.
      * is_public держим синхронно (=1 только для public), чтобы внешняя лента не менялась.
      */
     public function create(int $familyId, string $title, string $body, string $visibility, string $now): int
     {
         $isPublic    = $visibility === 'public' ? 1 : 0;
-        $status      = $visibility === 'private' ? 'published' : 'pending';
-        $publishedAt = $visibility === 'private' ? $now : null;
+        $status      = $visibility === 'public' ? 'pending' : 'published';
+        $publishedAt = $visibility === 'public' ? null : $now;
         $st = $this->db->prepare(
             'INSERT INTO diary_entries (family_id, title, body, is_public, visibility, status, published_at, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -35,15 +37,8 @@ final class DiaryRepository
     public function update(int $id, string $title, string $body, string $visibility, string $now): void
     {
         $isPublic = $visibility === 'public' ? 1 : 0;
-        if ($visibility === 'private') {
-            $st = $this->db->prepare(
-                'UPDATE diary_entries
-                 SET title = ?, body = ?, is_public = ?, visibility = ?, status = \'published\',
-                     reject_reason = NULL, published_at = ?, updated_at = ?
-                 WHERE id = ?'
-            );
-            $st->execute([$title, $body, $isPublic, $visibility, $now, $now, $id]);
-        } else {
+        if ($visibility === 'public') {
+            // На проверку редактору.
             $st = $this->db->prepare(
                 'UPDATE diary_entries
                  SET title = ?, body = ?, is_public = ?, visibility = ?, status = \'pending\',
@@ -51,6 +46,15 @@ final class DiaryRepository
                  WHERE id = ?'
             );
             $st->execute([$title, $body, $isPublic, $visibility, $now, $id]);
+        } else {
+            // private / residents — публикуется сразу.
+            $st = $this->db->prepare(
+                'UPDATE diary_entries
+                 SET title = ?, body = ?, is_public = ?, visibility = ?, status = \'published\',
+                     reject_reason = NULL, published_at = ?, updated_at = ?
+                 WHERE id = ?'
+            );
+            $st->execute([$title, $body, $isPublic, $visibility, $now, $now, $id]);
         }
     }
 

@@ -23,7 +23,7 @@ final class AppController
             'dash'    => $this->dashboard->build(Auth::id(), date('Y-m-d')),
             'me'      => Auth::name(),
             'savedAt' => date('H:i'),
-        ], 'Приложение');
+        ], 'Приложение', 'app/layout');
     }
 
     public function offline(): void

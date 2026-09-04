@@ -4,7 +4,7 @@
     <img class="app-logo" src="/poselenie/assets/icons/icon-192.png" alt="" width="52" height="52">
     <div class="app-hello">
       <b>Сказочный Край</b>
-      <span>Здравствуйте, <?= View::e($me) ?></span>
+      <span><?= View::e($me) ?></span>
     </div>
   </div>
 

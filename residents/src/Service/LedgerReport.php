@@ -77,6 +77,7 @@ final class LedgerReport
                 $operations[] = [
                     'id'          => (int) $op['id'],
                     'kind'        => $op['kind'],
+                    'categoryId'  => (int) $op['category_id'],
                     'category'    => (string) $op['category_name'],
                     'amount'      => (float) $op['amount'],
                     'entry_date'  => (string) $op['entry_date'],

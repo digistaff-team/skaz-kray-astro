@@ -84,10 +84,18 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
                             <form method="post" action="<?= View::e($basePath) ?>/operaciya/<?= (int) $op['id'] ?>/obnovit" class="res-form">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="mesyac" value="<?= View::e($report['selectedYm']) ?>">
+                                <?php
+                                    $catList = $editCats[$op['kind']];
+                                    $hasCurrent = false;
+                                    foreach ($catList as $c) { if ((int) $c['id'] === $op['categoryId']) { $hasCurrent = true; break; } }
+                                ?>
                                 <label>Статья
                                     <select name="category_id">
-                                        <?php foreach ($editCats[$op['kind']] as $c): ?>
-                                            <option value="<?= (int) $c['id'] ?>" <?= (string) $c['name'] === $op['category'] ? 'selected' : '' ?>><?= View::e($c['name']) ?></option>
+                                        <?php if (!$hasCurrent): ?>
+                                            <option value="<?= (int) $op['categoryId'] ?>" selected><?= View::e($op['category']) ?> (архив)</option>
+                                        <?php endif; ?>
+                                        <?php foreach ($catList as $c): ?>
+                                            <option value="<?= (int) $c['id'] ?>" <?= (int) $c['id'] === $op['categoryId'] ? 'selected' : '' ?>><?= View::e($c['name']) ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </label>

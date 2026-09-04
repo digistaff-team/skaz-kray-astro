@@ -78,6 +78,7 @@ final class LedgerReportTest extends TestCase
         $byId = [];
         foreach ($r['operations'] as $op) { $byId[$op['id']] = $op; }
         $this->assertTrue($byId[$exp]['hasReceipt']);
+        $this->assertSame($this->roadCat, $byId[$exp]['categoryId']); // статья доступна для формы правки
     }
 
     public function test_empty_state_does_not_crash(): void

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
+use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{ProductRepository, ImageRepository};
 
 final class ProductController
@@ -169,6 +169,11 @@ final class ProductController
             : [$f];
         $sort = count($this->images->listFor('product', $ownerId));
         foreach ($files as $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) { continue; }
+            // Фото товара уходят в тот же Telegram-канал, что дневник/новости.
+            $fileId = TelegramMedia::upload($file);
+            if ($fileId !== null) { $this->images->add('product', $ownerId, 'tg:' . $fileId, $sort++); continue; }
+            // Фолбэк на локальное хранилище, если Telegram недоступен.
             [$name, $err] = Upload::saveImage($file, $dir);
             if ($name !== null) { $this->images->add('product', $ownerId, $name, $sort++); }
             elseif ($err !== null) { Flash::set('error', $err); }

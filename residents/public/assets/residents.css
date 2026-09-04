@@ -48,6 +48,7 @@ a { color: var(--green); }
 .res-nav a { text-decoration: none; }
 .res-main { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
 .res-footer { text-align: center; color: var(--muted); padding: 2rem 1rem; }
+.res-footer p { font-size: .78rem; margin: .2rem 0; }
 .res-flash { padding: .8rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
 .res-flash--success { background: #e5f4ec; color: #0a5; }
 .res-flash--error { background: #fbe9e7; color: #c0392b; }

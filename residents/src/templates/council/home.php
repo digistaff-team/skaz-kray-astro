@@ -52,11 +52,10 @@
 </div>
 
 <div class="res-card">
-    <h2>Состав совета</h2>
-    <p class="res-meta">Председатель и секретарь — не постоянные должности: дежурная пара выбирается на каждой встрече.</p>
+    <h2>Состав Попечительского совета</h2>
     <ul class="sovet-roster">
         <?php foreach ($members as $m): ?>
-            <li><span class="sovet-roster-name"><?= View::e($m['name']) ?></span><span class="sovet-roster-role"><?= View::e($m['role']) ?></span></li>
+            <li><span class="sovet-roster-name"><?= View::e($m['name']) ?></span></li>
         <?php endforeach; ?>
     </ul>
 </div>

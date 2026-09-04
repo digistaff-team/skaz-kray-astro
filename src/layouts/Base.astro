@@ -15,6 +15,11 @@ const desc = description || 'Поселение родовых поместий 
 // og:image — абсолютный URL (соцсети/мессенджеры не принимают относительные).
 // Картинку передаёт страница (обложка новости), иначе — логотип сайта.
 const ogImage = new URL(image || '/images/logo.jpg', Astro.site).href;
+// В meta description для Google ок 150–160 символов, но соцсети показывают
+// ~125 и обрезают длинное на мобильных — для og/twitter укорачиваем по
+// границе слова.
+const clip = (s, n) => (s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s);
+const ogDesc = clip(desc, 120);
 ---
 <!doctype html>
 <html lang="ru">
@@ -28,13 +33,13 @@ const ogImage = new URL(image || '/images/logo.jpg', Astro.site).href;
   <meta property="og:locale" content="ru_RU" />
   <meta property="og:site_name" content="Сказочный Край" />
   <meta property="og:title" content={fullTitle} />
-  <meta property="og:description" content={desc} />
+  <meta property="og:description" content={ogDesc} />
   <meta property="og:url" content={Astro.url.href} />
   <meta property="og:image" content={ogImage} />
   <meta property="og:image:alt" content={title || 'Сказочный Край'} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={fullTitle} />
-  <meta name="twitter:description" content={desc} />
+  <meta name="twitter:description" content={ogDesc} />
   <meta name="twitter:image" content={ogImage} />
   <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
   <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed/" />

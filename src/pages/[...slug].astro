@@ -66,7 +66,7 @@ if (type === 'redirect') {
   // Заглушка тоже несёт OG-теги: соцсети-скраперы НЕ переходят по meta-refresh,
   // поэтому карточку рисуют из тегов самой заглушки. Берём их из поста.
   title = entry.data.title;
-  description = entry.data.seoDescription || excerptFrom(entry, 160);
+  description = entry.data.seoDescription || excerptFrom(entry, 120);
   ogImage = entry.data.cover || firstImage(entry) || undefined;
 } else if (type === 'category') {
   title = cat.name;

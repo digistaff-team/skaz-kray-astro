@@ -16,7 +16,7 @@
     </a>
   <?php else: ?>
     <a class="app-diary" href="/poselenie/dnevnik/novaya">
-      <b>Дневник поместья пуст</b>
+      <b>Дневник нашего поместья</b>
       <span>Добавьте первую запись</span>
     </a>
   <?php endif; ?>

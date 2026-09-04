@@ -14,25 +14,44 @@ final class DiaryRepository
         $this->db = Database::pdo();
     }
 
-    public function create(int $familyId, string $title, string $body, bool $isPublic, string $now): int
+    /**
+     * Видимость: private (только автор, публикуется сразу без модерации) |
+     * residents (жителям на внутреннем портале) | public (всем на внешнем сайте).
+     * is_public держим синхронно (=1 только для public), чтобы внешняя лента не менялась.
+     */
+    public function create(int $familyId, string $title, string $body, string $visibility, string $now): int
     {
+        $isPublic    = $visibility === 'public' ? 1 : 0;
+        $status      = $visibility === 'private' ? 'published' : 'pending';
+        $publishedAt = $visibility === 'private' ? $now : null;
         $st = $this->db->prepare(
-            'INSERT INTO diary_entries (family_id, title, body, is_public, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, \'pending\', ?, ?)'
+            'INSERT INTO diary_entries (family_id, title, body, is_public, visibility, status, published_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $st->execute([$familyId, $title, $body, $isPublic ? 1 : 0, $now, $now]);
+        $st->execute([$familyId, $title, $body, $isPublic, $visibility, $status, $publishedAt, $now, $now]);
         return (int) $this->db->lastInsertId();
     }
 
-    public function update(int $id, string $title, string $body, bool $isPublic, string $now): void
+    public function update(int $id, string $title, string $body, string $visibility, string $now): void
     {
-        $st = $this->db->prepare(
-            'UPDATE diary_entries
-             SET title = ?, body = ?, is_public = ?, status = \'pending\', reject_reason = NULL,
-                 published_at = NULL, updated_at = ?
-             WHERE id = ?'
-        );
-        $st->execute([$title, $body, $isPublic ? 1 : 0, $now, $id]);
+        $isPublic = $visibility === 'public' ? 1 : 0;
+        if ($visibility === 'private') {
+            $st = $this->db->prepare(
+                'UPDATE diary_entries
+                 SET title = ?, body = ?, is_public = ?, visibility = ?, status = \'published\',
+                     reject_reason = NULL, published_at = ?, updated_at = ?
+                 WHERE id = ?'
+            );
+            $st->execute([$title, $body, $isPublic, $visibility, $now, $now, $id]);
+        } else {
+            $st = $this->db->prepare(
+                'UPDATE diary_entries
+                 SET title = ?, body = ?, is_public = ?, visibility = ?, status = \'pending\',
+                     reject_reason = NULL, published_at = NULL, updated_at = ?
+                 WHERE id = ?'
+            );
+            $st->execute([$title, $body, $isPublic, $visibility, $now, $id]);
+        }
     }
 
     public function approve(int $id, string $now): void
@@ -66,7 +85,7 @@ final class DiaryRepository
         $st = $this->db->prepare(
             'SELECT d.*, f.name AS family_name
              FROM diary_entries d JOIN families f ON f.id = d.family_id
-             WHERE d.status = \'published\'
+             WHERE d.status = \'published\' AND d.visibility <> \'private\'
              ORDER BY d.published_at DESC
              LIMIT ? OFFSET ?'
         );
@@ -79,7 +98,7 @@ final class DiaryRepository
     public function countPublished(): int
     {
         return (int) $this->db->query(
-            'SELECT COUNT(*) FROM diary_entries WHERE status = \'published\''
+            'SELECT COUNT(*) FROM diary_entries WHERE status = \'published\' AND visibility <> \'private\''
         )->fetchColumn();
     }
 
@@ -88,7 +107,7 @@ final class DiaryRepository
         $st = $this->db->prepare(
             'SELECT d.*, f.name AS family_name
              FROM diary_entries d JOIN families f ON f.id = d.family_id
-             WHERE d.id = ? AND d.status = \'published\''
+             WHERE d.id = ? AND d.status = \'published\' AND d.visibility <> \'private\''
         );
         $st->execute([$id]);
         return $st->fetch() ?: null;

@@ -64,9 +64,11 @@ final class DiaryController
             return;
         }
         $now = date('Y-m-d H:i:s');
-        $id = $this->diary->create(Auth::id(), $data['title'], $data['body'], $data['is_public'], $now);
+        $id = $this->diary->create(Auth::id(), $data['title'], $data['body'], $data['visibility'], $now);
         $this->handleUploads('entry', $id);
-        Flash::set('success', 'Запись отправлена на проверку редактору.');
+        Flash::set('success', $data['visibility'] === 'private'
+            ? 'Личная запись сохранена (видна только вам).'
+            : 'Запись отправлена на проверку редактору.');
         header('Location: /poselenie/');
     }
 
@@ -93,9 +95,11 @@ final class DiaryController
             View::render('diary/form', ['entry' => $data, 'images' => $this->images->listFor('entry', (int) $entry['id']), 'errors' => $errors], 'Редактирование записи');
             return;
         }
-        $this->diary->update((int) $entry['id'], $data['title'], $data['body'], $data['is_public'], date('Y-m-d H:i:s'));
+        $this->diary->update((int) $entry['id'], $data['title'], $data['body'], $data['visibility'], date('Y-m-d H:i:s'));
         $this->handleUploads('entry', (int) $entry['id']);
-        Flash::set('success', 'Изменения отправлены на повторную проверку.');
+        Flash::set('success', $data['visibility'] === 'private'
+            ? 'Личная запись сохранена (видна только вам).'
+            : 'Изменения отправлены на повторную проверку.');
         header('Location: /poselenie/');
     }
 
@@ -120,16 +124,22 @@ final class DiaryController
         }
     }
 
-    /** @return array{0:array{title:string,body:string,is_public:bool},1:array<string,string>} */
+    /** @return array{0:array{title:string,body:string,visibility:string},1:array<string,string>} */
     private function validate(): array
     {
         $title = trim($_POST['title'] ?? '');
         $body  = trim($_POST['body'] ?? '');
-        $isPublic = !empty($_POST['is_public']);
+        $visibility = $this->pickVisibility($_POST['visibility'] ?? '');
         $errors = [];
         if (!Validator::length($title, 2, 200)) { $errors['title'] = 'Заголовок: 2–200 символов.'; }
         if (!Validator::required($body)) { $errors['body'] = 'Текст записи не может быть пустым.'; }
-        return [['title' => $title, 'body' => $body, 'is_public' => $isPublic], $errors];
+        return [['title' => $title, 'body' => $body, 'visibility' => $visibility], $errors];
+    }
+
+    /** private (только я) | residents (соседи) | public (все на сайте); дефолт — residents. */
+    private function pickVisibility(string $v): string
+    {
+        return in_array($v, ['private', 'residents', 'public'], true) ? $v : 'residents';
     }
 
     private function handleUploads(string $ownerType, int $ownerId): void

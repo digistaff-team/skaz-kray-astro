@@ -24,8 +24,8 @@ final class AppDashboardTest extends TestCase
         $familyId = 7;
         $this->makeFamily($familyId);
         $d = new DiaryRepository();
-        $d->create($familyId, 'Старая запись', 'тело', false, '2026-08-01 10:00:00');
-        $d->create($familyId, 'Как мы копали пруд', 'тело', false, '2026-09-02 10:00:00');
+        $d->create($familyId, 'Старая запись', 'тело', 'residents', '2026-08-01 10:00:00');
+        $d->create($familyId, 'Как мы копали пруд', 'тело', 'residents', '2026-09-02 10:00:00');
         $t = new ToolRepository();
         $t->create($familyId, 'Дрель', 'Электро', null, null, null, '2026-09-01 10:00:00');
         $t->create($familyId, 'Лопата', 'Сад', null, null, null, '2026-09-01 10:00:00');

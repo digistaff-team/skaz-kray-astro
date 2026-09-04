@@ -13,9 +13,13 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
         <textarea name="body" required><?= View::e($entry['body'] ?? '') ?></textarea>
     </label>
     <?php if (isset($errors['body'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['body']) ?></div><?php endif; ?>
-    <label class="res-checkbox">
-        <input type="checkbox" name="is_public" value="1"<?= !empty($entry['is_public']) ? ' checked' : '' ?>>
-        Опубликовать на внешнем сайте (в разделе «Дневники поместий» для всех посетителей)
+    <?php $vis = $entry['visibility'] ?? 'residents'; ?>
+    <label>Кто видит эту запись
+        <select name="visibility">
+            <option value="private"<?= $vis === 'private' ? ' selected' : '' ?>>Только я</option>
+            <option value="residents"<?= $vis === 'residents' ? ' selected' : '' ?>>Только соседи</option>
+            <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>Все на сайте</option>
+        </select>
     </label>
     <label>Добавить фото (JPEG/PNG/WebP, до 5 МБ)
         <input type="file" name="photos[]" id="diaryPhotos" accept="image/*" multiple>

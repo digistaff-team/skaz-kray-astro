@@ -5,7 +5,7 @@ import PageArticle from '../components/PageArticle.astro';
 import PostArticle from '../components/PostArticle.astro';
 import CategoryList from '../components/CategoryList.astro';
 import { categories, catUrl } from '../data/categories.js';
-import { sortByDateDesc, excerptFrom, postSlug } from '../lib/utils.js';
+import { sortByDateDesc, excerptFrom, postSlug, firstImage } from '../lib/utils.js';
 
 export async function getStaticPaths() {
   const pages = await getCollection('pages');
@@ -61,7 +61,7 @@ export async function getStaticPaths() {
 
 const { type, entry, cat, posts, children, to } = Astro.props;
 
-let title, description;
+let title, description, ogImage;
 if (type === 'redirect') {
   // no-op — разметка ниже отдаёт мгновенный редирект на латинский URL
 } else if (type === 'category') {
@@ -70,6 +70,9 @@ if (type === 'redirect') {
 } else {
   title = entry.data.title;
   description = entry.data.seoDescription || (type === 'post' ? excerptFrom(entry, 160) : undefined);
+  // Картинка для превью в соцсетях: обложка, иначе первое фото из тела.
+  // Base сам сделает URL абсолютным (og:image требует абсолютный адрес).
+  ogImage = entry.data.cover || firstImage(entry) || undefined;
 }
 ---
 {type === 'redirect' ? (
@@ -84,7 +87,7 @@ if (type === 'redirect') {
     <body><p>Страница переехала: <a href={to}>{to}</a></p></body>
   </html>
 ) : (
-  <Base title={title} description={description}>
+  <Base title={title} description={description} image={ogImage} type={type === 'post' ? 'article' : 'website'}>
     {type === 'page' && <PageArticle entry={entry} />}
     {type === 'post' && <PostArticle entry={entry} />}
     {type === 'category' && <CategoryList cat={cat} posts={posts} children={children} />}

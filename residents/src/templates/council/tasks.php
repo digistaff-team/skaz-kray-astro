@@ -24,14 +24,6 @@ $sorts = ['priority' => 'по важности', 'created' => 'по дате', '
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         <label>Задача<input type="text" name="title" maxlength="300" required></label>
-        <label>Приоритет
-            <select name="priority">
-                <option value="низкая">низкая</option>
-                <option value="средняя" selected>средняя</option>
-                <option value="высокая">высокая</option>
-            </select>
-        </label>
-        <label>Кто сформулировал<input type="text" name="author" maxlength="160" value="<?= View::e($me) ?>"></label>
         <label>Исполнитель<input type="text" name="assignee" maxlength="160"></label>
         <label>Комментарий<textarea name="description"></textarea></label>
         <button class="res-btn" type="submit">Добавить</button>

@@ -53,9 +53,10 @@ final class CouncilData
     public static function documents(): array
     {
         return [
-            ['title' => 'Положение о Попечительском совете Общего дома', 'kind' => 'Положение',     'href' => 'https://docs.google.com/document/d/PLACEHOLDER-polozhenie'],
-            ['title' => 'Общие правила пользования Сказочным Теремом',   'kind' => 'Правила Терема', 'href' => 'https://docs.google.com/document/d/PLACEHOLDER-pravila'],
-            ['title' => 'Распределение работ по содержанию Терема',      'kind' => 'Финансы',        'href' => 'https://docs.google.com/spreadsheets/d/PLACEHOLDER-finansy'],
+            ['title' => 'Положение о Попечительском совете',        'kind' => 'Положение', 'href' => 'https://docs.google.com/document/d/19JnUsfVUfWAeUR_EQzVDb7czycAguIXFeQDEJh4HZFo/edit?usp=drive_link'],
+            ['title' => 'Общие правила пользования Теремом',        'kind' => 'Правила',   'href' => 'https://docs.google.com/document/d/1dTYZLmwyR6KIe74Znr1DPbdQAdL_qiUfvelsn96eQME/edit?usp=drive_link'],
+            ['title' => 'Распределение работ по содержанию Терема', 'kind' => 'Работы',    'href' => 'https://docs.google.com/spreadsheets/d/1pxFtEkk8grn80Jhha-xXywo3rCx7QrDbw4eFp0fjXn4/edit?usp=drive_link'],
+            ['title' => 'Отчёт о доходах и расходах',              'kind' => 'Финансы',   'href' => 'https://docs.google.com/spreadsheets/d/1QAktBy29tafF0hCAWC8kdKpOInLi6yHQpttMoBxVXCM/edit?usp=sharing'],
         ];
     }
 

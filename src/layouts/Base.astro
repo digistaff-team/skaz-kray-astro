@@ -28,6 +28,34 @@ const desc = description || 'Поселение родовых поместий 
   <meta property="og:description" content={desc} />
   <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
   <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed/" />
+  <!-- Прячем не загрузившиеся картинки вместе с их обёрткой (figure/ссылка).
+       В старых постах 2013–2016 есть ~сотня битых ссылок на утраченные ещё в
+       WordPress файлы — так на сайте не будет «сломанных» иконок и пустых
+       рамок с подписями. Заодно страхует от любого будущего 404 картинки.
+       is:inline + capture-фаза: слушатель регистрируется до загрузки img,
+       а ресурсные ошибки <img> не всплывают, поэтому ловим их на capture. -->
+  <script is:inline>
+    (function () {
+      function hideBroken(img) {
+        if (!img || img.tagName !== 'IMG') return;
+        var fig = img.closest ? img.closest('figure') : null;
+        if (fig) { fig.style.display = 'none'; return; }
+        var a = img.parentElement;
+        if (a && a.tagName === 'A' && a.children.length === 1) { a.style.display = 'none'; return; }
+        img.style.display = 'none';
+      }
+      window.addEventListener('error', function (e) {
+        var t = e && e.target;
+        if (t && t.tagName === 'IMG') hideBroken(t);
+      }, true);
+      document.addEventListener('DOMContentLoaded', function () {
+        var imgs = document.querySelectorAll('img');
+        for (var i = 0; i < imgs.length; i++) {
+          if (imgs[i].complete && imgs[i].naturalWidth === 0) hideBroken(imgs[i]);
+        }
+      });
+    })();
+  </script>
 </head>
 <body>
   <a href="#main" class="skip">Перейти к содержанию</a>

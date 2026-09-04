@@ -38,7 +38,7 @@
     <a class="app-tile" href="/poselenie/knigi"><b>Книги</b><span>на полке <?= (int) $dash['counts']['books'] ?></span></a>
     <a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a>
     <a class="app-tile" href="/poselenie/byudzhet"><b>Бюджет<br>Общего дома</b><span>отчёт о расходах</span></a>
-    <a class="app-tile" href="/yarmarka"><b>Ярмарка</b><span>товары соседей</span></a>
+    <a class="app-tile" href="/poselenie/yarmarka/novyy"><b>Ярмарка</b><span>разместить товар/услугу</span></a>
   </div>
 
   <div class="app-offline-banner" id="appOffline">

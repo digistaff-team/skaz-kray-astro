@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, CouncilAuth, View};
+use SkazResidents\{Auth, View};
 use SkazResidents\Service\AppDashboard;
 
 /**
@@ -19,17 +19,10 @@ final class AppController
     public function home(): void
     {
         Auth::requireLogin();
-        $hasCouncil = CouncilAuth::id() !== null;
-        $data = $this->dashboard->build(
-            Auth::id(),
-            $hasCouncil ? CouncilAuth::name() : null,
-            date('Y-m-d')
-        );
         View::render('app/home', [
-            'dash'       => $data,
-            'me'         => Auth::name(),
-            'hasCouncil' => $hasCouncil,
-            'savedAt'    => date('H:i'),
+            'dash'    => $this->dashboard->build(Auth::id(), date('Y-m-d')),
+            'me'      => Auth::name(),
+            'savedAt' => date('H:i'),
         ], 'Приложение');
     }
 

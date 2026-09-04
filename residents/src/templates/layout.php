@@ -20,6 +20,8 @@
 <body>
 <header class="res-header">
     <a class="res-logo" href="/">Сказочный Край</a>
+    <details class="res-menu">
+    <summary class="res-menu-btn" aria-label="Меню" title="Меню"><span class="res-menu-ico"></span></summary>
     <nav class="res-nav">
         <?php if (Auth::id() !== null): ?>
             <a href="/poselenie/dnevniki">Дневники поместий</a>
@@ -40,6 +42,7 @@
             <a href="/poselenie/vhod">Вход для жителей</a>
         <?php endif; ?>
     </nav>
+    </details>
 </header>
 <main class="res-main">
     <?php require __DIR__ . '/partials/flash.php'; ?>

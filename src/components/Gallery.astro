@@ -1,0 +1,104 @@
+---
+// Галерея фото новости/статьи: адаптивная сетка миниатюр + CSS-лайтбокс
+// (клик по фото → полноэкранный просмотр со стрелками и закрытием, без JS —
+// на :target). Фото приходят из поля `gallery` (список URL из виджета
+// tgimage → Telegram-хранилище). Пустые значения отсеиваем.
+const { images = [], prefix = 'g' } = Astro.props;
+const pics = images.filter(Boolean);
+---
+{pics.length > 0 && (
+  <section class="gallery" id={prefix} aria-label="Фотогалерея">
+    <div class="gallery-grid">
+      {pics.map((src, i) => (
+        <a href={`#${prefix}-${i}`} class="gallery-thumb" aria-label={`Открыть фото ${i + 1}`}>
+          <img src={src} alt="" loading="lazy" />
+        </a>
+      ))}
+    </div>
+
+    {pics.map((src, i) => {
+      const prev = (i - 1 + pics.length) % pics.length;
+      const next = (i + 1) % pics.length;
+      return (
+        <div class="lightbox" id={`${prefix}-${i}`}>
+          <a href={`#${prefix}`} class="lightbox-backdrop" aria-label="Закрыть"></a>
+          {pics.length > 1 && (
+            <a href={`#${prefix}-${prev}`} class="lightbox-nav lightbox-prev" aria-label="Предыдущее фото">‹</a>
+          )}
+          <img class="lightbox-img" src={src} alt="" />
+          {pics.length > 1 && (
+            <a href={`#${prefix}-${next}`} class="lightbox-nav lightbox-next" aria-label="Следующее фото">›</a>
+          )}
+          <a href={`#${prefix}`} class="lightbox-close" aria-label="Закрыть">×</a>
+          <span class="lightbox-count">{i + 1} / {pics.length}</span>
+        </div>
+      );
+    })}
+  </section>
+)}
+
+<style>
+  .gallery { max-width: 900px; margin: 2rem auto 0; }
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.6rem;
+  }
+  .gallery-thumb {
+    display: block; aspect-ratio: 1 / 1; overflow: hidden;
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .gallery-thumb img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform 0.35s ease;
+  }
+  .gallery-thumb:hover img { transform: scale(1.05); }
+
+  /* CSS-лайтбокс: скрыт, показывается при :target */
+  .lightbox {
+    display: none;
+    position: fixed; inset: 0; z-index: 1000;
+    align-items: center; justify-content: center;
+    padding: 1.5rem;
+    background: rgba(20, 26, 21, 0.92);
+  }
+  .lightbox:target { display: flex; }
+  .lightbox-backdrop { position: absolute; inset: 0; cursor: zoom-out; }
+  .lightbox-img {
+    position: relative; z-index: 1;
+    max-width: 100%; max-height: 90vh;
+    object-fit: contain; border-radius: 6px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+  .lightbox-nav, .lightbox-close {
+    position: absolute; z-index: 2;
+    color: #fff; text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .lightbox-nav {
+    top: 50%; transform: translateY(-50%);
+    width: 3rem; height: 3rem; font-size: 2.5rem; line-height: 1;
+    background: rgba(0, 0, 0, 0.35); border-radius: 50%;
+  }
+  .lightbox-nav:hover { background: rgba(0, 0, 0, 0.6); }
+  .lightbox-prev { left: 1rem; }
+  .lightbox-next { right: 1rem; }
+  .lightbox-close {
+    top: 1rem; right: 1.2rem;
+    width: 2.5rem; height: 2.5rem; font-size: 2.2rem; line-height: 1;
+  }
+  .lightbox-close:hover { color: var(--green, #7bc9a4); }
+  .lightbox-count {
+    position: absolute; z-index: 2; bottom: 1rem; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;
+  }
+  @media (max-width: 480px) {
+    .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .lightbox-nav { width: 2.4rem; height: 2.4rem; font-size: 2rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gallery-thumb img { transition: none; }
+  }
+</style>

@@ -29,6 +29,9 @@ const posts = defineCollection({
     categories: z.array(z.string()).default([]),
     excerpt: z.string().optional(),
     cover: z.string().optional(),
+    // Галерея фото: список URL (Decap list из виджетов tgimage). Пустые
+    // строки отсеиваем на рендере — Decap может оставить пустой пункт.
+    gallery: z.array(z.string()).optional(),
     seoTitle: z.string().optional(),
     seoDescription: z.string().optional(),
   }),

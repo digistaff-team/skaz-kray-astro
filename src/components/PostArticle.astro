@@ -1,7 +1,8 @@
 ---
 import { ruDate } from '../lib/utils.js';
+import Gallery from './Gallery.astro';
 const { entry } = Astro.props;
-const { title, date, categories = [] } = entry.data;
+const { title, date, categories = [], gallery = [] } = entry.data;
 // resolve category chips (slug -> name + url) via the category tree
 import { categories as cats, catUrl } from '../data/categories.js';
 const bySlug = Object.fromEntries(cats.map((c) => [c.slug, c]));
@@ -29,6 +30,8 @@ const { Content } = await entry.render();
   </header>
 
   <div class="wrap post-body prose"><Content /></div>
+
+  {gallery.length > 0 && <div class="wrap"><Gallery images={gallery} prefix="gal" /></div>}
 </article>
 
 <style>

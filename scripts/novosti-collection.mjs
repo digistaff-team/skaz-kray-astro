@@ -14,5 +14,12 @@ export const novostiCollectionYaml = `  - name: novosti
       - { name: title, label: "Заголовок новости", widget: string }
       - { name: date, label: "Дата публикации", widget: datetime, default: "{{now}}", date_format: "YYYY-MM-DD", time_format: "HH:mm:ss", format: "YYYY-MM-DD HH:mm:ss" }
       - { name: cover, label: "Обложка (фото)", widget: tgimage, required: false }
+      - name: gallery
+        label: "Галерея фото"
+        label_singular: "Фото"
+        widget: list
+        required: false
+        summary: "Фото"
+        field: { name: image, label: "Фото", widget: tgimage }
       - { name: body, label: "Текст новости", widget: markdown }
       - { name: categories, widget: hidden, default: ["novosti"] }`;

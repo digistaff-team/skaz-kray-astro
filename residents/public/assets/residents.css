@@ -390,3 +390,14 @@ a { color: var(--green); }
 .sovet-action-n { font-weight: 700; opacity: .9; }
 .sovet-progress { flex-basis: 100%; height: 8px; background: #f3f1e8; border-radius: 999px; overflow: hidden; margin-top: .3rem; }
 .sovet-progress-fill { display: block; height: 100%; background: var(--green); border-radius: 999px; }
+
+/* ==== Каталоги (инструменты/книги/поездки) — app-native на мобильном ==== */
+@media (max-width: 760px) {
+  .tool-head { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .tool-head-actions { display: flex; gap: .6rem; }
+  .tool-head-actions .res-btn { flex: 1; margin-top: .3rem; }
+  .tool-filters { flex-direction: column; align-items: stretch; gap: .6rem; margin: 1rem 0; }
+  .tool-filters input, .tool-filters select, .tool-filters .res-btn { width: 100%; min-height: 48px; margin-top: 0; }
+  .tool-filters input[type="search"] { min-width: 0; }
+  .tool-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}

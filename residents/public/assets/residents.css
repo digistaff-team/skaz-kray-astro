@@ -366,3 +366,20 @@ a { color: var(--green); }
   /* Строки списков — комфортнее для пальца */
   .sovet-doclist li, .sovet-roster li { min-height: 52px; }
 }
+
+/* ==== Экран «Мой кабинет» (по макету «Мобильное приложение») ==== */
+.cab-sec { margin-bottom: 1.6rem; }
+.cab-item { border-color: #e6e4d8; }
+.cab-item-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.cab-item-title { font-weight: 700; font-size: 1rem; }
+.cab-item-actions { display: flex; gap: 10px; margin-top: .7rem; }
+.cab-item-actions form { margin: 0; flex: 1; display: flex; }
+.cab-item-actions .res-btn { margin-top: 0; flex: 1; min-height: 48px; }
+.res-btn--muted { background: transparent; color: var(--muted); border: 1px solid #d9d9d2; }
+.cab-thing { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+             background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; padding: 14px 18px;
+             min-height: 64px; margin-bottom: 10px; text-decoration: none; color: var(--ink); }
+.cab-thing:hover { text-decoration: none; }
+.cab-thing:active { background: #e7f2ec; }
+.cab-thing-name { font-weight: 700; }
+.cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }

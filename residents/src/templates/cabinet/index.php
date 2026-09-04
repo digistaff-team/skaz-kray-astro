@@ -1,82 +1,61 @@
-<?php use SkazResidents\View; use SkazResidents\Csrf; ?>
-<h1>Личный кабинет</h1>
+<?php use SkazResidents\View; use SkazResidents\Csrf; /** @var array $entries */ /** @var array $products */ /** @var array $things */ ?>
+<h1 class="cab-h1">Мой кабинет</h1>
 
-<section>
+<section class="cab-sec">
     <h2>Дневник поместья</h2>
-    <p>
-        <a class="res-btn" href="/poselenie/dnevnik/novaya">Новая запись</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/dnevniki">Дневники всех жителей</a>
-    </p>
+    <p><a class="res-btn cab-btn-primary" href="/poselenie/dnevnik/novaya">Новая запись</a></p>
     <?php if (!$entries): ?><p class="res-meta">Записей пока нет.</p><?php endif; ?>
     <?php foreach ($entries as $e): ?>
-        <div class="res-card">
-            <strong><?= View::e($e['title']) ?></strong>
-            <span class="res-status res-status--<?= View::e($e['status']) ?>"><?= View::e(status_label($e['status'])) ?></span>
+        <div class="res-card cab-item">
+            <div class="cab-item-head">
+                <strong class="cab-item-title"><?= View::e($e['title']) ?></strong>
+                <span class="res-status res-status--<?= View::e($e['status']) ?>"><?= View::e(status_label($e['status'])) ?></span>
+            </div>
             <?php if ($e['status'] === 'rejected' && $e['reject_reason']): ?>
                 <div class="res-flash res-flash--error">Причина: <?= View::e($e['reject_reason']) ?></div>
             <?php endif; ?>
-            <p class="res-meta">
-                <a href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/redaktirovat">Редактировать</a> ·
-                <form method="post" action="/poselenie/dnevnik/<?= (int) $e['id'] ?>/udalit" style="display:inline" onsubmit="return confirm('Удалить запись?')">
+            <p class="res-meta"><?= View::e(ru_date($e['created_at'] ?? '')) ?></p>
+            <div class="cab-item-actions">
+                <a class="res-btn res-btn--ghost" href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/redaktirovat">Изменить</a>
+                <form method="post" action="/poselenie/dnevnik/<?= (int) $e['id'] ?>/udalit" onsubmit="return confirm('Удалить запись?')">
                     <?= Csrf::field() ?>
-                    <button type="submit" class="res-link-btn">Удалить</button>
+                    <button type="submit" class="res-btn res-btn--muted">Удалить</button>
                 </form>
-            </p>
+            </div>
         </div>
     <?php endforeach; ?>
 </section>
 
-<section>
-    <h2>Шеринг инструментов</h2>
-    <p class="res-meta">Общая копилка инструментов жителей — возьмите нужное у соседа или поделитесь своим.</p>
-    <p>
-        <a class="res-btn" href="/poselenie/instrumenty">Каталог инструментов</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/instrumenty/moi">Мои инструменты и заявки</a>
-    </p>
+<section class="cab-sec">
+    <h2>Мои вещи в общем</h2>
+    <?php foreach ($things as $t): ?>
+        <a class="cab-thing" href="<?= View::e($t['href']) ?>">
+            <span class="cab-thing-name"><?= View::e($t['name']) ?></span>
+            <span class="cab-thing-meta"><?= View::e($t['meta']) ?></span>
+        </a>
+    <?php endforeach; ?>
 </section>
 
-<section>
-    <h2>Обмен книгами</h2>
-    <p class="res-meta">Общая книжная полка жителей — возьмите книгу почитать или поделитесь своей.</p>
-    <p>
-        <a class="res-btn" href="/poselenie/knigi">Каталог книг</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/knigi/moi">Мои книги и брони</a>
-    </p>
-</section>
-
-<section>
-    <h2>Совместные поездки</h2>
-    <p class="res-meta">Соседи подвозят соседей — предложите поездку или забронируйте место.</p>
-    <p>
-        <a class="res-btn" href="/poselenie/poezdki">Доска поездок</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/poezdki/moi">Мои поездки и брони</a>
-    </p>
-</section>
-
-<section>
-    <h2>Бюджет Общего дома</h2>
-    <p class="res-meta">Открытый помесячный отчёт Попечительского совета — куда идут наши взносы: приход, расход по статьям, остаток каждого месяца.</p>
-    <p><a class="res-btn" href="/poselenie/byudzhet">Смотреть бюджет</a></p>
-</section>
-
-<section>
+<section class="cab-sec">
     <h2>Мои товары и услуги</h2>
-    <p><a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
+    <p><a class="res-btn cab-btn-primary" href="/poselenie/yarmarka/novyy">Добавить товар/услугу</a></p>
     <?php if (!$products): ?><p class="res-meta">Пока ничего не добавлено.</p><?php endif; ?>
     <?php foreach ($products as $p): ?>
-        <div class="res-card">
-            <strong><?= View::e($p['title']) ?></strong>
-            <span class="res-status res-status--<?= View::e($p['status']) ?>"><?= View::e(status_label($p['status'])) ?></span>
+        <div class="res-card cab-item">
+            <div class="cab-item-head">
+                <strong class="cab-item-title"><?= View::e($p['title']) ?></strong>
+                <span class="res-status res-status--<?= View::e($p['status']) ?>"><?= View::e(status_label($p['status'])) ?></span>
+            </div>
             <?php if ($p['status'] === 'rejected' && $p['reject_reason']): ?>
                 <div class="res-flash res-flash--error">Причина: <?= View::e($p['reject_reason']) ?></div>
             <?php endif; ?>
-            <p class="res-meta">
-                <a href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Редактировать</a> ·
-                <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" style="display:inline" onsubmit="return confirm('Удалить?')">
+            <div class="cab-item-actions">
+                <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Изменить</a>
+                <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onsubmit="return confirm('Удалить?')">
                     <?= Csrf::field() ?>
-                    <button type="submit" class="res-link-btn">Удалить</button>
+                    <button type="submit" class="res-btn res-btn--muted">Удалить</button>
                 </form>
-            </p>
+            </div>
         </div>
     <?php endforeach; ?>
 </section>

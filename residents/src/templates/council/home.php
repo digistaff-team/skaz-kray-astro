@@ -21,7 +21,7 @@
                     </li>
                 <?php endforeach; ?>
                 <li>
-                    <a href="<?= View::e($accounting['href']) ?>" target="_blank" rel="noopener"><?= View::e($accounting['title']) ?></a>
+                    <a href="/sovet/buhgalteriya">Бюджет Общего дома — приход, расход, остатки</a>
                     <span class="sovet-kind">Бухгалтерия</span>
                 </li>
             </ul>

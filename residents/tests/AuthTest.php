@@ -23,5 +23,17 @@ final class AuthTest extends TestCase
         $_SESSION['role'] = 'editor';
         $this->assertSame(7, Auth::id());
         $this->assertTrue(Auth::isEditor());
+        $this->assertFalse(Auth::isAdmin());
+    }
+
+    public function test_admin_is_superset_of_editor(): void
+    {
+        $_SESSION['role'] = 'admin';
+        $this->assertTrue(Auth::isAdmin());
+        $this->assertTrue(Auth::isEditor()); // админ может всё, что редактор
+
+        $_SESSION['role'] = 'resident';
+        $this->assertFalse(Auth::isAdmin());
+        $this->assertFalse(Auth::isEditor());
     }
 }

@@ -2,15 +2,16 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer};
-use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository};
+use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer, Sections};
+use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository, SectionSettingsRepository};
 
 final class ModerationController
 {
     public function __construct(
         private FamilyRepository $families = new FamilyRepository(),
         private DiaryRepository $diary = new DiaryRepository(),
-        private ProductRepository $products = new ProductRepository()
+        private ProductRepository $products = new ProductRepository(),
+        private SectionSettingsRepository $sections = new SectionSettingsRepository()
     ) {}
 
     public function index(): void
@@ -22,6 +23,30 @@ final class ModerationController
             'pendingEntries'  => $this->diary->listPending(),
             'pendingProducts' => $this->products->listPending(),
         ], 'Модерация');
+    }
+
+    /** Страница настроек: список разделов приложения с тумблерами вкл/выкл (только админ сайта). */
+    public function sections(): void
+    {
+        Auth::requireAdmin();
+        View::render('moderation/sections', [
+            'sections' => Sections::LIST,
+            'disabled' => $this->sections->disabledKeys(),
+        ], 'Разделы приложения');
+    }
+
+    /** Переключить видимость раздела (плитка на главной + пункт меню). Только админ сайта. */
+    public function toggleSection(): void
+    {
+        Auth::requireAdmin();
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        $key = (string) ($_POST['key'] ?? '');
+        if (isset(Sections::LIST[$key])) {
+            $enable = ($_POST['enable'] ?? '') === '1';
+            $this->sections->setEnabled($key, $enable, date('Y-m-d H:i:s'));
+            Flash::set('info', 'Раздел «' . Sections::LIST[$key] . '» ' . ($enable ? 'включён.' : 'выключен.'));
+        }
+        header('Location: /poselenie/moderation/razdely');
     }
 
     public function approveFamily(): void

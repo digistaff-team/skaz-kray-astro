@@ -40,9 +40,17 @@ final class Auth
         return (string) ($_SESSION['family_name'] ?? '');
     }
 
+    /** Админ сайта — надмножество редактора: может всё, что редактор, плюс управление сайтом. */
     public static function isEditor(): bool
     {
-        return ($_SESSION['role'] ?? '') === 'editor';
+        $role = $_SESSION['role'] ?? '';
+        return $role === 'editor' || $role === 'admin';
+    }
+
+    /** Админ сайта (управляет разделами и т.п.). Редактор текста админом не является. */
+    public static function isAdmin(): bool
+    {
+        return ($_SESSION['role'] ?? '') === 'admin';
     }
 
     public static function requireLogin(): void
@@ -59,6 +67,15 @@ final class Auth
         if (!self::isEditor()) {
             http_response_code(403);
             exit('Доступ только для редактора поселения.');
+        }
+    }
+
+    public static function requireAdmin(): void
+    {
+        self::requireLogin();
+        if (!self::isAdmin()) {
+            http_response_code(403);
+            exit('Доступ только для администратора сайта.');
         }
     }
 }

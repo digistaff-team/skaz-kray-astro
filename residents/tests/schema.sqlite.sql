@@ -2,6 +2,7 @@ CREATE TABLE families (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
     telegram_id INTEGER UNIQUE,
+    telegram_username TEXT,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -189,4 +190,54 @@ CREATE TABLE app_sections (
     section_key TEXT PRIMARY KEY,
     enabled INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT
+);
+CREATE TABLE households (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    glade TEXT NOT NULL DEFAULT '',
+    plot TEXT NOT NULL DEFAULT '',
+    estate_name TEXT NOT NULL DEFAULT '',
+    status_raw TEXT NOT NULL DEFAULT '',
+    joined_text TEXT NOT NULL DEFAULT '',
+    family_id INTEGER,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE residents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    household_id INTEGER NOT NULL,
+    full_name TEXT NOT NULL,
+    birth_raw TEXT NOT NULL DEFAULT '',
+    birth_date TEXT,
+    phone TEXT NOT NULL DEFAULT '',
+    vk TEXT NOT NULL DEFAULT '',
+    skills TEXT,
+    community_role TEXT,
+    moved_text TEXT NOT NULL DEFAULT '',
+    residence TEXT NOT NULL DEFAULT '',
+    car TEXT NOT NULL DEFAULT '',
+    hometown TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    questionnaire TEXT NOT NULL DEFAULT '',
+    comment TEXT,
+    updated_text TEXT NOT NULL DEFAULT '',
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE household_cars (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    household_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    plate TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE household_pets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    household_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

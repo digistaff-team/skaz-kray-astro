@@ -47,12 +47,27 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
             </button>
             <div class="res-glade-body">
                 <?php foreach ($hhs as $h): ?>
-                    <a class="prof-card prof-pick" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
-                        <b class="prof-name"><?= $h['estate_name'] !== '' ? View::e($h['estate_name']) : 'Поместье' ?></b>
-                        <?php if ($h['plot'] !== ''): ?>
-                            <div class="res-meta">участок <?= $gnum ?>-<?= View::e($h['plot']) ?></div>
-                        <?php endif; ?>
-                    </a>
+                    <?php
+                    $occupied = (int) $h['occupied'] === 1;               // привязан к активному аккаунту
+                    $hasResidents = (int) $h['member_count'] > 0;          // есть жители для подтверждения фамилией
+                    // Открыть можно только свободный участок с жителями (без жителей нечем
+                    // подтвердить принадлежность; занятый уже привязан к другому аккаунту).
+                    $clickable = !$occupied && $hasResidents;
+                    $cls = 'prof-card ' . ($occupied ? 'prof-card--taken' : 'prof-card--free');
+                    $name = $h['estate_name'] !== '' ? View::e($h['estate_name']) : 'Поместье';
+                    $plotMeta = $h['plot'] !== '' ? 'участок ' . $gnum . '-' . View::e($h['plot']) : '';
+                    ?>
+                    <?php if ($clickable): ?>
+                        <a class="<?= $cls ?>" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
+                            <b class="prof-name"><?= $name ?></b>
+                            <?php if ($plotMeta !== ''): ?><div class="res-meta"><?= $plotMeta ?></div><?php endif; ?>
+                        </a>
+                    <?php else: ?>
+                        <div class="<?= $cls ?>">
+                            <b class="prof-name"><?= $name ?></b>
+                            <?php if ($plotMeta !== ''): ?><div class="res-meta"><?= $plotMeta ?></div><?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </div>
         </section>

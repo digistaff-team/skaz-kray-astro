@@ -518,6 +518,14 @@ a.prof-card { display: block; text-decoration: none; color: inherit; }
 .prof-pick { transition: border-color .12s, background .12s; }
 .prof-pick:hover { border-color: var(--green); background: #f6faf7; }
 .prof-pick .prof-name { color: var(--green); }
+/* Экран выбора поместья: свободные участки — серым, занятые (активный аккаунт) — зелёным. */
+.prof-card--free { border-color: #d9d7cc; background: #f6f5ef; }
+.prof-card--free .prof-name { color: #6b6b60; }
+a.prof-card--free { transition: border-color .12s, background .12s; }
+a.prof-card--free:hover { border-color: #9bb0a1; background: #eef0ea; }
+a.prof-card--free:hover .prof-name { color: #3f3f38; }
+.prof-card--taken { border-color: #bcd8c6; background: #eef7f1; }
+.prof-card--taken .prof-name { color: var(--green); }
 @media (max-width: 760px) {
   .prof-sec-head { flex-direction: column; align-items: stretch; }
   .prof-sec-head .res-btn { width: 100%; }

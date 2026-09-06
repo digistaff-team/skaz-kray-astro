@@ -38,9 +38,9 @@ final class ProfileController
     {
         Auth::requireLogin();
         if ($this->repo->householdByFamily(Auth::id())) { header('Location: /poselenie/moye-pomestie'); return; }
-        // Список группируется по полянам в шаблоне (поиск не нужен — житель
-        // находит своё поместье, раскрыв свою поляну).
-        View::render('profile/claim', ['households' => $this->repo->listClaimable()], 'Выбор поместья');
+        // Показываем ВСЕ участки поляны (число фиксировано), группируем в шаблоне.
+        // Занятые — зелёным (не открыть), свободные с жителями — серым (можно привязать).
+        View::render('profile/claim', ['households' => $this->repo->listForClaimView()], 'Выбор поместья');
     }
 
     public function showClaimConfirm(array $p): void

@@ -40,6 +40,13 @@ final class HouseholdProfileRepository
         $st->execute([$estateName, $id]);
     }
 
+    /** Фамилия, по которой аккаунт привязался к поместью (для ссылки «Tg» у жителя). */
+    public function setClaimSurname(int $id, string $surname): void
+    {
+        $st = $this->db->prepare('UPDATE households SET claim_surname = ? WHERE id = ?');
+        $st->execute([$surname, $id]);
+    }
+
     // ── Выбор/привязка своего поместья ──────────────────────────────────────
     /**
      * Поместья, доступные для привязки: без аккаунта или привязанные к неактивному

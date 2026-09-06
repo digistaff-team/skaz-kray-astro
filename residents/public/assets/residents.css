@@ -502,13 +502,6 @@ body.map-open { overflow: hidden; }
 .res-hh--free { background: #f6f5ef; border-color: #e0ded3; }
 .res-hh--free .res-hh-head--static:hover { background: transparent; }
 .res-hh--free .res-hh-name { color: #6b6b60; font-weight: 600; }
-/* Ссылка «Tg» на аккаунт, через который семья привязала поместье. */
-.res-tg-link {
-    display: inline-flex; align-items: center; gap: .25rem;
-    padding: .1rem .5rem; border-radius: 999px; background: #229ed9; color: #fff;
-    font-size: .78rem; font-weight: 700; text-decoration: none;
-}
-.res-tg-link:hover { background: #1b87ba; text-decoration: none; }
 .res-person { padding: .7rem .9rem; border-top: 1px solid #f0efe6; }
 .res-person:first-child { border-top: 0; }
 .res-person-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }

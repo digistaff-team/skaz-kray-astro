@@ -37,6 +37,8 @@
         <a href="/poselenie/knigi">Книги</a>
         <a href="/poselenie/poezdki">Поездки</a>
         <?php if (Auth::id() !== null): ?>
+            <a href="/poselenie/sosedi">Соседи</a>
+            <a href="/poselenie/moye-pomestie">Наше поместье</a>
             <a href="/poselenie/app">Приложение</a>
             <a href="/poselenie/byudzhet">Бюджет</a>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>

@@ -74,7 +74,7 @@ $h = $household;
         </div>
     <?php endforeach; ?>
 </div>
-<a class="res-btn prof-add" href="/poselenie/moye-pomestie/zhitel/novyy">+ Добавить жителя</a>
+<a class="prof-add-link" href="/poselenie/moye-pomestie/zhitel/novyy">+ Добавить жителя</a>
 
 <div class="prof-sec-head"><h2>Автомобили</h2></div>
 <?php if (!$cars): ?><p class="res-meta">Автомобили не указаны.</p><?php endif; ?>
@@ -101,7 +101,7 @@ $h = $household;
         </div>
     <?php endforeach; ?>
 </div>
-<a class="res-btn prof-add" href="/poselenie/moye-pomestie/avto/novyy">+ Добавить автомобиль</a>
+<a class="prof-add-link" href="/poselenie/moye-pomestie/avto/novyy">+ Добавить автомобиль</a>
 
 <div class="prof-sec-head"><h2>Питомцы</h2></div>
 <?php if (!$pets): ?><p class="res-meta">Питомцы не указаны.</p><?php endif; ?>
@@ -128,7 +128,7 @@ $h = $household;
         </div>
     <?php endforeach; ?>
 </div>
-<a class="res-btn prof-add" href="/poselenie/moye-pomestie/pitomec/novyy">+ Добавить питомца</a>
+<a class="prof-add-link" href="/poselenie/moye-pomestie/pitomec/novyy">+ Добавить питомца</a>
 
 <script>
 (function () {

@@ -40,7 +40,7 @@ $gladeNum = static function (string $g): int {
 };
 uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=> $gladeNum($b['name']));
 ?>
-<p class="res-meta"><a class="res-btn res-btn--ghost" href="/poselenie/app">← На главную</a></p>
+<a class="res-back" href="/poselenie/app">← На главную</a>
 <div class="tool-head">
     <h1>Наши соседи</h1>
 </div>

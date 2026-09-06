@@ -55,7 +55,39 @@
     <?= $content ?>
 </main>
 <footer class="res-footer">
-    <p>Поселение родовых поместий «Сказочный Край»</p>
+    <p><button type="button" class="res-maplink" id="mapOpen">Поселение родовых поместий «Сказочный Край»</button></p>
 </footer>
+
+<!-- Полноэкранная карта поселения -->
+<div class="map-overlay" id="mapOverlay" hidden>
+    <button type="button" class="map-close" id="mapClose" aria-label="Закрыть карту" title="Закрыть">&times;</button>
+    <div class="map-scroll" id="mapScroll">
+        <img src="/poselenie/assets/karta-sk.png?v=<?= asset_ver('assets/karta-sk.png') ?>" alt="Карта поселения «Сказочный Край»" class="map-img" id="mapImg">
+    </div>
+</div>
+<script>
+(function () {
+  var openBtn = document.getElementById('mapOpen');
+  var overlay = document.getElementById('mapOverlay');
+  var closeBtn = document.getElementById('mapClose');
+  var scroll = document.getElementById('mapScroll');
+  var img = document.getElementById('mapImg');
+  if (!openBtn || !overlay) return;
+  function show() { overlay.hidden = false; document.body.classList.add('map-open'); }
+  function hide() {
+    overlay.hidden = true;
+    document.body.classList.remove('map-open');
+    img.classList.remove('map-img--zoom');
+    scroll.scrollTop = 0; scroll.scrollLeft = 0;
+  }
+  openBtn.addEventListener('click', show);
+  closeBtn.addEventListener('click', hide);
+  // Клик по тёмному фону (мимо картинки) — тоже закрывает.
+  overlay.addEventListener('click', function (e) { if (e.target === overlay || e.target === scroll) hide(); });
+  // Тап по карте — переключение «вписать в экран» ⇄ «в натуральном размере» (со скроллом).
+  img.addEventListener('click', function (e) { e.stopPropagation(); img.classList.toggle('map-img--zoom'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) hide(); });
+})();
+</script>
 </body>
 </html>

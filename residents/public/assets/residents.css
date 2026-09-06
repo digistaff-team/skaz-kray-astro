@@ -49,6 +49,26 @@ a { color: var(--green); }
 .res-main { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
 .res-footer { text-align: center; color: var(--muted); padding: 2rem 1rem; }
 .res-footer p { font-size: .78rem; margin: .2rem 0; }
+/* Ссылка-надпись в футере, открывающая карту поселения. */
+.res-maplink { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.res-maplink:hover { color: var(--green); }
+
+/* Полноэкранная карта поселения. */
+.map-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 22, 20, .92); display: flex; }
+.map-overlay[hidden] { display: none; }
+.map-scroll { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; -webkit-overflow-scrolling: touch; }
+.map-img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
+/* Тап по карте — натуральный размер со скроллом (для чтения мелких подписей). */
+.map-img--zoom { max-width: none; max-height: none; width: 1608px; cursor: zoom-out; margin: auto; }
+.map-close {
+    position: fixed; top: 10px; right: 12px; z-index: 1001;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    width: 44px; height: 44px; border: 0; border-radius: 50%;
+    background: rgba(0, 0, 0, .55); color: #fff; font-size: 30px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.map-close:hover { background: rgba(0, 0, 0, .82); }
+body.map-open { overflow: hidden; }
 .res-flash { padding: .8rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
 .res-flash--success { background: #e5f4ec; color: #0a5; }
 .res-flash--error { background: #fbe9e7; color: #c0392b; }

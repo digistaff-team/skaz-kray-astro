@@ -12,7 +12,7 @@ $err = static function (string $k) use ($errors): string {
 };
 ?>
 <h1><?= $isEdit ? 'Изменить данные жителя' : 'Новый житель' ?></h1>
-<form class="res-form" method="post" action="<?= $action ?>">
+<form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>
     <label>Фамилия и имя <input type="text" name="full_name" value="<?= $val('full_name') ?>" required></label>
     <?= $err('full_name') ?>
@@ -27,9 +27,11 @@ $err = static function (string $k) use ($errors): string {
     <label>Место проживания (если ещё не переехали) <input type="text" name="residence" value="<?= $val('residence') ?>"></label>
     <label>Дата переезда <input type="text" name="moved_text" value="<?= $val('moved_text') ?>"></label>
     <label>Комментарий <textarea name="comment"><?= $val('comment') ?></textarea></label>
+    <?php require __DIR__ . '/_photo_input.php'; ?>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Добавить' ?></button>
     <a class="res-btn res-btn--ghost" href="/poselenie/moye-pomestie">Отмена</a>
 </form>
+<?php $photoDeleteBase = '/poselenie/moye-pomestie/zhitel/' . (int) ($m['id'] ?? 0) . '/foto'; require __DIR__ . '/_photo_list.php'; ?>
 
 <script>
 (function () {

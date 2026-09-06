@@ -90,16 +90,19 @@ $router->get('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'showAddMember'
 $router->post('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'addMember']);
 $router->get('/poselenie/moye-pomestie/zhitel/{id}/redaktirovat', [$profile, 'showEditMember']);
 $router->post('/poselenie/moye-pomestie/zhitel/{id}/redaktirovat', [$profile, 'updateMember']);
+$router->post('/poselenie/moye-pomestie/zhitel/{id}/foto/{img}/udalit', [$profile, 'deleteMemberPhoto']);
 $router->post('/poselenie/moye-pomestie/zhitel/{id}/udalit', [$profile, 'deleteMember']);
 $router->get('/poselenie/moye-pomestie/avto/novyy', [$profile, 'showAddCar']);
 $router->post('/poselenie/moye-pomestie/avto/novyy', [$profile, 'addCar']);
 $router->get('/poselenie/moye-pomestie/avto/{id}/redaktirovat', [$profile, 'showEditCar']);
 $router->post('/poselenie/moye-pomestie/avto/{id}/redaktirovat', [$profile, 'updateCar']);
+$router->post('/poselenie/moye-pomestie/avto/{id}/foto/{img}/udalit', [$profile, 'deleteCarPhoto']);
 $router->post('/poselenie/moye-pomestie/avto/{id}/udalit', [$profile, 'deleteCar']);
 $router->get('/poselenie/moye-pomestie/pitomec/novyy', [$profile, 'showAddPet']);
 $router->post('/poselenie/moye-pomestie/pitomec/novyy', [$profile, 'addPet']);
 $router->get('/poselenie/moye-pomestie/pitomec/{id}/redaktirovat', [$profile, 'showEditPet']);
 $router->post('/poselenie/moye-pomestie/pitomec/{id}/redaktirovat', [$profile, 'updatePet']);
+$router->post('/poselenie/moye-pomestie/pitomec/{id}/foto/{img}/udalit', [$profile, 'deletePetPhoto']);
 $router->post('/poselenie/moye-pomestie/pitomec/{id}/udalit', [$profile, 'deletePet']);
 
 $mod = new ModerationController();

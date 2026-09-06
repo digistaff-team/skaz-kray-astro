@@ -11,6 +11,28 @@ $vkUrl = static function (string $v): string {
 };
 $plural = static fn(int $n, string $a, string $b, string $c): string =>
     plural_ru($n, $a, $b, $c);
+// Слова имени в нижнем регистре (для сличения ФИО жителя с именем Telegram-профиля).
+$nameTokens = static function (string $s): array {
+    $out = [];
+    foreach (preg_split('~[\s]+~u', mb_strtolower(trim($s))) as $t) { if ($t !== '') { $out[] = $t; } }
+    return $out;
+};
+// Оценка совпадения ФИО жителя ($res) с именем Telegram-профиля ($tg). Эвристика:
+// точное слово = 2, совпадение по началу слова (≥3 симв.: Бобков/Бобкова, Александр/
+// Саш — нет, Алекс/Александр — да) = 1. Чем выше, тем вероятнее это тот самый человек.
+$nameScore = static function (array $res, array $tg): int {
+    $s = 0;
+    foreach ($tg as $t) {
+        $best = 0;
+        foreach ($res as $r) {
+            if ($r === $t) { $best = 2; break; }
+            if (mb_strlen($r) >= 3 && mb_strlen($t) >= 3
+                && (mb_strpos($r, $t) === 0 || mb_strpos($t, $r) === 0)) { $best = 1; }
+        }
+        $s += $best;
+    }
+    return $s;
+};
 // Имя поляны без номера: «(1) Обережная» -> «Обережная». Иначе — как есть.
 $gladeName = static function (string $g): string {
     $g = trim($g);
@@ -88,10 +110,18 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
             </button>
             <ul class="res-people">
                 <?php
-                // «Tg» показываем на карточке жителя, чья фамилия использована при
-                // привязке аккаунта поместья (см. households.claim_surname).
+                // «Tg» — только жителю, который авторизовался. Определяем его как жителя
+                // с наибольшим совпадением ФИО с именем Telegram-профиля (эвристика
+                // допускает неполное совпадение: Бобков/Бобкова, Алекс/Александр).
                 $tgUser = (string) ($h['tg_username'] ?? '');
-                $claimSurname = mb_strtolower(trim((string) ($h['claim_surname'] ?? '')));
+                $tgTokens = $nameTokens((string) ($h['tg_name'] ?? ''));
+                $tgOwnerId = 0; $tgBest = 0;
+                if ($tgUser !== '' && $tgTokens) {
+                    foreach ($h['people'] as $pp) {
+                        $sc = $nameScore($nameTokens((string) $pp['full_name']), $tgTokens);
+                        if ($sc > $tgBest) { $tgBest = $sc; $tgOwnerId = (int) $pp['id']; }
+                    }
+                }
                 ?>
                 <?php foreach ($h['people'] as $p): ?>
                     <li class="res-person">
@@ -125,10 +155,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                             <?php if ($p['vk'] !== ''): ?>
                                 <a href="<?= View::e($vkUrl($p['vk'])) ?>" target="_blank" rel="noopener">VK</a>
                             <?php endif; ?>
-                            <?php
-                            $pSurname = mb_strtolower(trim((string) explode(' ', trim((string) $p['full_name']))[0]));
-                            if ($tgUser !== '' && $claimSurname !== '' && $pSurname === $claimSurname):
-                            ?>
+                            <?php if ($tgUser !== '' && $tgBest > 0 && (int) $p['id'] === $tgOwnerId): ?>
                                 <a href="https://t.me/<?= View::e($tgUser) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
                             <?php endif; ?>
                         </div>
@@ -149,6 +176,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
     <?php endforeach; ?>
 </div>
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 (function () {
   function bind(headSel, boxSel, openCls) {
@@ -162,9 +190,10 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
   bind('.res-glade-head', '.res-glade', 'res-glade--open'); // поляна -> поместья
   bind('.res-hh-head', '.res-hh', 'res-hh--open');          // поместье -> жители
 
-  // Внутри Telegram Mini App ссылку на аккаунт открываем нативно (не новой вкладкой).
+  // Внутри Telegram Mini App ссылку t.me/username надо открывать через openTelegramLink
+  // (обычная ссылка target=_blank в webview не открывается). Вне Telegram — обычный переход.
   var wa = window.Telegram && window.Telegram.WebApp;
-  if (wa && wa.openTelegramLink) {
+  if (wa && wa.initData && wa.openTelegramLink) {
     Array.prototype.forEach.call(document.querySelectorAll('.js-tg-link'), function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); wa.openTelegramLink(a.href); });
     });

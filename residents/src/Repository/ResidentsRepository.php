@@ -31,7 +31,7 @@ final class ResidentsRepository
         // ПДн жителей раскрываем ТОЛЬКО для поместий, которые семья сама привязала при
         // входе через Telegram. Непривязанные — серые статичные плашки без жителей.
         $households = $this->db->query(
-            "SELECT h.*, f.telegram_id AS tg_id, f.telegram_username AS tg_username
+            "SELECT h.*, f.telegram_id AS tg_id, f.telegram_username AS tg_username, f.name AS tg_name
              FROM households h
              LEFT JOIN families f ON f.id = h.family_id AND f.status = 'active'
              ORDER BY h.sort, h.id"

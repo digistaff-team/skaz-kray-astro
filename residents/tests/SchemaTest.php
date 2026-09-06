@@ -17,7 +17,8 @@ final class SchemaTest extends TestCase
                 'book_loans', 'books',
                 'council_ledger_categories', 'council_ledger_entries',
                 'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',
-                'diary_entries', 'families', 'images', 'login_attempts', 'password_resets', 'products',
+                'diary_entries', 'families', 'household_cars', 'household_pets', 'households', 'images',
+                'login_attempts', 'password_resets', 'products', 'residents',
                 'tool_loans', 'tools', 'trip_bookings', 'trips',
             ],
             $names

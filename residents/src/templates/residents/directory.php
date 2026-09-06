@@ -40,16 +40,11 @@ $gladeNum = static function (string $g): int {
 };
 uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=> $gladeNum($b['name']));
 ?>
+<p class="res-meta"><a class="res-btn res-btn--ghost" href="/poselenie/app">← На главную</a></p>
 <div class="tool-head">
     <h1>Наши соседи</h1>
 </div>
 <p class="res-meta">Справочник для жителей поселения</p>
-
-<form class="tool-filters" method="get" action="/poselenie/sosedi">
-    <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Поиск по имени, навыкам, поляне или городу">
-    <button class="res-btn" type="submit">Найти</button>
-    <?php if ($q !== ''): ?><a class="res-btn res-btn--ghost" href="/poselenie/sosedi">Сбросить</a><?php endif; ?>
-</form>
 
 <?php if (!$households): ?>
     <p class="res-meta tool-empty">

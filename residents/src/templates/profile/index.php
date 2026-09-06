@@ -64,6 +64,13 @@ $h = $household;
                 <?php if ($m['moved_text'] !== ''): ?><span>Дата переезда: <?= View::e($m['moved_text']) ?></span><?php endif; ?>
                 <?php if (!empty($m['comment'])): ?><span>Комментарий: <?= View::e($m['comment']) ?></span><?php endif; ?>
             </div>
+            <?php if (!empty($m['images'])): ?>
+                <div class="photo-preview">
+                    <?php foreach ($m['images'] as $img): ?>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
 </div>
@@ -84,6 +91,13 @@ $h = $household;
                 </span>
             </div>
             <?php if ($c['note'] !== ''): ?><div class="prof-fields"><span><?= View::e($c['note']) ?></span></div><?php endif; ?>
+            <?php if (!empty($c['images'])): ?>
+                <div class="photo-preview">
+                    <?php foreach ($c['images'] as $img): ?>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
 </div>
@@ -104,6 +118,13 @@ $h = $household;
                 </span>
             </div>
             <?php if ($pet['note'] !== ''): ?><div class="prof-fields"><span><?= View::e($pet['note']) ?></span></div><?php endif; ?>
+            <?php if (!empty($pet['images'])): ?>
+                <div class="photo-preview">
+                    <?php foreach ($pet['images'] as $img): ?>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
 </div>

@@ -26,6 +26,7 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
     </label>
     <div id="diaryPhotoPreview" class="photo-preview"></div>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Отправить' ?></button>
+    <a class="res-btn res-btn--ghost" href="/poselenie/app">Отменить</a>
 </form>
 
 <?php if (!empty($images)): ?>

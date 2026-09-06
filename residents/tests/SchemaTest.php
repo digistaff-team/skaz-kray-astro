@@ -13,6 +13,7 @@ final class SchemaTest extends TestCase
         )->fetchAll(\PDO::FETCH_COLUMN);
         $this->assertSame(
             [
+                'app_sections',
                 'book_loans', 'books',
                 'council_ledger_categories', 'council_ledger_entries',
                 'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',

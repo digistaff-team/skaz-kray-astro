@@ -1,4 +1,4 @@
-<?php use SkazResidents\View; /** @var array $dash */ ?>
+<?php use SkazResidents\View; use SkazResidents\Sections; /** @var array $dash */ ?>
 <div class="app-wrap">
   <div class="app-head">
     <img class="app-logo" src="/poselenie/assets/icons/icon-192.png" alt="" width="52" height="52">
@@ -32,13 +32,13 @@
   <?php endif; ?>
 
   <div class="app-grid" id="appGrid">
-    <a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a>
-    <a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a>
-    <a class="app-tile" href="/poselenie/knigi"><b>Книги</b><span>на полке <?= (int) $dash['counts']['books'] ?></span></a>
-    <a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a>
-    <a class="app-tile" href="/poselenie/byudzhet"><b>Бюджет<br>Общего дома</b><span>отчёт о расходах</span></a>
-    <a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a>
-    <a class="app-tile" href="/poselenie/sosedi"><b>Наши соседи</b><span>справочник поселения</span></a>
+    <?php if (Sections::isEnabled('dnevniki')): ?><a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('instrumenty')): ?><a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('knigi')): ?><a class="app-tile" href="/poselenie/knigi"><b>Книги</b><span>на полке <?= (int) $dash['counts']['books'] ?></span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('byudzhet')): ?><a class="app-tile" href="/poselenie/byudzhet"><b>Бюджет<br>Общего дома</b><span>отчёт о расходах</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('yarmarka')): ?><a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('sosedi')): ?><a class="app-tile" href="/poselenie/sosedi"><b>Наши соседи</b><span>справочник поселения</span></a><?php endif; ?>
     <a class="app-tile" href="/poselenie/moye-pomestie"><b>Наше<br>поместье</b><span>личный кабинет семьи</span></a>
   </div>
 

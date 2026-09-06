@@ -1,5 +1,7 @@
-<?php use SkazResidents\{Csrf, View}; ?>
+<?php use SkazResidents\{Csrf, View, Auth}; ?>
 <h1>Модерация</h1>
+
+<?php if (Auth::isAdmin()): ?><p><a class="res-btn res-btn--ghost" href="/poselenie/moderation/razdely">Разделы приложения</a></p><?php endif; ?>
 
 <section>
     <h2>Заявки на регистрацию (<?= count($pendingFamilies) ?>)</h2>

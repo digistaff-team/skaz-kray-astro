@@ -104,6 +104,8 @@ $router->post('/poselenie/moye-pomestie/pitomec/{id}/udalit', [$profile, 'delete
 
 $mod = new ModerationController();
 $router->get('/poselenie/moderation', [$mod, 'index']);
+$router->get('/poselenie/moderation/razdely', [$mod, 'sections']);
+$router->post('/poselenie/moderation/razdely/pereklyuchit', [$mod, 'toggleSection']);
 $router->post('/poselenie/moderation/family/approve', [$mod, 'approveFamily']);
 $router->post('/poselenie/moderation/family/reject', [$mod, 'rejectFamily']);
 $router->post('/poselenie/moderation/family/reset-password', [$mod, 'resetPassword']);

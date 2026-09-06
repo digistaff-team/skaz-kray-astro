@@ -1,4 +1,4 @@
-<?php use SkazResidents\View; use SkazResidents\Auth; ?>
+<?php use SkazResidents\View; use SkazResidents\Auth; use SkazResidents\Sections; ?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -28,20 +28,21 @@
     <summary class="res-menu-btn" aria-label="Меню" title="Меню"><span class="res-menu-ico"></span></summary>
     <nav class="res-nav">
         <?php if (Auth::id() !== null): ?>
-            <a href="/poselenie/dnevniki">Дневники поместий</a>
+            <?php if (Sections::isEnabled('dnevniki')): ?><a href="/poselenie/dnevniki">Дневники поместий</a><?php endif; ?>
         <?php else: ?>
             <a href="/dnevniki-pomestiy/">Дневники поместий</a>
         <?php endif; ?>
         <a href="/yarmarka/">Ярмарка</a>
-        <a href="/poselenie/instrumenty">Инструменты</a>
-        <a href="/poselenie/knigi">Книги</a>
-        <a href="/poselenie/poezdki">Поездки</a>
+        <?php if (Sections::isEnabled('instrumenty')): ?><a href="/poselenie/instrumenty">Инструменты</a><?php endif; ?>
+        <?php if (Sections::isEnabled('knigi')): ?><a href="/poselenie/knigi">Книги</a><?php endif; ?>
+        <?php if (Sections::isEnabled('poezdki')): ?><a href="/poselenie/poezdki">Поездки</a><?php endif; ?>
         <?php if (Auth::id() !== null): ?>
-            <a href="/poselenie/sosedi">Соседи</a>
+            <?php if (Sections::isEnabled('sosedi')): ?><a href="/poselenie/sosedi">Соседи</a><?php endif; ?>
             <a href="/poselenie/moye-pomestie">Наше поместье</a>
             <a href="/poselenie/app">Приложение</a>
-            <a href="/poselenie/byudzhet">Бюджет</a>
+            <?php if (Sections::isEnabled('byudzhet')): ?><a href="/poselenie/byudzhet">Бюджет</a><?php endif; ?>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>
+            <?php if (Auth::isAdmin()): ?><a href="/poselenie/moderation/razdely">Разделы</a><?php endif; ?>
             <a href="/poselenie/vyhod">Выход</a>
         <?php else: ?>
             <a href="/poselenie/vhod">Вход для жителей</a>

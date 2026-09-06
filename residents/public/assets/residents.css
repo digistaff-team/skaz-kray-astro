@@ -439,3 +439,112 @@ a { color: var(--green); }
 /* Помесячная таблица бюджета: горизонтальный скролл, колонка «Месяц» закреплена */
 .months-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .months th:first-child, .months td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; }
+
+/* ==== Справочник «Соседи»: аккордеон поляна → поместья → жители ==== */
+.res-dir { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.2rem; }
+/* Уровень 1 — поляна (насыщенно-зелёная плашка). */
+.res-glade { border: 1px solid #cfe0d5; border-radius: 12px; background: #fff; overflow: hidden; }
+.res-glade-head {
+  width: 100%; display: flex; align-items: center; gap: .7rem;
+  padding: .8rem 1rem; background: #d7e9dd; border: 0; border-radius: 12px;
+  font: inherit; text-align: left; color: inherit; cursor: pointer;
+}
+.res-glade-head:hover { background: #cee3d4; }
+.res-glade--open .res-glade-head { border-radius: 12px 12px 0 0; }
+.res-glade-name { flex: 1; min-width: 0; color: var(--green); font-weight: 700; font-size: 1.1rem; }
+.res-glade-body { display: none; flex-direction: column; gap: .5rem; padding: .6rem; }
+.res-glade--open .res-glade-body { display: flex; }
+/* Уровень 2 — поместье (светло-зелёная плашка). */
+.res-hh { border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; overflow: hidden; }
+/* Плашка поместья — кнопка-переключатель (светло-зелёная), раскрывает жителей. */
+.res-hh-head {
+  width: 100%; display: flex; align-items: center; gap: .7rem;
+  padding: .7rem .9rem; background: #eef4ef; border: 0; border-radius: 12px;
+  font: inherit; text-align: left; color: inherit; cursor: pointer;
+}
+.res-hh-head:hover { background: #e7f0e9; }
+.res-hh--open .res-hh-head { border-radius: 12px 12px 0 0; border-bottom: 1px solid #e6e4d8; }
+.res-hh-title { flex: 1; min-width: 0; }
+.res-hh-name { display: block; color: var(--green); font-size: 1.05rem; }
+.res-hh-meta { display: block; font-size: .78rem; color: #6b6b60; margin-top: .15rem; }
+.res-hh-count { flex-shrink: 0; font-size: .74rem; color: #6b6b60; white-space: nowrap; }
+.res-hh-chevron {
+  flex-shrink: 0; width: 0; height: 0;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid var(--green); transition: transform .18s;
+}
+.res-hh--open .res-hh-chevron { transform: rotate(180deg); }
+.res-people { list-style: none; margin: 0; padding: 0; display: none; }
+.res-hh--open .res-people { display: block; }
+/* Свободный участок — статичная плашка, без раскрытия. */
+.res-hh-head--static { cursor: default; }
+.res-hh-head--static:hover { background: #eef4ef; }
+.res-hh--free .res-hh-name { color: #6b6b60; font-weight: 600; }
+.res-person { padding: .7rem .9rem; border-top: 1px solid #f0efe6; }
+.res-person:first-child { border-top: 0; }
+.res-person-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.res-person-main b { font-size: .98rem; }
+.res-person-skills { font-size: .86rem; margin-top: .25rem; }
+.res-person .res-meta { font-size: .78rem; margin-top: .15rem; }
+.res-person-contacts { display: flex; flex-wrap: wrap; gap: .5rem .9rem; margin-top: .4rem; }
+.res-person-contacts a { font-size: .82rem; color: var(--green); text-decoration: none; white-space: nowrap; }
+.res-person-contacts a:hover { text-decoration: underline; }
+
+/* ==== «Моё поместье»: карточки жителей и авто с действиями ==== */
+.prof-sec-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: 1.4rem 0 .6rem; }
+.prof-sec-head h2 { margin: 0; font-size: 1.15rem; color: var(--green); }
+.prof-list { display: flex; flex-direction: column; gap: .6rem; }
+.prof-card { border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; padding: .7rem .9rem; }
+.prof-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.prof-name { font-size: 1rem; }
+.prof-actions { display: flex; align-items: center; gap: .8rem; flex-shrink: 0; }
+.prof-actions form { margin: 0; display: inline; }
+.res-link { background: none; border: 0; padding: 0; font: inherit; font-size: .85rem; color: var(--green); cursor: pointer; text-decoration: none; }
+.res-link:hover { text-decoration: underline; }
+.res-link--danger { color: #c0392b; }
+.res-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; padding: 4px; border-radius: 8px; }
+.res-icon:hover { background: #f0efe6; text-decoration: none; }
+.res-icon svg { display: block; }
+.prof-fields { display: flex; flex-direction: column; gap: .15rem; margin-top: .4rem; font-size: .86rem; color: #4a4a42; }
+.prof-fields a { color: var(--green); }
+.prof-title { display: flex; align-items: center; gap: .5rem; margin: 0 0 .2rem; flex-wrap: wrap; }
+/* Иконка правки названия — без рамки/фона/бокса (это <button>, сбрасываем chrome). */
+.prof-estate-edit { background: none; border: 0; padding: 0; min-width: 0; min-height: 0; border-radius: 0; color: var(--green); cursor: pointer; }
+.prof-estate-edit:hover { background: none; }
+.prof-estate-form { margin: .4rem 0 .6rem; }
+.prof-estate-actions { display: flex; gap: .6rem; margin-top: .4rem; }
+.prof-add { margin-top: .6rem; }
+a.prof-card { display: block; text-decoration: none; color: inherit; }
+.prof-pick { transition: border-color .12s, background .12s; }
+.prof-pick:hover { border-color: var(--green); background: #f6faf7; }
+.prof-pick .prof-name { color: var(--green); }
+@media (max-width: 760px) {
+  .prof-sec-head { flex-direction: column; align-items: stretch; }
+  .prof-sec-head .res-btn { width: 100%; }
+}
+
+/* ==== Перестановка плиток лаунчера длинным нажатием ==== */
+/* Лаунчер — это домашний экран приложения, выделять текст тут незачем. Отключаем
+   выделение целиком, иначе долгое нажатие в Chrome выделяет ближайший текст
+   (подписи/карточку дневника) вместо перетаскивания плитки. */
+.app-wrap { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Гасим системное меню/выделение/перетаскивание ссылки при удержании плитки.
+   touch-action: none — ОБЯЗАТЕЛЬНО с самого начала касания: браузер решает про
+   прокрутку в момент pointerdown, поэтому включать его только в режиме поздно
+   (жест уже уходит в скролл и приходит pointercancel). Страница прокручивается
+   касанием вне плиток (шапка, карточка дневника, подписи, промежутки). */
+.app-grid .app-tile {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+/* Перетаскиваемая плитка следует за пальцем (transform задаётся из JS), приподнята
+   и не перехватывает события — чтобы «видеть» плитку под пальцем. */
+.app-tile--drag {
+  position: relative; z-index: 10; pointer-events: none;
+  opacity: .95; box-shadow: 0 12px 28px rgba(0, 0, 0, .22); transition: none;
+}
+/* Плитка-цель, куда встанет перетаскиваемая при отпускании. */
+.app-tile--target { outline: 2px dashed var(--green); outline-offset: -3px; }

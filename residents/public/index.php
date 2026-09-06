@@ -10,6 +10,8 @@ use SkazResidents\Controller\CabinetController;
 use SkazResidents\Controller\DiaryController;
 use SkazResidents\Controller\ProductController;
 use SkazResidents\Controller\ModerationController;
+use SkazResidents\Controller\ResidentsController;
+use SkazResidents\Controller\ProfileController;
 use SkazResidents\Controller\PublicController;
 use SkazResidents\Controller\ToolController;
 use SkazResidents\Controller\ToolLoanController;
@@ -71,6 +73,34 @@ $router->get('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'showEdit']);
 $router->post('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'update']);
 $router->post('/poselenie/yarmarka/{id}/udalit', [$product, 'delete']);
 $router->post('/poselenie/yarmarka/{id}/foto/{img}/udalit', [$product, 'deletePhoto']);
+
+// Справочник «Соседи» — карточки поместий и жителей (только для вошедших, ПДн).
+$residents = new ResidentsController();
+$router->get('/poselenie/sosedi', [$residents, 'index']);
+
+// «Моё поместье» — личный кабинет семьи (правит только своё поместье).
+$profile = new ProfileController();
+$router->get('/poselenie/moye-pomestie', [$profile, 'index']);
+$router->get('/poselenie/moye-pomestie/vybor', [$profile, 'showClaim']);
+$router->get('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'showClaimConfirm']);
+$router->post('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'claim']);
+$router->get('/poselenie/moye-pomestie/nazvanie', [$profile, 'showEditEstate']);
+$router->post('/poselenie/moye-pomestie/nazvanie', [$profile, 'updateEstate']);
+$router->get('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'showAddMember']);
+$router->post('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'addMember']);
+$router->get('/poselenie/moye-pomestie/zhitel/{id}/redaktirovat', [$profile, 'showEditMember']);
+$router->post('/poselenie/moye-pomestie/zhitel/{id}/redaktirovat', [$profile, 'updateMember']);
+$router->post('/poselenie/moye-pomestie/zhitel/{id}/udalit', [$profile, 'deleteMember']);
+$router->get('/poselenie/moye-pomestie/avto/novyy', [$profile, 'showAddCar']);
+$router->post('/poselenie/moye-pomestie/avto/novyy', [$profile, 'addCar']);
+$router->get('/poselenie/moye-pomestie/avto/{id}/redaktirovat', [$profile, 'showEditCar']);
+$router->post('/poselenie/moye-pomestie/avto/{id}/redaktirovat', [$profile, 'updateCar']);
+$router->post('/poselenie/moye-pomestie/avto/{id}/udalit', [$profile, 'deleteCar']);
+$router->get('/poselenie/moye-pomestie/pitomec/novyy', [$profile, 'showAddPet']);
+$router->post('/poselenie/moye-pomestie/pitomec/novyy', [$profile, 'addPet']);
+$router->get('/poselenie/moye-pomestie/pitomec/{id}/redaktirovat', [$profile, 'showEditPet']);
+$router->post('/poselenie/moye-pomestie/pitomec/{id}/redaktirovat', [$profile, 'updatePet']);
+$router->post('/poselenie/moye-pomestie/pitomec/{id}/udalit', [$profile, 'deletePet']);
 
 $mod = new ModerationController();
 $router->get('/poselenie/moderation', [$mod, 'index']);

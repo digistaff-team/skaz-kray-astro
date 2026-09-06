@@ -9,6 +9,29 @@
   function show(msg) { if (statusEl) statusEl.textContent = msg; }
 
   var wa = window.Telegram && window.Telegram.WebApp;
+
+  // Deep-link на конкретную страницу: startapp=base64url(путь), см. TgAuthController::decodeStartParam.
+  // Telegram кладёт значение либо в initDataUnsafe.start_param (именованный Mini App
+  // t.me/SkazKray_bot/app?startapp=...), либо только в query-строке ссылки — читаем оба источника.
+  var qs = new URLSearchParams(window.location.search);
+  var startParam = (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param)
+    || qs.get('startapp') || qs.get('tgWebAppStartParam') || '';
+
+  function decodeStartParam(sp, fallback) {
+    if (!sp) { return fallback; }
+    try {
+      var b64 = sp.replace(/-/g, '+').replace(/_/g, '/');
+      var pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+      var decoded = atob(b64 + pad);
+      return decoded.indexOf('/poselenie/') === 0 ? decoded : fallback;
+    } catch (e) { return fallback; }
+  }
+
+  <?php if ($alreadyLoggedIn): ?>
+  window.location.assign(decodeStartParam(startParam, '/poselenie/app'));
+  return;
+  <?php endif; ?>
+
   if (!wa || !wa.initData) {
     show('Откройте портал жителей через бота @SkazKray_bot в Telegram.');
     return;
@@ -19,7 +42,7 @@
   fetch('/poselenie/tg/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'initData=' + encodeURIComponent(wa.initData)
+    body: 'initData=' + encodeURIComponent(wa.initData) + '&startapp=' + encodeURIComponent(startParam)
   }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
     .then(function (data) {
       if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }

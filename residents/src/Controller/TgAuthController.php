@@ -60,12 +60,16 @@ final class TgAuthController
         }
 
         $telegramId = (int) $user['id'];
+        $username = ($user['username'] ?? '') !== '' ? $user['username'] : null;
         $family = $this->families->findByTelegramId($telegramId);
         if (!$family) {
             $name = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
-            if ($name === '') { $name = $user['username'] !== null ? '@' . $user['username'] : 'Житель'; }
-            $id = $this->families->createTelegramFamily($telegramId, mb_substr($name, 0, 160));
+            if ($name === '') { $name = $username !== null ? '@' . $username : 'Житель'; }
+            $id = $this->families->createTelegramFamily($telegramId, mb_substr($name, 0, 160), $username);
             $family = $this->families->findById($id);
+        } elseif (($family['telegram_username'] ?? null) !== $username) {
+            // @username мог измениться/появиться — держим актуальным для ссылки «Tg».
+            $this->families->setTelegramUsername((int) $family['id'], $username);
         }
         if (!$family || $family['status'] === 'blocked') {
             echo json_encode(['ok' => false, 'reason' => 'blocked']);

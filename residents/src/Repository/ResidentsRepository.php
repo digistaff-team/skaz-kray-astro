@@ -27,15 +27,20 @@ final class ResidentsRepository
      */
     public function grouped(?string $q = null): array
     {
+        // Признак привязки к Telegram-аккаунту (tg_id) и его @username берём из families:
+        // ПДн жителей раскрываем ТОЛЬКО для поместий, которые семья сама привязала при
+        // входе через Telegram. Непривязанные — серые статичные плашки без жителей.
         $households = $this->db->query(
-            'SELECT * FROM households ORDER BY sort, id'
+            "SELECT h.*, f.telegram_id AS tg_id, f.telegram_username AS tg_username
+             FROM households h
+             LEFT JOIN families f ON f.id = h.family_id AND f.status = 'active'
+             ORDER BY h.sort, h.id"
         )->fetchAll();
         if (!$households) { return []; }
 
         $people = $this->db->query(
             'SELECT * FROM residents ORDER BY household_id, sort, id'
         )->fetchAll();
-
         $byHousehold = [];
         foreach ($people as $p) {
             $byHousehold[(int) $p['household_id']][] = $p;
@@ -49,8 +54,11 @@ final class ResidentsRepository
         $needle = $q !== null ? trim($q) : '';
         $result = [];
         foreach ($households as $h) {
-            $h['people'] = $byHousehold[(int) $h['id']] ?? [];
-            $h['cars']   = $byCars[(int) $h['id']] ?? [];
+            $h['claimed'] = $h['tg_id'] !== null;   // привязан к Telegram-аккаунту
+            // Жителей и авто отдаём только для привязанных поместий (иначе ПДн не
+            // раскрываем — карточка показывается серой статичной плашкой).
+            $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];
+            $h['cars']   = $h['claimed'] ? ($byCars[(int) $h['id']] ?? []) : [];
             if ($needle !== '' && !$this->matches($h, $needle)) { continue; }
             $result[] = $h;
         }

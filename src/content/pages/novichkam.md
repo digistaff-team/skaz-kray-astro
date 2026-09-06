@@ -49,19 +49,16 @@ seoDescription: 'Как стать участником поселения Ск�
         <input type="email" id="sk-sub-email" name="email" autocomplete="email" required />
       </div>
     </div>
-
     <label class="sk-subscribe__consent">
       <input type="checkbox" id="sk-sub-consent" required />
       <span>Я ознакомлен(а) с Политикой конфиденциальности и даю согласие на обработку персональных данных</span>
     </label>
-
     <input type="hidden" name="charset" value="UTF-8" />
     <input type="hidden" name="default_list_id" value="1" />
     <input type="hidden" name="list_ids[]" value="1" />
     <input type="hidden" name="list_ids[]" value="2" />
     <input type="hidden" name="overwrite" value="2" />
     <input type="hidden" name="is_v5" value="1" />
-
     <button type="submit" class="btn btn--solid sk-subscribe__submit">Получить письма</button>
     <p class="sk-subscribe__status" id="sk-subscribe-status" role="status" aria-live="polite"></p>
   </form>

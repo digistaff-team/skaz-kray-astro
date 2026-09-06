@@ -17,6 +17,7 @@ $pencil = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="c
 $trash  = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 $h = $household;
 ?>
+<p class="res-meta"><a class="res-btn res-btn--ghost" href="/poselenie/app">← На главную</a></p>
 <div class="prof-estate">
     <h1 class="prof-title" id="estateTitle">
         <span><?= $h['estate_name'] !== '' ? 'Поместье ' . View::e($h['estate_name']) : 'Поместье' ?></span>

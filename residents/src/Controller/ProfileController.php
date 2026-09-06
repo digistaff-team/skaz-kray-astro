@@ -38,16 +38,9 @@ final class ProfileController
     {
         Auth::requireLogin();
         if ($this->repo->householdByFamily(Auth::id())) { header('Location: /poselenie/moye-pomestie'); return; }
-        $q = trim((string) ($_GET['q'] ?? ''));
-        $list = $this->repo->listClaimable();
-        if ($q !== '') {
-            // Поиск только по поляне/участку/названию — НЕ по фамилиям жителей.
-            $list = array_values(array_filter($list, static function (array $h) use ($q): bool {
-                $hay = (string) $h['glade'] . ' ' . (string) $h['estate_name'] . ' ' . (string) $h['plot'];
-                return mb_stripos($hay, $q) !== false;
-            }));
-        }
-        View::render('profile/claim', ['households' => $list, 'q' => $q], 'Выбор поместья');
+        // Список группируется по полянам в шаблоне (поиск не нужен — житель
+        // находит своё поместье, раскрыв свою поляну).
+        View::render('profile/claim', ['households' => $this->repo->listClaimable()], 'Выбор поместья');
     }
 
     public function showClaimConfirm(array $p): void

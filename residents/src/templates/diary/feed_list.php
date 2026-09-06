@@ -1,6 +1,7 @@
-<?php use SkazResidents\{View, Csrf};
+<?php use SkazResidents\{View, Csrf, Auth};
 $pages = (int) ceil($total / $perPage);
 $mine = $mine ?? [];
+$uid = Auth::id();
 ?>
 <div class="tool-head">
     <h1>Дневник</h1>
@@ -44,7 +45,12 @@ $mine = $mine ?? [];
             <img src="<?= View::e(entry_image_url($e['images'][0]['path'])) ?>" alt="">
         <?php endif; ?>
         <p><?= View::e(mb_strimwidth(strip_tags((string) $e['body']), 0, 300, '…')) ?></p>
-        <a href="/poselenie/dnevniki/<?= (int) $e['id'] ?>">Читать целиком →</a>
+        <div class="cab-item-actions">
+            <a href="/poselenie/dnevniki/<?= (int) $e['id'] ?>">Читать целиком →</a>
+            <?php if ($uid !== null && (int) $e['family_id'] === $uid): ?>
+                <a class="res-btn res-btn--ghost" href="/poselenie/dnevnik/<?= (int) $e['id'] ?>/redaktirovat">Изменить</a>
+            <?php endif; ?>
+        </div>
     </article>
 <?php endforeach; ?>
 <?php if ($pages > 1): ?>

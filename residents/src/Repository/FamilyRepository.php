@@ -41,18 +41,26 @@ final class FamilyRepository
     /**
      * Создаёт аккаунт жителя, привязанный к Telegram: сразу active (членство в
      * группе — гейт вместо одобрения редактором). Email синтетический, пароль —
-     * случайный неиспользуемый (вход только через Telegram).
+     * случайный неиспользуемый (вход только через Telegram). $username — @username
+     * из initData (для ссылки «Tg» в справочнике), может отсутствовать.
      */
-    public function createTelegramFamily(int $telegramId, string $name): int
+    public function createTelegramFamily(int $telegramId, string $name, ?string $username = null): int
     {
         $email = 'tg' . $telegramId . '@telegram.local';
         $passwordHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
         $st = $this->db->prepare(
-            'INSERT INTO families (email, telegram_id, password_hash, name, status, role, approved_at)
-             VALUES (?, ?, ?, ?, \'active\', \'resident\', ?)'
+            'INSERT INTO families (email, telegram_id, telegram_username, password_hash, name, status, role, approved_at)
+             VALUES (?, ?, ?, ?, ?, \'active\', \'resident\', ?)'
         );
-        $st->execute([$email, $telegramId, $passwordHash, $name, date('Y-m-d H:i:s')]);
+        $st->execute([$email, $telegramId, $username, $passwordHash, $name, date('Y-m-d H:i:s')]);
         return (int) $this->db->lastInsertId();
+    }
+
+    /** Обновляет сохранённый @username аккаунта (держим свежим при каждом входе). */
+    public function setTelegramUsername(int $id, ?string $username): void
+    {
+        $st = $this->db->prepare('UPDATE families SET telegram_username = ? WHERE id = ?');
+        $st->execute([$username, $id]);
     }
 
     public function findById(int $id): ?array

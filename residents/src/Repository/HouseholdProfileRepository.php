@@ -58,6 +58,25 @@ final class HouseholdProfileRepository
     }
 
     /**
+     * Все поместья для экрана выбора: показываем ВСЕ участки поляны (число фиксировано),
+     * помечая занятые активным аккаунтом (occupied=1) и число жителей (для решения,
+     * можно ли открыть участок — привязка возможна только к участку с жителями).
+     * ПДн жителей не раскрываются — только поляна/участок/название/флаги.
+     * @return array<int,array<string,mixed>>
+     */
+    public function listForClaimView(): array
+    {
+        return $this->db->query(
+            "SELECT h.id, h.glade, h.plot, h.estate_name,
+                    CASE WHEN h.family_id IS NOT NULL AND f.status = 'active' THEN 1 ELSE 0 END AS occupied,
+                    (SELECT COUNT(*) FROM residents r WHERE r.household_id = h.id) AS member_count
+             FROM households h
+             LEFT JOIN families f ON f.id = h.family_id
+             ORDER BY h.sort, h.id"
+        )->fetchAll();
+    }
+
+    /**
      * Подтверждение принадлежности без раскрытия жителей: совпадает ли введённая
      * фамилия с фамилией (первое слово ФИО) кого-то из жителей поместья.
      */

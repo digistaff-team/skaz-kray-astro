@@ -38,7 +38,7 @@
     <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
     <?php if (Sections::isEnabled('byudzhet')): ?><a class="app-tile" href="/poselenie/byudzhet"><b>Бюджет<br>Общего дома</b><span>отчёт о расходах</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('yarmarka')): ?><a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a><?php endif; ?>
-    <?php if (Sections::isEnabled('sosedi')): ?><a class="app-tile" href="/poselenie/sosedi"><b>Наши соседи</b><span>справочник поселения</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('sosedi')): ?><a class="app-tile" href="/poselenie/sosedi"><b>Наши<br>соседи</b><span>справочник поселения</span></a><?php endif; ?>
     <a class="app-tile" href="/poselenie/moye-pomestie"><b>Наше<br>поместье</b><span>личный кабинет семьи</span></a>
   </div>
 

@@ -1,30 +1,71 @@
 <?php
 use SkazResidents\View;
-/** @var array $households @var string $q */
+/** @var array $households */
+// Имя поляны без номера: «(1) Обережная» -> «Обережная». Иначе — как есть.
 $gladeName = static function (string $g): string {
-    return preg_match('~^\(\d+\)\s*(.+)$~u', trim($g), $m) ? trim($m[1]) : $g;
+    $g = trim($g);
+    if (preg_match('~^\(\d+\)\s*(.+)$~u', $g, $m)) { return trim($m[1]); }
+    return $g !== '' ? $g : 'Без поляны';
 };
+// Номер поляны из «(N) …» (для сортировки и подписи участка); без номера — в конец.
+$gladeNum = static function (string $g): int {
+    return preg_match('~^\((\d+)\)~u', trim($g), $m) ? (int) $m[1] : 999;
+};
+// Номер участка (первое число из «Уч.»); без числа — в конец.
+$plotNum = static function (string $p): int {
+    return preg_match('~\d+~', trim($p), $m) ? (int) $m[0] : 9999;
+};
+// Группируем поместья по полянам, сохраняя первое встреченное написание; ключ
+// нормализуем (регистр + пробелы), чтобы разные написания одной поляны не двоились.
+$byGlade = [];
+foreach ($households as $h) {
+    $key = mb_strtolower(preg_replace('~\s+~u', ' ', trim($h['glade'])));
+    if (!isset($byGlade[$key])) { $byGlade[$key] = ['name' => $h['glade'], 'hhs' => []]; }
+    $byGlade[$key]['hhs'][] = $h;
+}
+foreach ($byGlade as &$grp) {
+    usort($grp['hhs'], static fn(array $a, array $b): int => $plotNum((string) $a['plot']) <=> $plotNum((string) $b['plot']));
+}
+unset($grp);
+uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=> $gladeNum($b['name']));
 ?>
 <h1>Выберите ваше поместье</h1>
-<p class="res-meta">Найдите своё поместье в списке и привяжите его к аккаунту — после этого вы сможете проверять и править данные своей семьи. Привязка делается один раз.</p>
-
-<form class="tool-filters" method="get" action="/poselenie/moye-pomestie/vybor">
-    <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Поиск по фамилии, поляне или названию поместья">
-    <button class="res-btn" type="submit">Найти</button>
-    <?php if ($q !== ''): ?><a class="res-btn res-btn--ghost" href="/poselenie/moye-pomestie/vybor">Сбросить</a><?php endif; ?>
-</form>
+<p class="res-meta">Найдите свою поляну, разверните её и выберите свой участок — после подтверждения вы сможете проверять и править данные своей семьи. Привязка делается один раз.</p>
 
 <?php if (!$households): ?>
-    <p class="res-meta"><?= $q !== '' ? 'Ничего не найдено. Попробуйте другой запрос.' : 'Свободных для привязки поместий нет. Обратитесь к редактору поселения.' ?></p>
+    <p class="res-meta">Свободных для привязки поместий нет. Обратитесь к редактору поселения.</p>
 <?php endif; ?>
 
-<div class="prof-list">
-    <?php foreach ($households as $h): ?>
-        <a class="prof-card prof-pick" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
-            <b class="prof-name"><?= $h['estate_name'] !== '' ? View::e($h['estate_name']) : 'Поместье' ?></b>
-            <div class="res-meta">
-                Поляна <?= View::e($gladeName($h['glade'])) ?><?php if ($h['plot'] !== ''): ?>, участок <?= View::e($h['plot']) ?><?php endif; ?>
+<div class="res-dir">
+    <?php foreach ($byGlade as $grp): ?>
+        <?php $hhs = $grp['hhs']; $gnum = $gladeNum($grp['name']); ?>
+        <section class="res-glade">
+            <button type="button" class="res-glade-head" aria-expanded="false">
+                <span class="res-glade-name">Поляна <?= View::e($gladeName($grp['name'])) ?> (<?= $gnum ?>)</span>
+                <span class="res-hh-count"><?= count($hhs) ?> <?= View::e(plural_ru(count($hhs), 'участок', 'участка', 'участков')) ?></span>
+                <span class="res-hh-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="res-glade-body">
+                <?php foreach ($hhs as $h): ?>
+                    <a class="prof-card prof-pick" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
+                        <b class="prof-name"><?= $h['estate_name'] !== '' ? View::e($h['estate_name']) : 'Поместье' ?></b>
+                        <?php if ($h['plot'] !== ''): ?>
+                            <div class="res-meta">участок <?= $gnum ?>-<?= View::e($h['plot']) ?></div>
+                        <?php endif; ?>
+                    </a>
+                <?php endforeach; ?>
             </div>
-        </a>
+        </section>
     <?php endforeach; ?>
 </div>
+
+<script>
+(function () {
+  Array.prototype.forEach.call(document.querySelectorAll('.res-glade-head'), function (btn) {
+    btn.addEventListener('click', function () {
+      var open = btn.closest('.res-glade').classList.toggle('res-glade--open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+})();
+</script>

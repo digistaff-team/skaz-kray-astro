@@ -67,8 +67,8 @@ final class ProfileController
             return;
         }
         // Проверка принадлежности: если в поместье есть жители — подтверждаем фамилией.
+        $surname = trim($_POST['surname'] ?? '');
         if ($this->repo->members($id) !== []) {
-            $surname = trim($_POST['surname'] ?? '');
             if (!$this->repo->surnameMatchesHousehold($id, $surname)) {
                 Flash::set('error', 'Такой фамилии нет среди жителей этого поместья. Проверьте написание или обратитесь к редактору.');
                 header('Location: /poselenie/moye-pomestie/vybor/' . $id);
@@ -80,6 +80,8 @@ final class ProfileController
             header('Location: /poselenie/moye-pomestie/vybor');
             return;
         }
+        // Запоминаем фамилию, по которой привязались, — для показа «Tg» у нужного жителя.
+        if ($surname !== '') { $this->repo->setClaimSurname($id, $surname); }
         Flash::set('success', 'Поместье привязано к вашему аккаунту — теперь можно проверять и править данные.');
         header('Location: /poselenie/moye-pomestie');
     }

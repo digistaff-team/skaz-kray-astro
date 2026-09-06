@@ -87,13 +87,12 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                 <span class="res-hh-chevron" aria-hidden="true"></span>
             </button>
             <ul class="res-people">
-                <?php if (!empty($h['tg_username'])): ?>
-                    <li class="res-person res-tg">
-                        <div class="res-meta">Аккаунт в Telegram:
-                            <a class="res-tg-link" href="https://t.me/<?= View::e($h['tg_username']) ?>" target="_blank" rel="noopener">Tg</a>
-                        </div>
-                    </li>
-                <?php endif; ?>
+                <?php
+                // «Tg» показываем на карточке жителя, чья фамилия использована при
+                // привязке аккаунта поместья (см. households.claim_surname).
+                $tgUser = (string) ($h['tg_username'] ?? '');
+                $claimSurname = mb_strtolower(trim((string) ($h['claim_surname'] ?? '')));
+                ?>
                 <?php foreach ($h['people'] as $p): ?>
                     <li class="res-person">
                         <div class="res-person-main">
@@ -125,6 +124,12 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                             <?php endif; ?>
                             <?php if ($p['vk'] !== ''): ?>
                                 <a href="<?= View::e($vkUrl($p['vk'])) ?>" target="_blank" rel="noopener">VK</a>
+                            <?php endif; ?>
+                            <?php
+                            $pSurname = mb_strtolower(trim((string) explode(' ', trim((string) $p['full_name']))[0]));
+                            if ($tgUser !== '' && $claimSurname !== '' && $pSurname === $claimSurname):
+                            ?>
+                                <a href="https://t.me/<?= View::e($tgUser) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
                             <?php endif; ?>
                         </div>
                     </li>
@@ -160,7 +165,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
   // Внутри Telegram Mini App ссылку на аккаунт открываем нативно (не новой вкладкой).
   var wa = window.Telegram && window.Telegram.WebApp;
   if (wa && wa.openTelegramLink) {
-    Array.prototype.forEach.call(document.querySelectorAll('.res-tg-link'), function (a) {
+    Array.prototype.forEach.call(document.querySelectorAll('.js-tg-link'), function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); wa.openTelegramLink(a.href); });
     });
   }

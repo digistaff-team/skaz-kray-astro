@@ -2,7 +2,7 @@
 <section class="sovet-hero">
     <p class="sovet-eyebrow">Внутренний портал</p>
     <h1>Попечительский совет Общего дома</h1>
-    <p class="sovet-lead">Положение, протоколы и правила, состав совета, ближайшее собрание и живой список текущих задач по содержанию Сказочного Терема.</p>
+    <p class="sovet-lead">Положение, протоколы и правила, состав совета, ближайшее собрание и живой список текущих задач.</p>
 </section>
 
 <?php if (!empty($me)): ?>
@@ -49,8 +49,8 @@
     <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya"><span>Направления работы</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
 </div>
 
-<div class="res-card">
-    <h2>Документы</h2>
+<details class="res-card sovet-acc">
+    <summary><h2>Документы</h2></summary>
     <ul class="sovet-doclist">
         <?php foreach ($documents as $d): ?>
             <li>
@@ -61,22 +61,22 @@
             <a href="/sovet/buhgalteriya">Бюджет Общего дома — приход, расход, остатки</a>
         </li>
     </ul>
-</div>
+</details>
 
-<div class="res-card">
-    <h2>Протоколы встреч</h2>
+<details class="res-card sovet-acc">
+    <summary><h2>Протоколы встреч</h2></summary>
     <ul class="sovet-doclist">
         <?php foreach ($protocols as $p): ?>
             <li><a href="<?= View::e($p['href']) ?>" target="_blank" rel="noopener"><?= View::e($p['title']) ?></a></li>
         <?php endforeach; ?>
     </ul>
-</div>
+</details>
 
-<div class="res-card">
-    <h2>Состав Попечительского совета</h2>
-    <ul class="sovet-roster">
+<details class="res-card sovet-acc">
+    <summary><h2>Состав Попечительского совета</h2></summary>
+    <ul class="sovet-roster sovet-roster--cols">
         <?php foreach ($members as $m): ?>
             <li><span class="sovet-roster-name"><?= View::e($m['name']) ?></span></li>
         <?php endforeach; ?>
     </ul>
-</div>
+</details>

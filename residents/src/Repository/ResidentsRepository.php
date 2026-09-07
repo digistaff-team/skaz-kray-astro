@@ -59,6 +59,9 @@ final class ResidentsRepository
             // раскрываем — карточка показывается серой статичной плашкой).
             $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];
             $h['cars']   = $h['claimed'] ? ($byCars[(int) $h['id']] ?? []) : [];
+            // Имя главы (первый житель по sort) — для заголовка «Поместье {Фамилия}»;
+            // берём независимо от привязки (в заголовок идёт только фамилия семьи).
+            $h['head_name'] = $byHousehold[(int) $h['id']][0]['full_name'] ?? null;
             if ($needle !== '' && !$this->matches($h, $needle)) { continue; }
             $result[] = $h;
         }

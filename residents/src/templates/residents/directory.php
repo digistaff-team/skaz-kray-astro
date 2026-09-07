@@ -89,7 +89,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
         <section class="res-hh res-hh--free">
             <div class="res-hh-head res-hh-head--static">
                 <span class="res-hh-title">
-                    <b class="res-hh-name"><?= View::e($h['estate_name'] !== '' ? $h['estate_name'] : 'Свободный участок') ?></b>
+                    <b class="res-hh-name"><?= View::e(($h['head_name'] || $h['estate_name'] !== '') ? \SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['head_name']) : 'Свободный участок') ?></b>
                     <span class="res-hh-meta"><?php if ($h['plot'] !== ''): ?>участок <?= $gnum ?>-<?= View::e($h['plot']) ?><?php endif; ?></span>
                 </span>
             </div>
@@ -99,7 +99,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
         <section class="res-hh<?= $open ? ' res-hh--open' : '' ?>">
             <button type="button" class="res-hh-head" aria-expanded="<?= $open ? 'true' : 'false' ?>">
                 <span class="res-hh-title">
-                    <b class="res-hh-name"><?= View::e(\SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['people'][0]['full_name'] ?? null)) ?></b>
+                    <b class="res-hh-name"><?= View::e(\SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['head_name'])) ?></b>
                     <span class="res-hh-meta">
                         <?php $mp = []; if ($h['plot'] !== '') { $mp[] = 'участок ' . $gnum . '-' . $h['plot']; } ?>
                         <?= View::e(implode(' · ', $mp)) ?>

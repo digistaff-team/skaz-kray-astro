@@ -1,6 +1,6 @@
 <?php use SkazResidents\View; ?>
-<h1>Вход в Попечительский совет</h1>
-<p class="res-meta">Вы входите в первый раз. Укажите свою фамилию для идентификации.</p>
+<h1>Вход в приложение</h1>
+<p class="res-meta">Введите, пожалуйста, Вашу фамилию.</p>
 
 <?php if (!empty($error)): ?>
     <p class="res-flash res-flash--error"><?= View::e($error) ?></p>

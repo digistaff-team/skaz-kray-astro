@@ -1,4 +1,4 @@
-<h1>Вход в Попечительский совет</h1>
+<h1>Вход в приложение</h1>
 <p id="tg-status" class="res-meta">Проверяем доступ через Telegram…</p>
 <noscript><p class="res-flash res-flash--error">Нужен включённый JavaScript.</p></noscript>
 

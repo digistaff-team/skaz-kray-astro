@@ -132,7 +132,12 @@ final class TgAuthController
     /** @return array{id:string,first_name:?string,last_name:?string,username:?string}|null */
     private function verify(): ?array
     {
-        $token = (string) (Config::get('telegram')['bot_token'] ?? '');
+        $tg = Config::get('telegram');
+        // Совет может жить на СВОЁМ боте (нужно, чтобы ярлык «На главный экран»
+        // назывался «Попечительский совет» и открывал /sovet, а не приложение
+        // жителей). Пока отдельный токен не задан — проверяем общим ботом жителей.
+        $token = (string) ($tg['council_bot_token'] ?? '');
+        if ($token === '') { $token = (string) ($tg['bot_token'] ?? ''); }
         return TelegramWebApp::verify((string) ($_POST['initData'] ?? ''), $token);
     }
 

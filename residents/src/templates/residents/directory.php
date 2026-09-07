@@ -99,7 +99,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
         <section class="res-hh<?= $open ? ' res-hh--open' : '' ?>">
             <button type="button" class="res-hh-head" aria-expanded="<?= $open ? 'true' : 'false' ?>">
                 <span class="res-hh-title">
-                    <b class="res-hh-name"><?= View::e($h['estate_name'] !== '' ? $h['estate_name'] : 'Поместье') ?></b>
+                    <b class="res-hh-name"><?= View::e(\SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['people'][0]['full_name'] ?? null)) ?></b>
                     <span class="res-hh-meta">
                         <?php $mp = []; if ($h['plot'] !== '') { $mp[] = 'участок ' . $gnum . '-' . $h['plot']; } ?>
                         <?= View::e(implode(' · ', $mp)) ?>

@@ -9,14 +9,9 @@
     <p class="sovet-whoami">Вы вошли как <strong><?= View::e($me['name']) ?></strong> — <?= View::e(CouncilData::roleLabel($me)) ?></p>
 <?php endif; ?>
 
-<div class="sovet-actions">
-    <a class="res-btn sovet-action" href="/sovet/zadachi"><span>Текущие задачи</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>
-    <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya"><span>Направления работы</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
-</div>
-
 <div class="res-card">
     <div class="sovet-card-head">
-        <h2>Ближайшее собрание</h2>
+        <h2>Встреча Совета</h2>
         <?php if (!empty($canEditMeeting)): ?>
             <a class="res-link-btn" href="/sovet/vstrecha">Редактировать</a>
         <?php endif; ?>
@@ -47,6 +42,11 @@
             <button class="res-btn" type="submit">Передать дежурство</button>
         </form>
     <?php endif; ?>
+</div>
+
+<div class="sovet-actions">
+    <a class="res-btn sovet-action" href="/sovet/zadachi"><span>Текущие задачи</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>
+    <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya"><span>Направления работы</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
 </div>
 
 <div class="res-card">

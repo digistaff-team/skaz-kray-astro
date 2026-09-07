@@ -5,15 +5,10 @@
 <div class="res-card">
     <form class="res-form" method="post" action="/sovet/vstrecha">
         <?= Csrf::field() ?>
-        <label>Дата и время начала
+        <label>Дата и время
             <input type="datetime-local" name="starts_at"
                    value="<?= View::e($meeting['startsAt'] ?? '') ?>" required>
             <?php if (!empty($errors['starts_at'])): ?><span class="sovet-err"><?= View::e($errors['starts_at']) ?></span><?php endif; ?>
-        </label>
-        <label>Окончание (по желанию)
-            <input type="datetime-local" name="ends_at"
-                   value="<?= View::e($meeting['endsAt'] ?? '') ?>">
-            <?php if (!empty($errors['ends_at'])): ?><span class="sovet-err"><?= View::e($errors['ends_at']) ?></span><?php endif; ?>
         </label>
         <label>Место
             <input type="text" name="place" maxlength="200"

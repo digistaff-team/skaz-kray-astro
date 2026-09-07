@@ -28,7 +28,6 @@ final class MeetingController
         $startsAt = (string) ($meeting['startsAt'] ?? '');
         if ($startsAt === '' || self::isPastDay($startsAt)) {
             $meeting['startsAt'] = self::upcomingMonday('18:00');
-            $meeting['endsAt']   = self::upcomingMonday('20:00');
         }
         View::render('council/meeting_edit', [
             'meeting'     => $meeting,
@@ -43,21 +42,15 @@ final class MeetingController
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
 
         $startsRaw     = trim($_POST['starts_at'] ?? '');
-        $endsRaw       = trim($_POST['ends_at'] ?? '');
         $place         = trim($_POST['place'] ?? '');
         $dutyChair     = trim($_POST['duty_chair'] ?? '');
         $dutySecretary = trim($_POST['duty_secretary'] ?? '');
         $agenda        = (string) ($_POST['agenda'] ?? '');
 
         $startDb = self::parseLocal($startsRaw);
-        $endDb   = self::parseLocal($endsRaw);
 
         $errors = [];
-        if ($startDb === null)                       { $errors['starts_at'] = 'Укажите дату и время начала.'; }
-        if ($endsRaw !== '' && $endDb === null)      { $errors['ends_at'] = 'Неверная дата и время окончания.'; }
-        if ($startDb !== null && $endDb !== null && strtotime($endDb) < strtotime($startDb)) {
-            $errors['ends_at'] = 'Окончание не может быть раньше начала.';
-        }
+        if ($startDb === null)                       { $errors['starts_at'] = 'Укажите дату и время.'; }
         if (!Validator::length($place, 2, 200))      { $errors['place'] = 'Место: 2–200 символов.'; }
         if ($dutyChair !== '' && !Validator::length($dutyChair, 2, 160))         { $errors['duty_chair'] = 'До 160 символов.'; }
         if ($dutySecretary !== '' && !Validator::length($dutySecretary, 2, 160)) { $errors['duty_secretary'] = 'До 160 символов.'; }
@@ -65,7 +58,7 @@ final class MeetingController
         if ($errors) {
             View::render('council/meeting_edit', [
                 'meeting' => [
-                    'startsAt' => $startsRaw, 'endsAt' => $endsRaw, 'place' => $place,
+                    'startsAt' => $startsRaw, 'place' => $place,
                     'dutyChair' => $dutyChair, 'dutySecretary' => $dutySecretary, 'agenda' => [],
                 ],
                 'agendaText' => $agenda,
@@ -74,7 +67,7 @@ final class MeetingController
             return;
         }
 
-        $this->meeting->update($startDb, $endDb, $place, $dutyChair, $dutySecretary, $agenda);
+        $this->meeting->update($startDb, null, $place, $dutyChair, $dutySecretary, $agenda);
         Flash::set('success', 'Информация о ближайшем собрании обновлена.');
         header('Location: /sovet');
     }

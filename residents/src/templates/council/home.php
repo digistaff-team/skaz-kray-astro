@@ -55,12 +55,10 @@
         <?php foreach ($documents as $d): ?>
             <li>
                 <a href="<?= View::e($d['href']) ?>" target="_blank" rel="noopener"><?= View::e($d['title']) ?></a>
-                <span class="sovet-kind"><?= View::e($d['kind']) ?></span>
             </li>
         <?php endforeach; ?>
         <li>
             <a href="/sovet/buhgalteriya">Бюджет Общего дома — приход, расход, остатки</a>
-            <span class="sovet-kind">Бухгалтерия</span>
         </li>
     </ul>
 </div>

@@ -133,8 +133,8 @@ body.map-open { overflow: hidden; }
 .sovet-kind { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #eef4ef; color: var(--green); }
 .sovet-meet-date { font-weight: 700; margin: .2rem 0; }
 .sovet-h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
-.sovet-agenda { margin: 0; padding-left: 1.2rem; }
-.sovet-agenda li { margin: .3rem 0; }
+.sovet-agenda { margin: 0; }
+.sovet-agenda p { margin: .3rem 0; }
 .sovet-roster { list-style: none; padding: 0; margin: .6rem 0 0; }
 .sovet-roster li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-roster li:last-child { border-bottom: 0; }

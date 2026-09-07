@@ -40,11 +40,11 @@
 
     <dialog id="agenda-dialog" class="sovet-dialog">
         <h3 class="sovet-h3">Повестка встречи</h3>
-        <ol class="sovet-agenda">
+        <div class="sovet-agenda">
             <?php foreach ($nextMeeting['agenda'] as $item): ?>
-                <li><?= View::e($item) ?></li>
+                <p><?= View::e($item) ?></p>
             <?php endforeach; ?>
-        </ol>
+        </div>
         <form method="dialog" class="sovet-dialog-actions">
             <button class="res-btn res-btn--ghost" type="submit">Закрыть</button>
         </form>

@@ -18,11 +18,14 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use SkazResidents\{Config, Database, TelegramBot};
+use SkazResidents\{Config, Database, TelegramBot, Env};
 
 $dryRun = in_array('--dry-run', $argv, true);
 $force  = in_array('--force', $argv, true);
 
+// Секреты (SKAZKRAY_BOT_TOKEN) — из config/.env, как в bootstrap.php веб-части.
+// В CLI bootstrap не подключается, поэтому грузим .env здесь явно.
+Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
 Database::connect(Config::get('db'));
 $pdo = Database::pdo();

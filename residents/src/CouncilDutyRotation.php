@@ -76,8 +76,8 @@ final class CouncilDutyRotation
         // Новая встреча: та же площадка, новый дежурный. Секретарь НЕ ротируется.
         $meetingRepo->update($newStartsDb, null, (string) ($m['place'] ?? ''), $chair, (string) ($m['dutySecretary'] ?? ''), '');
         $meetingRepo->setRotationIndex($newIdx);
-        // Повестка: обсуждённые пункты убираем, необсуждённые переходят дальше.
-        (new CouncilAgendaRepository())->clearDiscussed();
+        // Повестка: обсуждённые убираем, необсуждённые переходят и помечаются «с прошлой встречи».
+        (new CouncilAgendaRepository())->rollOver();
 
         $members = new CouncilMemberRepository();
         if ($member = $members->findByName($chair)) {

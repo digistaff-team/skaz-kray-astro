@@ -31,7 +31,7 @@
         <?php else: ?>
             <div class="sovet-agenda">
                 <?php foreach ($agendaItems as $it): ?>
-                    <p<?= !empty($it['discussed']) ? ' class="is-discussed"' : '' ?>><?= View::e($it['title']) ?><?php if ($it['author'] !== ''): ?> <span class="sovet-agenda-author">— <?= View::e($it['author']) ?></span><?php endif; ?></p>
+                    <p<?= !empty($it['discussed']) ? ' class="is-discussed"' : '' ?>><?= View::e($it['title']) ?><?php if ($it['author'] !== ''): ?> <span class="sovet-agenda-author">— <?= View::e($it['author']) ?></span><?php endif; ?><?php if (!empty($it['carried_over'])): ?> <span class="sovet-agenda-carried">с прошлой встречи</span><?php endif; ?></p>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

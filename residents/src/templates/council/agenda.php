@@ -26,6 +26,7 @@
             <div class="sovet-agenda-body">
                 <span class="sovet-agenda-text"><?= View::e($it['title']) ?></span>
                 <?php if ($it['author'] !== ''): ?><span class="sovet-agenda-author">— <?= View::e($it['author']) ?></span><?php endif; ?>
+                <?php if (!empty($it['carried_over'])): ?><span class="sovet-agenda-carried">с прошлой встречи</span><?php endif; ?>
                 <?php if ($disc): ?><span class="sovet-agenda-badge">обсуждено</span><?php endif; ?>
             </div>
             <div class="sovet-agenda-actions">

@@ -77,9 +77,13 @@ final class CouncilAgendaRepository
         }
     }
 
-    /** При переносе встречи: обсуждённые удалить, необсуждённые оставить. */
-    public function clearDiscussed(): void
+    /**
+     * При переносе встречи: обсуждённые удалить, необсуждённые оставить и
+     * пометить как перенесённые с прошлой встречи (carried_over = 1).
+     */
+    public function rollOver(): void
     {
         $this->db->exec('DELETE FROM council_agenda_items WHERE discussed = 1');
+        $this->db->exec('UPDATE council_agenda_items SET carried_over = 1');
     }
 }

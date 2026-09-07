@@ -3,6 +3,7 @@ $pages = (int) ceil($total / $perPage);
 $mine = $mine ?? [];
 $uid = Auth::id();
 ?>
+<a class="res-back" href="/poselenie/app">← На главную</a>
 <div class="tool-head">
     <h1>Дневник</h1>
     <a class="res-btn" href="/poselenie/dnevnik/novaya">Новая запись</a>

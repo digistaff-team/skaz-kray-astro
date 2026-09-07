@@ -26,15 +26,17 @@
 
 <div class="res-card">
     <h2>Список аккаунтов</h2>
+    <p class="res-meta">«Дежурный председатель» — переходящая роль, назначается по внешнему графику дежурств. Текущий дежурный (и любой администратор) может редактировать карточку ближайшего собрания.</p>
     <table class="sovet-members">
-        <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>Статус</th><th></th></tr></thead>
+        <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>Статус</th><th>Дежурный</th><th></th></tr></thead>
         <tbody>
-        <?php foreach ($members as $m): $mid = (int) $m['id']; ?>
+        <?php foreach ($members as $m): $mid = (int) $m['id']; $isDuty = !empty($m['is_duty_chair']); ?>
             <tr>
                 <td><?= View::e($m['name']) ?></td>
                 <td><?= View::e($m['email']) ?></td>
                 <td><?= $m['role'] === 'admin' ? 'администратор' : 'член совета' ?></td>
                 <td><?= $m['status'] === 'active' ? 'активен' : 'заблокирован' ?></td>
+                <td><?= $isDuty ? '<strong>✓ дежурит</strong>' : '' ?></td>
                 <td class="sovet-member-actions">
                     <form method="post" action="/sovet/upravlenie/sbros-parolya">
                         <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
@@ -44,6 +46,17 @@
                         <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
                         <button class="res-link-btn<?= $m['status'] === 'active' ? ' sovet-danger' : '' ?>" type="submit"><?= $m['status'] === 'active' ? 'заблокировать' : 'разблокировать' ?></button>
                     </form>
+                    <?php if ($isDuty): ?>
+                        <form method="post" action="/sovet/upravlenie/dezhurnyy">
+                            <?= Csrf::field() ?><input type="hidden" name="id" value="0">
+                            <button class="res-link-btn" type="submit">снять дежурство</button>
+                        </form>
+                    <?php elseif ($m['status'] === 'active'): ?>
+                        <form method="post" action="/sovet/upravlenie/dezhurnyy">
+                            <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
+                            <button class="res-link-btn" type="submit">сделать дежурным</button>
+                        </form>
+                    <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach; ?>

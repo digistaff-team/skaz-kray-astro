@@ -99,6 +99,32 @@ final class AdminController
         header('Location: /sovet/upravlenie');
     }
 
+    /**
+     * Назначить текущего Дежурного председателя (роль переходящая по графику).
+     * id=0 — снять дежурство со всех. Только активный член может дежурить.
+     */
+    public function setDutyChair(): void
+    {
+        $this->guard();
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id === 0) {
+            $this->members->setDutyChair(0);
+            Flash::set('info', 'Дежурный председатель снят — сейчас никто не назначен.');
+            header('Location: /sovet/upravlenie');
+            return;
+        }
+        $member = $this->members->findById($id);
+        if (!$member) {
+            Flash::set('error', 'Член совета не найден.');
+        } elseif ($member['status'] !== 'active') {
+            Flash::set('error', 'Нельзя назначить дежурным заблокированный аккаунт.');
+        } else {
+            $this->members->setDutyChair($id);
+            Flash::set('success', "Дежурный председатель: {$member['name']}. Теперь он может редактировать карточку ближайшего собрания.");
+        }
+        header('Location: /sovet/upravlenie');
+    }
+
     private function generatePassword(): string
     {
         return bin2hex(random_bytes(5)); // 10 hex-символов (~40 бит), удобно продиктовать

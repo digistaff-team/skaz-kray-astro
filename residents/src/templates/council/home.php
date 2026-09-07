@@ -11,7 +11,12 @@
 </div>
 
 <div class="res-card">
-    <h2>Ближайшее собрание</h2>
+    <div class="sovet-card-head">
+        <h2>Ближайшее собрание</h2>
+        <?php if (!empty($canEditMeeting)): ?>
+            <a class="res-link-btn" href="/sovet/vstrecha">Редактировать</a>
+        <?php endif; ?>
+    </div>
     <p class="sovet-meet-date"><?= View::e($nextMeeting['date']) ?></p>
     <p class="res-meta"><?= View::e($nextMeeting['place']) ?></p>
     <p class="res-meta">

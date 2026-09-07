@@ -62,4 +62,40 @@ final class CouncilMemberRepository
             'SELECT * FROM council_members ORDER BY created_at ASC'
         )->fetchAll();
     }
+
+    /** Является ли аккаунт текущим Дежурным председателем. */
+    public function isDutyChair(int $id): bool
+    {
+        $st = $this->db->prepare('SELECT is_duty_chair FROM council_members WHERE id = ?');
+        $st->execute([$id]);
+        return (bool) $st->fetchColumn();
+    }
+
+    public function findDutyChair(): ?array
+    {
+        $row = $this->db->query(
+            'SELECT * FROM council_members WHERE is_duty_chair = 1 LIMIT 1'
+        )->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * Назначить дежурного председателя. Роль переходящая и единоличная —
+     * сбрасываем флаг у всех и ставим одному (в транзакции). id=0 — снять со всех.
+     */
+    public function setDutyChair(int $id): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $this->db->exec('UPDATE council_members SET is_duty_chair = 0');
+            if ($id > 0) {
+                $st = $this->db->prepare('UPDATE council_members SET is_duty_chair = 1 WHERE id = ?');
+                $st->execute([$id]);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
 }

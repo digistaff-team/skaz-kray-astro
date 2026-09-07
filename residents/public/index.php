@@ -25,6 +25,7 @@ use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
 use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
 use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController;
+use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
@@ -208,6 +209,11 @@ $router->get('/sovet', [$cPages, 'home']);
 $router->get('/sovet/', [$cPages, 'home']);
 $router->get('/sovet/napravleniya', [$cPages, 'directions']);
 
+// Редактирование карточки ближайшего собрания — дежурный председатель или админ.
+$cMeeting = new CouncilMeetingController();
+$router->get('/sovet/vstrecha', [$cMeeting, 'showEdit']);
+$router->post('/sovet/vstrecha', [$cMeeting, 'save']);
+
 $cTasks = new CouncilTaskController();
 $router->get('/sovet/zadachi', [$cTasks, 'index']);
 $router->post('/sovet/zadachi/novaya', [$cTasks, 'create']);
@@ -226,6 +232,7 @@ $router->get('/sovet/upravlenie', [$cAdmin, 'index']);
 $router->post('/sovet/upravlenie/dobavit', [$cAdmin, 'add']);
 $router->post('/sovet/upravlenie/sbros-parolya', [$cAdmin, 'resetPassword']);
 $router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
+$router->post('/sovet/upravlenie/dezhurnyy', [$cAdmin, 'setDutyChair']);
 
 // Бухгалтерия совета — операции бюджета (все члены) + справочник статей (админ).
 $cLedger = new CouncilLedgerController();

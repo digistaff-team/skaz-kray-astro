@@ -31,6 +31,9 @@ return [
     // в локальный uploads (фолбэк).
     'tg_media'     => ['bot_token' => '', 'chat_id' => ''],
     'base_url'     => 'https://skaz-kray.ru',
+    // Ссылка, открывающая раздел Совета как Telegram Mini App — для рассылки
+    // уведомления о встрече (bin/council-meeting-notify.php).
+    'council_app_link' => 'https://t.me/SkazKray_bot/sovet',
     'uploads_dir'  => __DIR__ . '/../public/uploads',   // куда пишем файлы
     'uploads_url'  => '/poselenie/uploads',             // как отдаём (nginx)
     'session_name' => 'skazres',

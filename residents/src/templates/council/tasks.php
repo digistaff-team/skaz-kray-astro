@@ -65,7 +65,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <?php foreach ($active as $t): $id = (int) $t['id']; ?>
     <details class="res-card sovet-task">
         <summary class="sovet-task-head">
-            <span class="sovet-pri <?= $priorityClass($t['priority']) ?>"><?= $t['priority'] === 'высокая' ? '🔥 ' : '' ?><?= View::e($t['priority']) ?></span>
+            <span class="sovet-pri-dot <?= $priorityClass($t['priority']) ?>" title="Приоритет: <?= View::e($t['priority']) ?>" aria-label="Приоритет: <?= View::e($t['priority']) ?>"></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
             <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($statusLabel($t['status'])) ?></span>
             <span class="sovet-task-assignee"><?= $t['assignee'] !== '' ? '👤 ' . View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span>

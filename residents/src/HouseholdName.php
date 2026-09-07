@@ -28,7 +28,8 @@ final class HouseholdName
         }
 
         if ($surname === '') {
-            return $estate !== '' ? 'Поместье ' . $estate : 'Поместье';
+            // Нет главы (коммунальные/свободные участки) — название как есть.
+            return $estate !== '' ? $estate : 'Поместье';
         }
         if ($estate === '') {
             return 'Поместье ' . $surname;

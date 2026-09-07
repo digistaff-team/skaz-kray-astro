@@ -76,6 +76,18 @@ final class CouncilMeetingRepository
         $st->execute([$name]);
     }
 
+    /** Текущая позиция в очереди ротации дежурного. */
+    public function rotationIndex(): int
+    {
+        $v = $this->db->query('SELECT rotation_index FROM council_meeting WHERE id = 1')->fetchColumn();
+        return $v === false ? 0 : (int) $v;
+    }
+
+    public function setRotationIndex(int $i): void
+    {
+        $this->db->prepare('UPDATE council_meeting SET rotation_index = ? WHERE id = 1')->execute([$i]);
+    }
+
     /** Повестка как единый текст (для textarea в форме). */
     public function agendaText(): string
     {

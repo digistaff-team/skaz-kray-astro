@@ -22,8 +22,15 @@ final class MeetingController
     public function showEdit(): void
     {
         $this->requireEditor();
+        $meeting = $this->meeting->get();
+        // Если дата ещё не выбрана — предлагаем ближайший будущий понедельник
+        // (по UTC+3): сегодня-понедельник → сегодня, иначе следующий понедельник.
+        if (($meeting['startsAt'] ?? '') === '') {
+            $meeting['startsAt'] = self::upcomingMonday('18:00');
+            $meeting['endsAt']   = self::upcomingMonday('20:00');
+        }
         View::render('council/meeting_edit', [
-            'meeting'     => $this->meeting->get(),
+            'meeting'     => $meeting,
             'agendaText'  => $this->meeting->agendaText(),
             'errors'      => [],
         ], 'Редактирование встречи', self::LAYOUT);
@@ -34,14 +41,22 @@ final class MeetingController
         $this->requireEditor();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
 
-        $date          = trim($_POST['date'] ?? '');
+        $startsRaw     = trim($_POST['starts_at'] ?? '');
+        $endsRaw       = trim($_POST['ends_at'] ?? '');
         $place         = trim($_POST['place'] ?? '');
         $dutyChair     = trim($_POST['duty_chair'] ?? '');
         $dutySecretary = trim($_POST['duty_secretary'] ?? '');
         $agenda        = (string) ($_POST['agenda'] ?? '');
 
+        $startDb = self::parseLocal($startsRaw);
+        $endDb   = self::parseLocal($endsRaw);
+
         $errors = [];
-        if (!Validator::length($date, 3, 160))       { $errors['date'] = 'Дата и время: 3–160 символов.'; }
+        if ($startDb === null)                       { $errors['starts_at'] = 'Укажите дату и время начала.'; }
+        if ($endsRaw !== '' && $endDb === null)      { $errors['ends_at'] = 'Неверная дата и время окончания.'; }
+        if ($startDb !== null && $endDb !== null && strtotime($endDb) < strtotime($startDb)) {
+            $errors['ends_at'] = 'Окончание не может быть раньше начала.';
+        }
         if (!Validator::length($place, 2, 200))      { $errors['place'] = 'Место: 2–200 символов.'; }
         if ($dutyChair !== '' && !Validator::length($dutyChair, 2, 160))         { $errors['duty_chair'] = 'До 160 символов.'; }
         if ($dutySecretary !== '' && !Validator::length($dutySecretary, 2, 160)) { $errors['duty_secretary'] = 'До 160 символов.'; }
@@ -49,8 +64,8 @@ final class MeetingController
         if ($errors) {
             View::render('council/meeting_edit', [
                 'meeting' => [
-                    'date' => $date, 'place' => $place, 'dutyChair' => $dutyChair,
-                    'dutySecretary' => $dutySecretary, 'agenda' => [],
+                    'startsAt' => $startsRaw, 'endsAt' => $endsRaw, 'place' => $place,
+                    'dutyChair' => $dutyChair, 'dutySecretary' => $dutySecretary, 'agenda' => [],
                 ],
                 'agendaText' => $agenda,
                 'errors'     => $errors,
@@ -58,9 +73,29 @@ final class MeetingController
             return;
         }
 
-        $this->meeting->update($date, $place, $dutyChair, $dutySecretary, $agenda);
+        $this->meeting->update($startDb, $endDb, $place, $dutyChair, $dutySecretary, $agenda);
         Flash::set('success', 'Информация о ближайшем собрании обновлена.');
         header('Location: /sovet');
+    }
+
+    /** Ближайший будущий понедельник (UTC+3) как значение для datetime-local. */
+    private static function upcomingMonday(string $time): string
+    {
+        $dt = new \DateTime('now', new \DateTimeZone('Europe/Moscow'));
+        $dow = (int) $dt->format('N');       // 1=Пн … 7=Вс
+        $add = $dow === 1 ? 0 : (8 - $dow);  // Пн → сегодня, иначе до следующего Пн
+        if ($add > 0) { $dt->modify("+{$add} day"); }
+        [$h, $m] = array_map('intval', explode(':', $time));
+        $dt->setTime($h, $m);
+        return $dt->format('Y-m-d\TH:i');
+    }
+
+    /** datetime-local ('Y-m-dTH:i') → формат БД ('Y-m-d H:i:s'), либо null. */
+    private static function parseLocal(string $local): ?string
+    {
+        if ($local === '') { return null; }
+        $ts = strtotime($local);
+        return $ts === false ? null : date('Y-m-d H:i:s', $ts);
     }
 
     /**

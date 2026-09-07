@@ -87,6 +87,7 @@ $router->get('/poselenie/moye-pomestie', [$profile, 'index']);
 $router->get('/poselenie/moye-pomestie/vybor', [$profile, 'showClaim']);
 $router->get('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'showClaimConfirm']);
 $router->post('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'claim']);
+$router->post('/poselenie/moye-pomestie/sovladelec/udalit', [$profile, 'removeOwner']);
 $router->get('/poselenie/moye-pomestie/nazvanie', [$profile, 'showEditEstate']);
 $router->post('/poselenie/moye-pomestie/nazvanie', [$profile, 'updateEstate']);
 $router->get('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'showAddMember']);

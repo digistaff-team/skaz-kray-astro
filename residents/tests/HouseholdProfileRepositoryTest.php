@@ -24,6 +24,8 @@ final class HouseholdProfileRepositoryTest extends TestCase
             (3,'(3) Ягодная','1','Плейсхолдер',8,2)");
         $this->pdo->exec("INSERT INTO residents (household_id,full_name,sort) VALUES
             (1,'Крылов Виталий',0),(1,'Крылова Юлия',1),(2,'Чужой Человек',0)");
+        // Совладельцы (как их создаёт бэкфилл миграции из households.family_id).
+        $this->pdo->exec("INSERT INTO household_owners (household_id,family_id) VALUES (1,7),(3,8)");
         $this->repo = new HouseholdProfileRepository();
     }
 
@@ -149,5 +151,72 @@ final class HouseholdProfileRepositoryTest extends TestCase
     {
         $this->repo->updateHouseholdEstate(1, 'Новое имя');
         $this->assertSame('Новое имя', $this->repo->householdById(1)['estate_name']);
+    }
+
+    // ── Совместное владение ─────────────────────────────────────────────────
+
+    private function addActiveFamily(int $id): void
+    {
+        $this->pdo->exec("INSERT INTO families (id,email,password_hash,name,status,role) VALUES
+            ($id,'f$id@sk.ru','H','Аккаунт $id','active','resident')");
+    }
+
+    public function test_claim_creates_owner_row(): void
+    {
+        // family 7 (владелец 1) заявляет свободное поместье 2.
+        $this->assertTrue($this->repo->claim(2, 7));
+        $this->assertSame(2, (int) $this->repo->householdByFamily(7)['id']); // резолв через owners
+        $this->assertTrue($this->repo->isOwner(2, 7));
+        $this->assertFalse($this->repo->isOwner(1, 7));                       // покинул прежнее
+        $this->assertCount(1, $this->repo->owners(2));
+    }
+
+    public function test_join_as_owner_adds_coowner_keeping_primary(): void
+    {
+        $this->addActiveFamily(9);
+        $this->repo->joinAsOwner(1, 9);                       // 9 присоединяется к занятому 1
+        $this->assertTrue($this->repo->isOwner(1, 9));
+        $this->assertSame(1, (int) $this->repo->householdByFamily(9)['id']);
+        $this->assertSame(7, (int) $this->repo->householdById(1)['family_id']); // первичный не изменился
+        $owners = $this->repo->owners(1);
+        $this->assertCount(2, $owners);
+        $this->assertSame(1, (int) $owners[0]['is_primary']);  // первичный — первым
+        $this->assertSame(7, (int) $owners[0]['family_id']);
+    }
+
+    public function test_join_moves_account_from_previous_home(): void
+    {
+        // family 8 владел 3; присоединяется совладельцем к 1 — 3 освобождается.
+        $this->repo->joinAsOwner(1, 8);
+        $this->assertSame(1, (int) $this->repo->householdByFamily(8)['id']);
+        $this->assertFalse($this->repo->isOwner(3, 8));
+        $this->assertNull($this->repo->householdById(3)['family_id']);
+    }
+
+    public function test_remove_coowner(): void
+    {
+        $this->addActiveFamily(9);
+        $this->repo->joinAsOwner(1, 9);
+        $this->repo->removeOwner(1, 9);
+        $this->assertFalse($this->repo->isOwner(1, 9));
+        $this->assertNull($this->repo->householdByFamily(9));
+        $this->assertSame(7, (int) $this->repo->householdById(1)['family_id']); // первичный цел
+    }
+
+    public function test_remove_primary_promotes_next(): void
+    {
+        $this->addActiveFamily(9);
+        $this->repo->joinAsOwner(1, 9);
+        $this->repo->removeOwner(1, 7);                        // убрали первичного
+        $this->assertFalse($this->repo->isOwner(1, 7));
+        $this->assertSame(9, (int) $this->repo->householdById(1)['family_id']); // 9 стал первичным
+        $this->assertSame(1, (int) $this->repo->householdByFamily(9)['id']);
+    }
+
+    public function test_remove_last_owner_clears_primary(): void
+    {
+        $this->repo->removeOwner(1, 7);                        // единственный владелец
+        $this->assertCount(0, $this->repo->owners(1));
+        $this->assertNull($this->repo->householdById(1)['family_id']);
     }
 }

@@ -40,6 +40,8 @@ final class ProfileController
             'members'   => $members,
             'cars'      => $cars,
             'pets'      => $pets,
+            'owners'    => $this->repo->owners((int) $h['id']),
+            'uid'       => Auth::id(),
         ], 'Наше поместье');
     }
 
@@ -59,9 +61,15 @@ final class ProfileController
         if ($this->repo->householdByFamily(Auth::id())) { header('Location: /poselenie/moye-pomestie'); return; }
         $id = (int) $p['id'];
         $h = $this->repo->householdById($id);
-        if (!$h || !$this->repo->isClaimable($id)) { $this->notFound('Поместье недоступно для выбора'); }
+        if (!$h) { $this->notFound('Поместье не найдено'); }
+        // Занятое поместье можно не привязать, а присоединиться к нему совладельцем.
+        $occupied = !$this->repo->isClaimable($id);
         // ПДн жителей не показываем — подтверждаем вводом фамилии (если жители есть).
-        View::render('profile/claim-confirm', ['household' => $h, 'hasMembers' => $this->repo->members($id) !== []], 'Подтверждение поместья');
+        View::render('profile/claim-confirm', [
+            'household'  => $h,
+            'hasMembers' => $this->repo->members($id) !== [],
+            'occupied'   => $occupied,
+        ], 'Подтверждение поместья');
     }
 
     public function claim(array $p): void
@@ -71,8 +79,8 @@ final class ProfileController
         if ($this->repo->householdByFamily(Auth::id())) { header('Location: /poselenie/moye-pomestie'); return; }
         $id = (int) $p['id'];
         $h = $this->repo->householdById($id);
-        if (!$h || !$this->repo->isClaimable($id)) {
-            Flash::set('error', 'Это поместье уже привязано к другому аккаунту. Обратитесь к редактору поселения.');
+        if (!$h) {
+            Flash::set('error', 'Поместье не найдено.');
             header('Location: /poselenie/moye-pomestie/vybor');
             return;
         }
@@ -85,15 +93,47 @@ final class ProfileController
                 return;
             }
         }
-        if (!$this->repo->claim($id, Auth::id())) {
-            Flash::set('error', 'Это поместье уже привязано к другому аккаунту. Обратитесь к редактору поселения.');
-            header('Location: /poselenie/moye-pomestie/vybor');
+        if ($this->repo->isClaimable($id)) {
+            // Свободное поместье — становимся первичным владельцем.
+            if (!$this->repo->claim($id, Auth::id())) {
+                Flash::set('error', 'Не удалось привязать поместье — попробуйте ещё раз.');
+                header('Location: /poselenie/moye-pomestie/vybor');
+                return;
+            }
+            // Запоминаем фамилию, по которой привязались, — для показа «Tg» у нужного жителя.
+            if ($surname !== '') { $this->repo->setClaimSurname($id, $surname); }
+            Flash::set('success', 'Поместье привязано к вашему аккаунту — теперь можно проверять и править данные.');
+        } else {
+            // Занятое поместье — присоединяемся к семье как совладелец.
+            $this->repo->joinAsOwner($id, Auth::id());
+            Flash::set('success', 'Вы добавлены как совладелец поместья — теперь можно вести данные вместе с семьёй.');
+        }
+        header('Location: /poselenie/moye-pomestie');
+    }
+
+    // ── Совместное владение ─────────────────────────────────────────────────
+    /** Убрать совладельца (в т.ч. себя). Доступно любому владельцу этого поместья. */
+    public function removeOwner(): void
+    {
+        Auth::requireLogin();
+        $this->csrfOrDie();
+        $h = $this->myHouseholdOr404();
+        $familyId = (int) ($_POST['family_id'] ?? 0);
+        $ownerIds = array_map(static fn(array $o): int => (int) $o['family_id'], $this->repo->owners((int) $h['id']));
+        if (!in_array($familyId, $ownerIds, true)) {
+            Flash::set('error', 'Такого совладельца нет.');
+            header('Location: /poselenie/moye-pomestie');
             return;
         }
-        // Запоминаем фамилию, по которой привязались, — для показа «Tg» у нужного жителя.
-        if ($surname !== '') { $this->repo->setClaimSurname($id, $surname); }
-        Flash::set('success', 'Поместье привязано к вашему аккаунту — теперь можно проверять и править данные.');
-        header('Location: /poselenie/moye-pomestie');
+        if (count($ownerIds) <= 1) {
+            Flash::set('error', 'Нельзя убрать единственного владельца поместья.');
+            header('Location: /poselenie/moye-pomestie');
+            return;
+        }
+        $self = $familyId === Auth::id();
+        $this->repo->removeOwner((int) $h['id'], $familyId);
+        Flash::set('success', $self ? 'Вы вышли из совместного владения поместьем.' : 'Совладелец убран.');
+        header('Location: ' . ($self ? '/poselenie/app' : '/poselenie/moye-pomestie'));
     }
 
     // ── Название поместья ───────────────────────────────────────────────────

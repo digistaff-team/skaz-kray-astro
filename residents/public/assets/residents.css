@@ -117,6 +117,8 @@ body.map-open { overflow: hidden; }
 .sovet-dir-head { display: flex; flex-direction: column; gap: .15rem; }
 .sovet-dir-head .sovet-eyebrow { display: block; }
 .sovet-dir-head h2 { margin: 0; }
+.sovet-meet > summary > .sovet-meet-info { flex: 1; }
+.sovet-meet .sovet-h3 { margin-bottom: 0; }
 
 .sovet-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; align-items: start; }
 @media (max-width: 760px) { .sovet-cols { grid-template-columns: 1fr; } }
@@ -417,6 +419,8 @@ body.map-open { overflow: hidden; }
   .sovet-doclist a { font-size: .8rem; }
   /* Названия работ в направлениях — мельче на мобильном */
   .sovet-dir-title { font-size: .8rem; }
+  /* Повестка встречи — мельче на мобильном */
+  .sovet-agenda { font-size: .8rem; }
 
   /* Строки списков — комфортнее для пальца */
   .sovet-doclist li, .sovet-roster li { min-height: 52px; }

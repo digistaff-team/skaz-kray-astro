@@ -37,14 +37,12 @@ final class CouncilData
     public static function nextMeeting(): array
     {
         return [
-            'date'          => '17 августа 2026, 18:00–20:00',
+            'date'          => '7 сентября 2026, 18:00–20:00',
             'place'         => 'Сказочный Терем, 1-й этаж',
-            'dutyChair'     => 'Екатерина Шульженко',
+            'dutyChair'     => 'Наталья Нецветова',
             'dutySecretary' => 'Александр Бобков',
             'agenda'        => [
-                'Лимиты по использованию интернета в Тереме (вопрос перенесён с прошлой встречи)',
-                'Достройка второго здания на территории Терема',
-                'Разное',
+                'В процессе формирования',
             ],
         ];
     }
@@ -57,15 +55,6 @@ final class CouncilData
             ['title' => 'Общие правила пользования Теремом',        'kind' => 'Правила',   'href' => 'https://docs.google.com/document/d/1dTYZLmwyR6KIe74Znr1DPbdQAdL_qiUfvelsn96eQME/edit?usp=drive_link'],
             ['title' => 'Распределение работ по содержанию Терема', 'kind' => 'Работы',    'href' => 'https://docs.google.com/spreadsheets/d/1pxFtEkk8grn80Jhha-xXywo3rCx7QrDbw4eFp0fjXn4/edit?usp=drive_link'],
             ['title' => 'Отчёт о доходах и расходах',              'kind' => 'Финансы',   'href' => 'https://docs.google.com/spreadsheets/d/1QAktBy29tafF0hCAWC8kdKpOInLi6yHQpttMoBxVXCM/edit?usp=sharing'],
-        ];
-    }
-
-    /** Ссылка на бухгалтерию Терема — только просмотр, без доступа к правкам. */
-    public static function accounting(): array
-    {
-        return [
-            'title' => 'Бухгалтерия Терема (только просмотр)',
-            'href'  => 'https://docs.google.com/spreadsheets/d/PLACEHOLDER-buhgalteriya',
         ];
     }
 

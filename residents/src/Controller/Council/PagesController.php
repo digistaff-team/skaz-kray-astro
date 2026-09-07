@@ -20,7 +20,6 @@ final class PagesController
         $directions = CouncilData::directions();
         View::render('council/home', [
             'documents'      => CouncilData::documents(),
-            'accounting'     => CouncilData::accounting(),
             'protocols'      => CouncilData::protocols(),
             'nextMeeting'    => CouncilData::nextMeeting(),
             'members'        => CouncilData::members(),

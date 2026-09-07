@@ -94,8 +94,10 @@ final class HouseholdProfileRepository
         $st = $this->db->prepare('SELECT full_name FROM residents WHERE household_id = ?');
         $st->execute([$householdId]);
         foreach ($st->fetchAll() as $r) {
-            $first = mb_strtolower(trim((string) explode(' ', trim((string) $r['full_name']))[0]));
-            if ($first !== '' && $first === $needle) { return true; }
+            // Сверяем с КАЖДЫМ словом ФИО — порядок бывает «Фамилия Имя» и «Имя Фамилия».
+            foreach (preg_split('/\s+/u', mb_strtolower(trim((string) $r['full_name']))) ?: [] as $tok) {
+                if ($tok !== '' && $tok === $needle) { return true; }
+            }
         }
         return false;
     }

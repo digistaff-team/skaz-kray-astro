@@ -176,20 +176,13 @@ body.map-open { overflow: hidden; }
 .sovet-task > summary::-webkit-details-marker { display: none; }
 .sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
 .sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; }
-<<<<<<< Updated upstream
 .sovet-task-assignee { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 .sovet-vacant { color: #c0392b; font-weight: 700; }
-.sovet-pri { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
-.sovet-pri--high { background: #fbe9e7; color: #c0392b; }
-.sovet-pri--mid { background: #eef4ef; color: var(--green); }
-.sovet-pri--low { background: #f2f2ee; color: var(--muted); }
-=======
 /* Приоритет — цветной кружок: зелёный (низкий) · оранжевый (средний) · красный (высокий) */
 .sovet-pri-dot { display: inline-block; width: .85rem; height: .85rem; border-radius: 50%; flex: none; }
 .sovet-pri-dot.sovet-pri--high { background: #d64531; }
 .sovet-pri-dot.sovet-pri--mid  { background: #e08a1e; }
 .sovet-pri-dot.sovet-pri--low  { background: #2e9e5b; }
->>>>>>> Stashed changes
 .sovet-st { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
 .sovet-st--new { background: #f2f2ee; color: var(--muted); }
 .sovet-st--progress { background: #fff6e5; color: var(--ochre); }

@@ -176,6 +176,8 @@ body.map-open { overflow: hidden; }
 .sovet-task > summary::-webkit-details-marker { display: none; }
 .sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
 .sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; }
+.sovet-task-assignee { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.sovet-vacant { color: #c0392b; font-weight: 700; }
 .sovet-pri { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
 .sovet-pri--high { background: #fbe9e7; color: #c0392b; }
 .sovet-pri--mid { background: #eef4ef; color: var(--green); }

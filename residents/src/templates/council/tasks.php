@@ -68,11 +68,12 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <span class="sovet-pri <?= $priorityClass($t['priority']) ?>"><?= $t['priority'] === 'высокая' ? '🔥 ' : '' ?><?= View::e($t['priority']) ?></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
             <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($statusLabel($t['status'])) ?></span>
+            <span class="sovet-task-assignee"><?= $t['assignee'] !== '' ? '👤 ' . View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span>
             <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>
         </summary>
 
         <p class="sovet-task-meta">
-            Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="res-meta">не назначен</span>' ?></strong>
+            Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
             · Автор: <?= $t['author'] !== '' ? View::e($t['author']) : '—' ?>
             · Подзадачи: <?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?>
             <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php endif; ?>

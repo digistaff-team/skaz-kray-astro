@@ -23,9 +23,10 @@ final class MeetingController
     {
         $this->requireEditor();
         $meeting = $this->meeting->get();
-        // Если дата ещё не выбрана — предлагаем ближайший будущий понедельник
-        // (по UTC+3): сегодня-понедельник → сегодня, иначе следующий понедельник.
-        if (($meeting['startsAt'] ?? '') === '') {
+        // Дата ещё не выбрана или прошедшая встреча → предлагаем ближайший будущий
+        // понедельник (UTC+3): сегодня-понедельник → сегодня, иначе следующий.
+        $startsAt = (string) ($meeting['startsAt'] ?? '');
+        if ($startsAt === '' || self::isPastDay($startsAt)) {
             $meeting['startsAt'] = self::upcomingMonday('18:00');
             $meeting['endsAt']   = self::upcomingMonday('20:00');
         }
@@ -88,6 +89,15 @@ final class MeetingController
         [$h, $m] = array_map('intval', explode(':', $time));
         $dt->setTime($h, $m);
         return $dt->format('Y-m-d\TH:i');
+    }
+
+    /** День встречи уже прошёл (по календарю, UTC+3)? */
+    private static function isPastDay(string $local): bool
+    {
+        $ts = strtotime($local);
+        if ($ts === false) { return false; }
+        $today = (new \DateTime('now', new \DateTimeZone('Europe/Moscow')))->format('Y-m-d');
+        return date('Y-m-d', $ts) < $today;
     }
 
     /** datetime-local ('Y-m-dTH:i') → формат БД ('Y-m-d H:i:s'), либо null. */

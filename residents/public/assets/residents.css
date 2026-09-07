@@ -135,6 +135,16 @@ body.map-open { overflow: hidden; }
 .sovet-h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
 .sovet-agenda { margin: 0; }
 .sovet-agenda p { margin: .3rem 0; }
+.sovet-agenda .is-discussed { text-decoration: line-through; color: var(--muted); }
+.sovet-agenda-author { color: var(--muted); font-size: .82rem; }
+/* Страница совместной повестки */
+.sovet-agenda-list { list-style: none; padding: 0; margin: 1.2rem 0 0; }
+.sovet-agenda-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-agenda-item.is-discussed .sovet-agenda-text { text-decoration: line-through; color: var(--muted); }
+.sovet-agenda-body { flex: 1; min-width: 12rem; }
+.sovet-agenda-text { font-weight: 600; }
+.sovet-agenda-badge { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #e5f4ec; color: #0a5; }
+.sovet-agenda-actions { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
 .sovet-roster { list-style: none; padding: 0; margin: .6rem 0 0; }
 .sovet-roster li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-roster li:last-child { border-bottom: 0; }

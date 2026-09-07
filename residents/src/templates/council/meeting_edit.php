@@ -1,6 +1,6 @@
 <?php use SkazResidents\{Csrf, View}; ?>
 <h1>Встреча Совета</h1>
-<p class="res-meta">Правит текущий Дежурный председатель или администратор совета. Повестка — по одному пункту на строку.</p>
+<p class="res-meta">Правит текущий Дежурный председатель или администратор совета. Пункты повестки члены совета добавляют на <a href="/sovet/povestka">странице повестки</a>.</p>
 
 <div class="res-card">
     <form class="res-form" method="post" action="/sovet/vstrecha">
@@ -20,9 +20,6 @@
             <input type="text" name="duty_secretary" maxlength="160"
                    value="<?= View::e($meeting['dutySecretary']) ?>">
             <?php if (!empty($errors['duty_secretary'])): ?><span class="sovet-err"><?= View::e($errors['duty_secretary']) ?></span><?php endif; ?>
-        </label>
-        <label>Повестка (по пункту на строку)
-            <textarea name="agenda" rows="6"><?= View::e($agendaText) ?></textarea>
         </label>
         <div class="sovet-form-actions">
             <button class="res-btn" type="submit">Сохранить</button>

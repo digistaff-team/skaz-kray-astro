@@ -26,14 +26,19 @@
 
     <dialog id="agenda-dialog" class="sovet-dialog">
         <h3 class="sovet-h3">Повестка встречи</h3>
-        <div class="sovet-agenda">
-            <?php foreach ($nextMeeting['agenda'] as $item): ?>
-                <p><?= View::e($item) ?></p>
-            <?php endforeach; ?>
+        <?php if (empty($agendaItems)): ?>
+            <p class="res-meta">Пунктов пока нет. Добавьте свой на странице повестки.</p>
+        <?php else: ?>
+            <div class="sovet-agenda">
+                <?php foreach ($agendaItems as $it): ?>
+                    <p<?= !empty($it['discussed']) ? ' class="is-discussed"' : '' ?>><?= View::e($it['title']) ?><?php if ($it['author'] !== ''): ?> <span class="sovet-agenda-author">— <?= View::e($it['author']) ?></span><?php endif; ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        <div class="sovet-dialog-actions">
+            <a class="res-btn" href="/sovet/povestka">Добавить / изменить пункты</a>
+            <form method="dialog" style="display:inline;"><button class="res-btn res-btn--ghost" type="submit">Закрыть</button></form>
         </div>
-        <form method="dialog" class="sovet-dialog-actions">
-            <button class="res-btn res-btn--ghost" type="submit">Закрыть</button>
-        </form>
     </dialog>
     <script>
     (function () {

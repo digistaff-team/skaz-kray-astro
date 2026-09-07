@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents;
 
-use SkazResidents\Repository\{CouncilMemberRepository, CouncilMeetingRepository};
+use SkazResidents\Repository\{CouncilMemberRepository, CouncilMeetingRepository, CouncilAgendaRepository};
 
 /**
  * Ротация Дежурного председателя по фиксированной очерёдности (ORDER).
@@ -73,10 +73,11 @@ final class CouncilDutyRotation
         $newIdx = ($meetingRepo->rotationIndex() + 1) % count(self::ORDER);
         $chair = self::nameForIndex($newIdx);
 
-        // Новая встреча: та же площадка, новый дежурный, повестка сброшена.
-        // Дежурный секретарь НЕ ротируется — переносим как есть.
-        $meetingRepo->update($newStartsDb, null, (string) ($m['place'] ?? ''), $chair, (string) ($m['dutySecretary'] ?? ''), 'В процессе формирования');
+        // Новая встреча: та же площадка, новый дежурный. Секретарь НЕ ротируется.
+        $meetingRepo->update($newStartsDb, null, (string) ($m['place'] ?? ''), $chair, (string) ($m['dutySecretary'] ?? ''), '');
         $meetingRepo->setRotationIndex($newIdx);
+        // Повестка: обсуждённые пункты убираем, необсуждённые переходят дальше.
+        (new CouncilAgendaRepository())->clearDiscussed();
 
         $members = new CouncilMemberRepository();
         if ($member = $members->findByName($chair)) {

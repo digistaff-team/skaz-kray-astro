@@ -26,6 +26,7 @@ use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
 use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
 use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController;
 use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
+use SkazResidents\Controller\Council\AgendaController as CouncilAgendaController;
 use SkazResidents\Controller\Council\TgAuthController as CouncilTgAuthController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
@@ -222,6 +223,14 @@ $cMeeting = new CouncilMeetingController();
 $router->get('/sovet/vstrecha', [$cMeeting, 'showEdit']);
 $router->post('/sovet/vstrecha', [$cMeeting, 'save']);
 $router->post('/sovet/dezhurstvo/peredat', [$cMeeting, 'handoff']);
+
+// Совместная повестка встречи — пункты добавляют сами члены совета.
+$cAgenda = new CouncilAgendaController();
+$router->get('/sovet/povestka', [$cAgenda, 'index']);
+$router->post('/sovet/povestka/dobavit', [$cAgenda, 'add']);
+$router->post('/sovet/povestka/udalit', [$cAgenda, 'delete']);
+$router->post('/sovet/povestka/obsuzhdeno', [$cAgenda, 'toggle']);
+$router->post('/sovet/povestka/peremestit', [$cAgenda, 'move']);
 
 $cTasks = new CouncilTaskController();
 $router->get('/sovet/zadachi', [$cTasks, 'index']);

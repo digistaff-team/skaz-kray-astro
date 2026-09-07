@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
 use SkazResidents\{CouncilAuth, CouncilData, View};
-use SkazResidents\Repository\{CouncilTaskRepository, CouncilMeetingRepository, CouncilMemberRepository};
+use SkazResidents\Repository\{CouncilTaskRepository, CouncilMeetingRepository, CouncilMemberRepository, CouncilAgendaRepository};
 
 /** Статические страницы совета: главная (документы/собрание/состав) и направления. */
 final class PagesController
@@ -13,7 +13,8 @@ final class PagesController
     public function __construct(
         private CouncilTaskRepository $tasks = new CouncilTaskRepository(),
         private CouncilMeetingRepository $meeting = new CouncilMeetingRepository(),
-        private CouncilMemberRepository $members = new CouncilMemberRepository()
+        private CouncilMemberRepository $members = new CouncilMemberRepository(),
+        private CouncilAgendaRepository $agenda = new CouncilAgendaRepository()
     ) {}
 
     public function home(): void
@@ -49,6 +50,7 @@ final class PagesController
             'me'             => $me,
             'dutyChair'      => $dutyChair,
             'dutyCandidates' => $dutyCandidates,
+            'agendaItems'    => $this->agenda->all(),
         ], 'Попечительский совет', self::LAYOUT);
     }
 

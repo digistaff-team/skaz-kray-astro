@@ -31,7 +31,6 @@ final class MeetingController
         }
         View::render('council/meeting_edit', [
             'meeting'     => $meeting,
-            'agendaText'  => $this->meeting->agendaText(),
             'errors'      => [],
         ], 'Редактирование встречи', self::LAYOUT);
     }
@@ -44,7 +43,6 @@ final class MeetingController
         $startsRaw     = trim($_POST['starts_at'] ?? '');
         $place         = trim($_POST['place'] ?? '');
         $dutySecretary = trim($_POST['duty_secretary'] ?? '');
-        $agenda        = (string) ($_POST['agenda'] ?? '');
 
         $startDb = self::parseLocal($startsRaw);
 
@@ -57,18 +55,17 @@ final class MeetingController
             View::render('council/meeting_edit', [
                 'meeting' => [
                     'startsAt' => $startsRaw, 'place' => $place,
-                    'dutySecretary' => $dutySecretary, 'agenda' => [],
+                    'dutySecretary' => $dutySecretary,
                 ],
-                'agendaText' => $agenda,
                 'errors'     => $errors,
             ], 'Редактирование встречи', self::LAYOUT);
             return;
         }
 
         // Дежурный председатель назначается автоматически по графику ротации
-        // (apply() ниже). Текущую подпись сохраняем, чтобы не обнулить до синка.
+        // (apply() ниже). Подпись сохраняем; повестка ведётся отдельно (пункты).
         $dutyChair = (string) ($this->meeting->get()['dutyChair'] ?? '');
-        $this->meeting->update($startDb, null, $place, $dutyChair, $dutySecretary, $agenda);
+        $this->meeting->update($startDb, null, $place, $dutyChair, $dutySecretary, '');
         \SkazResidents\CouncilDutyRotation::apply();
         Flash::set('success', 'Информация о ближайшем собрании обновлена.');
         header('Location: /sovet');

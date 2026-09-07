@@ -29,6 +29,7 @@
     <nav class="res-nav">
         <?php if (CouncilAuth::id() !== null): ?>
             <a href="/sovet">Главная</a>
+            <a href="/sovet/povestka">Повестка</a>
             <a href="/sovet/napravleniya">Направления</a>
             <a href="/sovet/zadachi">Текущие задачи</a>
             <a href="/sovet/buhgalteriya">Бухгалтерия</a>

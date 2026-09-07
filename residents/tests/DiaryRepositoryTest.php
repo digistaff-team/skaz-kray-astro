@@ -133,4 +133,17 @@ final class DiaryRepositoryTest extends TestCase
         $this->assertNull($this->repo->findPublishedById($id));
         $this->assertCount(1, $this->repo->listByFamily($this->familyId));
     }
+
+    public function test_owner_can_read_own_private_entry_but_not_others(): void
+    {
+        $id = $this->repo->create($this->familyId, 'Личное', 'Тайный текст', 'private', '2026-08-28 09:00:00');
+        // Автор читает свою приватную запись целиком (с именем семьи из джойна).
+        $e = $this->repo->findOwnedById($id, $this->familyId);
+        $this->assertNotNull($e);
+        $this->assertSame('Тайный текст', $e['body']);
+        $this->assertArrayHasKey('family_name', $e);
+        // Чужой аккаунт свою приватную запись не получает.
+        $other = (new FamilyRepository())->createPending('c@d.ru', 'H2', 'Дом2');
+        $this->assertNull($this->repo->findOwnedById($id, $other));
+    }
 }

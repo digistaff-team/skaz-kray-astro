@@ -43,7 +43,11 @@ final class DiaryController
     public function feedShow(array $params): void
     {
         Auth::requireLogin();
-        $entry = $this->diary->findPublishedById((int) $params['id']);
+        $id = (int) $params['id'];
+        // Опубликованная для жителей запись — либо СВОЯ запись любой видимости,
+        // включая приватную «Только я», у которой нет иной страницы для чтения.
+        $entry = $this->diary->findPublishedById($id)
+            ?? $this->diary->findOwnedById($id, Auth::id());
         if (!$entry) { http_response_code(404); View::render('public/notfound', [], 'Запись не найдена'); return; }
         $entry['images'] = $this->images->listFor('entry', (int) $entry['id']);
         View::render('diary/feed_show', ['entry' => $entry], $entry['title']);

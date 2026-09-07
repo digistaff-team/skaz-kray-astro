@@ -27,7 +27,7 @@
     <dialog id="agenda-dialog" class="sovet-dialog">
         <h3 class="sovet-h3">Повестка встречи</h3>
         <?php if (empty($agendaItems)): ?>
-            <p class="res-meta">Пунктов пока нет. Добавьте свой на странице повестки.</p>
+            <p class="res-meta">Повестка пока пуста. Добавьте свои пункты.</p>
         <?php else: ?>
             <div class="sovet-agenda">
                 <?php foreach ($agendaItems as $it): ?>

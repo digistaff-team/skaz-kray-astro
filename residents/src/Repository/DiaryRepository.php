@@ -118,6 +118,22 @@ final class DiaryRepository
     }
 
     /**
+     * Запись автора любой видимости/статуса — в т.ч. приватная «Только я»
+     * (у неё нет публичной страницы чтения) и ожидающая модерации. Ограничено
+     * владельцем по family_id, поэтому чужие приватные записи не раскрывает.
+     */
+    public function findOwnedById(int $id, int $familyId): ?array
+    {
+        $st = $this->db->prepare(
+            'SELECT d.*, f.name AS family_name
+             FROM diary_entries d JOIN families f ON f.id = d.family_id
+             WHERE d.id = ? AND d.family_id = ?'
+        );
+        $st->execute([$id, $familyId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
      * Для ВНЕШНЕГО публичного сайта (/dnevniki-pomestiy/, без авторизации):
      * только опубликованные записи, отмеченные семьёй галочкой «на внешний сайт».
      * @return array<int,array<string,mixed>>

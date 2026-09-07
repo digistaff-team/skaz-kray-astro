@@ -21,6 +21,7 @@ $uid = Auth::id();
             <?php endif; ?>
             <p class="res-meta"><?= View::e(ru_date((string) ($m['created_at'] ?? ''))) ?></p>
             <div class="cab-item-actions">
+                <a class="res-btn res-btn--ghost" href="/poselenie/dnevniki/<?= (int) $m['id'] ?>">Читать</a>
                 <a class="res-btn res-btn--ghost" href="/poselenie/dnevnik/<?= (int) $m['id'] ?>/redaktirovat">Изменить</a>
                 <form method="post" action="/poselenie/dnevnik/<?= (int) $m['id'] ?>/udalit" onsubmit="return confirm('Удалить запись?')">
                     <?= Csrf::field() ?>

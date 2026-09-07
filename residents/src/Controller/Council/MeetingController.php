@@ -43,7 +43,6 @@ final class MeetingController
 
         $startsRaw     = trim($_POST['starts_at'] ?? '');
         $place         = trim($_POST['place'] ?? '');
-        $dutyChair     = trim($_POST['duty_chair'] ?? '');
         $dutySecretary = trim($_POST['duty_secretary'] ?? '');
         $agenda        = (string) ($_POST['agenda'] ?? '');
 
@@ -52,14 +51,13 @@ final class MeetingController
         $errors = [];
         if ($startDb === null)                       { $errors['starts_at'] = 'Укажите дату и время.'; }
         if (!Validator::length($place, 2, 200))      { $errors['place'] = 'Место: 2–200 символов.'; }
-        if ($dutyChair !== '' && !Validator::length($dutyChair, 2, 160))         { $errors['duty_chair'] = 'До 160 символов.'; }
         if ($dutySecretary !== '' && !Validator::length($dutySecretary, 2, 160)) { $errors['duty_secretary'] = 'До 160 символов.'; }
 
         if ($errors) {
             View::render('council/meeting_edit', [
                 'meeting' => [
                     'startsAt' => $startsRaw, 'place' => $place,
-                    'dutyChair' => $dutyChair, 'dutySecretary' => $dutySecretary, 'agenda' => [],
+                    'dutySecretary' => $dutySecretary, 'agenda' => [],
                 ],
                 'agendaText' => $agenda,
                 'errors'     => $errors,
@@ -67,7 +65,11 @@ final class MeetingController
             return;
         }
 
+        // Дежурный председатель назначается автоматически по графику ротации
+        // (apply() ниже). Текущую подпись сохраняем, чтобы не обнулить до синка.
+        $dutyChair = (string) ($this->meeting->get()['dutyChair'] ?? '');
         $this->meeting->update($startDb, null, $place, $dutyChair, $dutySecretary, $agenda);
+        \SkazResidents\CouncilDutyRotation::apply();
         Flash::set('success', 'Информация о ближайшем собрании обновлена.');
         header('Location: /sovet');
     }

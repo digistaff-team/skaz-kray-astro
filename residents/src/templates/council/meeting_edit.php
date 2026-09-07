@@ -15,11 +15,7 @@
                    value="<?= View::e($meeting['place']) ?>" required>
             <?php if (!empty($errors['place'])): ?><span class="sovet-err"><?= View::e($errors['place']) ?></span><?php endif; ?>
         </label>
-        <label>Дежурный председатель
-            <input type="text" name="duty_chair" maxlength="160"
-                   value="<?= View::e($meeting['dutyChair']) ?>">
-            <?php if (!empty($errors['duty_chair'])): ?><span class="sovet-err"><?= View::e($errors['duty_chair']) ?></span><?php endif; ?>
-        </label>
+        <p class="res-meta">Дежурный председатель назначается автоматически по графику ротации.</p>
         <label>Дежурный секретарь
             <input type="text" name="duty_secretary" maxlength="160"
                    value="<?= View::e($meeting['dutySecretary']) ?>">

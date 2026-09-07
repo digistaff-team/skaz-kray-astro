@@ -35,6 +35,11 @@ $appLink  = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot
 
 $log = static function (string $m): void { echo '[' . gmdate('Y-m-d H:i:s') . " UTC] {$m}\n"; };
 
+// Ежедневно синхронизируем дежурного председателя по графику ротации —
+// чтобы карточка встречи и это уведомление называли актуального дежурного.
+$dutyByRotation = \SkazResidents\CouncilDutyRotation::apply();
+if ($dutyByRotation !== null) { $log("ротация: дежурный по графику — {$dutyByRotation}"); }
+
 $meeting = $pdo->query('SELECT * FROM council_meeting WHERE id = 1')->fetch(\PDO::FETCH_ASSOC);
 if (!$meeting) { $log('council_meeting пуст — нечего рассылать'); exit(0); }
 

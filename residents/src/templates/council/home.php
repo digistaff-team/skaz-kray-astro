@@ -23,20 +23,6 @@
         Дежурный секретарь: <strong><?= View::e($nextMeeting['dutySecretary']) ?></strong>
     </p>
     <p><button type="button" id="agenda-open" class="sovet-agenda-trigger">Повестка встречи</button></p>
-    <?php if (!empty($canEditMeeting) && !empty($dutyCandidates)): ?>
-        <form class="res-form sovet-handoff" method="post" action="/sovet/dezhurstvo/peredat">
-            <?= \SkazResidents\Csrf::field() ?>
-            <label>Передать роль дежурного
-                <select name="member_id" required>
-                    <option value="">— выберите члена совета —</option>
-                    <?php foreach ($dutyCandidates as $c): ?>
-                        <option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <button class="res-btn" type="submit">Передать дежурство</button>
-        </form>
-    <?php endif; ?>
 
     <dialog id="agenda-dialog" class="sovet-dialog">
         <h3 class="sovet-h3">Повестка встречи</h3>

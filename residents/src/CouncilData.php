@@ -12,6 +12,19 @@ namespace SkazResidents;
  */
 final class CouncilData
 {
+    /**
+     * Подпись роли члена совета для интерфейса. Дежурство (is_duty_chair) —
+     * переходящая роль, важнее статичной role; отдельный email-аккаунт админа
+     * подписывается «Администратор».
+     * @param array<string,mixed> $member
+     */
+    public static function roleLabel(array $member): string
+    {
+        if (!empty($member['is_duty_chair'])) { return 'Дежурный председатель'; }
+        if (($member['role'] ?? '') === 'admin') { return 'Администратор'; }
+        return 'Член Совета';
+    }
+
     /** Состав совета: имя + зона ответственности (заметка). */
     public static function members(): array
     {

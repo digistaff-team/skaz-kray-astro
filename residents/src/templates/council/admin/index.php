@@ -28,24 +28,26 @@
     <h2>Список аккаунтов</h2>
     <p class="res-meta">«Дежурный председатель» — переходящая роль, назначается по внешнему графику дежурств. Текущий дежурный (и любой администратор) может редактировать карточку ближайшего собрания.</p>
     <table class="sovet-members">
-        <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>Статус</th><th>Дежурный</th><th></th></tr></thead>
+        <thead><tr><th>Имя</th><th>Telegram / Email</th><th>Роль</th><th>Статус</th><th>Дежурный</th><th></th></tr></thead>
         <tbody>
-        <?php foreach ($members as $m): $mid = (int) $m['id']; $isDuty = !empty($m['is_duty_chair']); ?>
+        <?php foreach ($members as $m): $mid = (int) $m['id']; $isDuty = !empty($m['is_duty_chair']); $bound = !empty($m['telegram_id']); ?>
             <tr>
                 <td><?= View::e($m['name']) ?></td>
-                <td><?= View::e($m['email']) ?></td>
-                <td><?= $m['role'] === 'admin' ? 'администратор' : 'член совета' ?></td>
+                <td><?= $bound ? 'Telegram привязан' : ((strpos((string) $m['email'], '@telegram.local') !== false) ? '<span class="res-meta">ждёт входа</span>' : View::e($m['email'])) ?></td>
+                <td><?= View::e(\SkazResidents\CouncilData::roleLabel($m)) ?></td>
                 <td><?= $m['status'] === 'active' ? 'активен' : 'заблокирован' ?></td>
                 <td><?= $isDuty ? '<strong>✓ дежурит</strong>' : '' ?></td>
                 <td class="sovet-member-actions">
-                    <form method="post" action="/sovet/upravlenie/sbros-parolya">
-                        <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
-                        <button class="res-link-btn" type="submit">сбросить пароль</button>
-                    </form>
                     <form method="post" action="/sovet/upravlenie/status">
                         <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
                         <button class="res-link-btn<?= $m['status'] === 'active' ? ' sovet-danger' : '' ?>" type="submit"><?= $m['status'] === 'active' ? 'заблокировать' : 'разблокировать' ?></button>
                     </form>
+                    <?php if ($bound): ?>
+                        <form method="post" action="/sovet/upravlenie/otvyazat-telegram">
+                            <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
+                            <button class="res-link-btn sovet-danger" type="submit">отвязать Telegram</button>
+                        </form>
+                    <?php endif; ?>
                     <?php if ($isDuty): ?>
                         <form method="post" action="/sovet/upravlenie/dezhurnyy">
                             <?= Csrf::field() ?><input type="hidden" name="id" value="0">

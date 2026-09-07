@@ -63,6 +63,31 @@ final class MeetingController
         header('Location: /sovet');
     }
 
+    /**
+     * Передача роли Дежурного председателя другому члену совета.
+     * Доступ: текущий дежурный или админ. У прежнего дежурного роль становится
+     * «Член Совета», у выбранного — «Дежурный председатель» (setDutyChair
+     * сбрасывает флаг у всех и ставит одному).
+     */
+    public function handoff(): void
+    {
+        $this->requireEditor();
+        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+
+        $newId  = (int) ($_POST['member_id'] ?? 0);
+        $member = $newId > 0 ? $this->members->findById($newId) : null;
+
+        if (!$member) {
+            Flash::set('error', 'Выберите члена совета для передачи дежурства.');
+        } elseif ($member['status'] !== 'active' || ($member['role'] ?? '') === 'admin') {
+            Flash::set('error', 'Передать дежурство можно только активному члену совета.');
+        } else {
+            $this->members->setDutyChair($newId);
+            Flash::set('success', "Роль Дежурного председателя передана: {$member['name']}.");
+        }
+        header('Location: /sovet');
+    }
+
     /** Дежурный председатель или админ; иначе — назад на главную с сообщением. */
     private function requireEditor(): void
     {

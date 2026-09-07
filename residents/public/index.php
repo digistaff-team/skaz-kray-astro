@@ -26,6 +26,7 @@ use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
 use SkazResidents\Controller\Council\AdminController as CouncilAdminController;
 use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController;
 use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
+use SkazResidents\Controller\Council\TgAuthController as CouncilTgAuthController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
@@ -193,6 +194,13 @@ $router->get('/yarmarka', [$public, 'marketList']);
 $router->get('/yarmarka/{id}', [$public, 'marketShow']);
 
 // ==== Попечительский совет (/sovet/…) — отдельная авторизация ====
+// Вход членов совета через Telegram Mini App + привязка по фамилии (публичный).
+$cTg = new CouncilTgAuthController();
+$router->get('/sovet/tg', [$cTg, 'entry']);
+$router->post('/sovet/tg/login', [$cTg, 'login']);
+$router->get('/sovet/tg/familiya', [$cTg, 'showClaim']);
+$router->post('/sovet/tg/claim', [$cTg, 'claim']);
+
 $cAuth = new CouncilAuthController();
 $router->get('/sovet/vhod', [$cAuth, 'showLogin']);
 $router->post('/sovet/login', [$cAuth, 'login']);
@@ -213,6 +221,7 @@ $router->get('/sovet/napravleniya', [$cPages, 'directions']);
 $cMeeting = new CouncilMeetingController();
 $router->get('/sovet/vstrecha', [$cMeeting, 'showEdit']);
 $router->post('/sovet/vstrecha', [$cMeeting, 'save']);
+$router->post('/sovet/dezhurstvo/peredat', [$cMeeting, 'handoff']);
 
 $cTasks = new CouncilTaskController();
 $router->get('/sovet/zadachi', [$cTasks, 'index']);
@@ -233,6 +242,7 @@ $router->post('/sovet/upravlenie/dobavit', [$cAdmin, 'add']);
 $router->post('/sovet/upravlenie/sbros-parolya', [$cAdmin, 'resetPassword']);
 $router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
 $router->post('/sovet/upravlenie/dezhurnyy', [$cAdmin, 'setDutyChair']);
+$router->post('/sovet/upravlenie/otvyazat-telegram', [$cAdmin, 'unbindTelegram']);
 
 // Бухгалтерия совета — операции бюджета (все члены) + справочник статей (админ).
 $cLedger = new CouncilLedgerController();

@@ -125,6 +125,19 @@ final class AdminController
         header('Location: /sovet/upravlenie');
     }
 
+    /** Снять привязку Telegram (ошибочный клейм фамилии) — член сможет привязаться заново. */
+    public function unbindTelegram(): void
+    {
+        $this->guard();
+        $id = (int) ($_POST['id'] ?? 0);
+        $member = $this->members->findById($id);
+        if ($member) {
+            $this->members->unbindTelegram($id);
+            Flash::set('info', "Привязка Telegram снята для «{$member['name']}». Он сможет войти и привязаться заново по фамилии.");
+        }
+        header('Location: /sovet/upravlenie');
+    }
+
     private function generatePassword(): string
     {
         return bin2hex(random_bytes(5)); // 10 hex-символов (~40 бит), удобно продиктовать

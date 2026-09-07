@@ -20,9 +20,24 @@ final class PagesController
     {
         CouncilAuth::requireLogin();
         $directions = CouncilData::directions();
-        // Править встречу может текущий Дежурный председатель или админ.
-        $canEditMeeting = CouncilAuth::isAdmin()
-            || $this->members->isDutyChair((int) CouncilAuth::id());
+        $myId = (int) CouncilAuth::id();
+        $me   = $this->members->findById($myId);
+        $iAmDuty = !empty($me['is_duty_chair']);
+
+        // Править встречу и передавать дежурство может текущий дежурный или админ.
+        $canEditMeeting = CouncilAuth::isAdmin() || $iAmDuty;
+        $dutyChair = $this->members->findDutyChair();
+
+        // Кандидаты для передачи дежурства — активные члены совета, кроме текущего дежурного.
+        $dutyCandidates = [];
+        if ($canEditMeeting) {
+            foreach ($this->members->all() as $m) {
+                if ($m['status'] !== 'active' || ($m['role'] ?? '') === 'admin') { continue; }
+                if (!empty($m['is_duty_chair'])) { continue; }
+                $dutyCandidates[] = ['id' => (int) $m['id'], 'name' => (string) $m['name']];
+            }
+        }
+
         View::render('council/home', [
             'documents'      => CouncilData::documents(),
             'protocols'      => CouncilData::protocols(),
@@ -31,6 +46,9 @@ final class PagesController
             'activeCount'    => count($this->tasks->listWithSubtasks(false, 'priority')),
             'directionsCount'=> count($directions),
             'canEditMeeting' => $canEditMeeting,
+            'me'             => $me,
+            'dutyChair'      => $dutyChair,
+            'dutyCandidates' => $dutyCandidates,
         ], 'Попечительский совет', self::LAYOUT);
     }
 

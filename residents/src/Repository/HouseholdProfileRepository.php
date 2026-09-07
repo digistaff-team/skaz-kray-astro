@@ -19,12 +19,47 @@ final class HouseholdProfileRepository
         $this->db = Database::pdo();
     }
 
-    /** Поместье, привязанное к аккаунту (или null, если аккаунт не привязан). */
+    /**
+     * Поместье, к которому привязан аккаунт (первичный владелец ИЛИ совладелец),
+     * или null. Резолвится через household_owners — один аккаунт держит одно поместье.
+     */
     public function householdByFamily(int $familyId): ?array
     {
-        $st = $this->db->prepare('SELECT * FROM households WHERE family_id = ? LIMIT 1');
+        $st = $this->db->prepare(
+            'SELECT h.* FROM households h
+             JOIN household_owners o ON o.household_id = h.id
+             WHERE o.family_id = ? LIMIT 1'
+        );
         $st->execute([$familyId]);
         return $st->fetch() ?: null;
+    }
+
+    /** Является ли аккаунт владельцем/совладельцем поместья. */
+    public function isOwner(int $householdId, int $familyId): bool
+    {
+        $st = $this->db->prepare('SELECT 1 FROM household_owners WHERE household_id = ? AND family_id = ?');
+        $st->execute([$householdId, $familyId]);
+        return (bool) $st->fetchColumn();
+    }
+
+    /**
+     * Все аккаунты-совладельцы поместья (для показа в «Моём поместье»): имя,
+     * @username для ссылки в Telegram, флаг первичного владельца. Первичный — первым.
+     * @return array<int,array<string,mixed>>
+     */
+    public function owners(int $householdId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT o.family_id, o.created_at, f.name, f.telegram_username, f.email,
+                    CASE WHEN h.family_id = o.family_id THEN 1 ELSE 0 END AS is_primary
+             FROM household_owners o
+             JOIN families f ON f.id = o.family_id
+             JOIN households h ON h.id = o.household_id
+             WHERE o.household_id = ?
+             ORDER BY is_primary DESC, o.id ASC'
+        );
+        $st->execute([$householdId]);
+        return $st->fetchAll();
     }
 
     public function householdById(int $id): ?array
@@ -115,22 +150,77 @@ final class HouseholdProfileRepository
     }
 
     /**
-     * Привязывает поместье к аккаунту (один аккаунт — одно поместье). Перепроверяет
-     * доступность в транзакции; возвращает false, если поместье уже занято активным.
+     * Первичная привязка СВОБОДНОГО поместья к аккаунту (аккаунт становится
+     * первичным владельцем). Один аккаунт — одно поместье: прежние привязки
+     * аккаунта снимаются. Перепроверяет доступность в транзакции; возвращает
+     * false, если поместье уже занято активным аккаунтом.
      */
     public function claim(int $householdId, int $familyId): bool
     {
         $this->db->beginTransaction();
         try {
             if (!$this->isClaimable($householdId)) { $this->db->rollBack(); return false; }
-            $this->db->prepare('UPDATE households SET family_id = NULL WHERE family_id = ?')->execute([$familyId]);
+            $this->detachAccount($familyId);
+            // Свободное поместье могло числиться за placeholder-аккаунтом импорта — чистим его совладельцев.
+            $this->db->prepare('DELETE FROM household_owners WHERE household_id = ?')->execute([$householdId]);
             $this->db->prepare('UPDATE households SET family_id = ? WHERE id = ?')->execute([$familyId, $householdId]);
+            $this->db->prepare('INSERT INTO household_owners (household_id, family_id) VALUES (?, ?)')->execute([$householdId, $familyId]);
             $this->db->commit();
             return true;
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Присоединяет аккаунт к УЖЕ занятому поместью как совладельца, НЕ меняя
+     * первичного владельца (households.family_id). Один аккаунт — одно поместье:
+     * прежние привязки аккаунта снимаются.
+     */
+    public function joinAsOwner(int $householdId, int $familyId): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $this->detachAccount($familyId);
+            $this->db->prepare('INSERT INTO household_owners (household_id, family_id) VALUES (?, ?)')->execute([$householdId, $familyId]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Убирает совладельца из поместья. Если убрали первичного владельца —
+     * назначает первичным следующего оставшегося совладельца (или снимает
+     * привязку households.family_id, если владельцев не осталось).
+     */
+    public function removeOwner(int $householdId, int $familyId): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare('DELETE FROM household_owners WHERE household_id = ? AND family_id = ?')->execute([$householdId, $familyId]);
+            $h = $this->householdById($householdId);
+            if ($h && (int) ($h['family_id'] ?? 0) === $familyId) {
+                $st = $this->db->prepare('SELECT family_id FROM household_owners WHERE household_id = ? ORDER BY id ASC LIMIT 1');
+                $st->execute([$householdId]);
+                $next = $st->fetchColumn();
+                $this->db->prepare('UPDATE households SET family_id = ? WHERE id = ?')
+                    ->execute([$next === false ? null : $next, $householdId]);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /** Снимает все привязки аккаунта к поместьям (первичную и совладение). */
+    private function detachAccount(int $familyId): void
+    {
+        $this->db->prepare('UPDATE households SET family_id = NULL WHERE family_id = ?')->execute([$familyId]);
+        $this->db->prepare('DELETE FROM household_owners WHERE family_id = ?')->execute([$familyId]);
     }
 
     // ── Жители ──────────────────────────────────────────────────────────────

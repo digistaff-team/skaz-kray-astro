@@ -1,6 +1,8 @@
 <?php
 use SkazResidents\{View, Csrf};
-/** @var array $household @var array $members @var array $cars @var array $pets */
+/** @var array $household @var array $members @var array $cars @var array $pets @var array $owners @var int $uid */
+$owners = $owners ?? [];
+$uid = $uid ?? 0;
 $gladeName = static function (string $g): string {
     return preg_match('~^\(\d+\)\s*(.+)$~u', trim($g), $m) ? trim($m[1]) : $g;
 };
@@ -37,6 +39,39 @@ $h = $household;
 <p class="res-meta">
     Поляна <?= View::e($gladeName($h['glade'])) ?> (<?= $gladeNum($h['glade']) ?>)<?php if ($h['plot'] !== ''): ?>, участок <?= $gladeNum($h['glade']) ?>-<?= View::e($h['plot']) ?><?php endif; ?>
 </p>
+
+<div class="prof-sec-head"><h2>Совместный доступ</h2></div>
+<p class="res-meta">Доступ к поместью через свой Telegram. Чтобы подключить супруга или близких — пусть войдёт под своим Telegram и на экране «Моё поместье» → «Выбрать поместье» подтвердит вашу фамилию.</p>
+<div class="prof-list">
+    <?php foreach ($owners as $o): ?>
+        <?php
+        $ownerName = trim((string) ($o['name'] ?? ''));
+        if ($ownerName === '' || $ownerName === 'свободно') { $ownerName = 'Аккаунт'; }
+        $isSelf = (int) $o['family_id'] === (int) $uid;
+        $tgUser = trim((string) ($o['telegram_username'] ?? ''));
+        ?>
+        <div class="prof-card">
+            <div class="prof-card-top">
+                <b class="prof-name">
+                    <?= View::e($ownerName) ?><?php if ($isSelf): ?> <span class="res-meta">(вы)</span><?php endif; ?>
+                    <?php if ((int) $o['is_primary'] === 1): ?><span class="res-status res-status--published" title="Первым привязал поместье">основной</span><?php endif; ?>
+                </b>
+                <span class="prof-actions">
+                    <?php if ($tgUser !== ''): ?>
+                        <a class="res-link" href="https://t.me/<?= View::e($tgUser) ?>" target="_blank" rel="noopener">Tg</a>
+                    <?php endif; ?>
+                    <?php if (count($owners) > 1): ?>
+                        <form method="post" action="/poselenie/moye-pomestie/sovladelec/udalit" onsubmit="return confirm('<?= $isSelf ? 'Выйти из совместного владения поместьем?' : 'Убрать этот аккаунт из совладельцев?' ?>')">
+                            <?= Csrf::field() ?>
+                            <input type="hidden" name="family_id" value="<?= (int) $o['family_id'] ?>">
+                            <button type="submit" class="res-link res-link--danger"><?= $isSelf ? 'Выйти' : 'Убрать' ?></button>
+                        </form>
+                    <?php endif; ?>
+                </span>
+            </div>
+        </div>
+    <?php endforeach; ?>
+</div>
 
 <div class="prof-sec-head"><h2>Жители поместья</h2></div>
 <?php if (!$members): ?><p class="res-meta">Пока никого не добавлено.</p><?php endif; ?>

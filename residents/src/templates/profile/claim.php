@@ -50,9 +50,10 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                     <?php
                     $occupied = (int) $h['occupied'] === 1;               // привязан к активному аккаунту
                     $hasResidents = (int) $h['member_count'] > 0;          // есть жители для подтверждения фамилией
-                    // Открыть можно только свободный участок с жителями (без жителей нечем
-                    // подтвердить принадлежность; занятый уже привязан к другому аккаунту).
-                    $clickable = !$occupied && $hasResidents;
+                    // Открыть можно любой участок с жителями: свободный — привязать первичным
+                    // владельцем; занятый — присоединиться совладельцем (совместное владение).
+                    // Без жителей нечем подтвердить принадлежность — не открываем.
+                    $clickable = $hasResidents;
                     $cls = 'prof-card ' . ($occupied ? 'prof-card--taken' : 'prof-card--free');
                     $name = $h['estate_name'] !== '' ? View::e($h['estate_name']) : 'Поместье';
                     $plotMeta = $h['plot'] !== '' ? 'участок ' . $gnum . '-' . View::e($h['plot']) : '';
@@ -61,6 +62,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                         <a class="<?= $cls ?>" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
                             <b class="prof-name"><?= $name ?></b>
                             <?php if ($plotMeta !== ''): ?><div class="res-meta"><?= $plotMeta ?></div><?php endif; ?>
+                            <?php if ($occupied): ?><div class="res-meta">Уже с семьёй — можно присоединиться</div><?php endif; ?>
                         </a>
                     <?php else: ?>
                         <div class="<?= $cls ?>">

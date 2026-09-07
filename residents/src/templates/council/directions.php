@@ -4,9 +4,13 @@
 
 <div class="sovet-directions">
     <?php foreach ($directions as $dir): ?>
-        <div class="res-card sovet-direction">
-            <p class="sovet-eyebrow">Ответственный · <?= View::e($dir['lead']) ?></p>
-            <h2><?= View::e($dir['title']) ?></h2>
+        <details class="res-card sovet-direction sovet-acc">
+            <summary>
+                <span class="sovet-dir-head">
+                    <span class="sovet-eyebrow">Ответственный · <?= View::e($dir['lead']) ?></span>
+                    <h2><?= View::e($dir['title']) ?></h2>
+                </span>
+            </summary>
             <ul class="sovet-dir-tasks">
                 <?php foreach ($dir['tasks'] as $t): ?>
                     <?php
@@ -20,6 +24,6 @@
                     </li>
                 <?php endforeach; ?>
             </ul>
-        </div>
+        </details>
     <?php endforeach; ?>
 </div>

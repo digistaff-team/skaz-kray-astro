@@ -114,6 +114,9 @@ body.map-open { overflow: hidden; }
 .sovet-acc > summary::after { content: "\25BE"; color: var(--muted); transition: transform .15s ease; }
 .sovet-acc[open] > summary { margin-bottom: 1rem; }
 .sovet-acc[open] > summary::after { transform: rotate(180deg); }
+.sovet-dir-head { display: flex; flex-direction: column; gap: .15rem; }
+.sovet-dir-head .sovet-eyebrow { display: block; }
+.sovet-dir-head h2 { margin: 0; }
 
 .sovet-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; align-items: start; }
 @media (max-width: 760px) { .sovet-cols { grid-template-columns: 1fr; } }
@@ -412,6 +415,8 @@ body.map-open { overflow: hidden; }
   .sovet-hero .sovet-lead { font-size: .8rem; line-height: 1.4; }
   /* Названия документов и протоколов — мельче на мобильном */
   .sovet-doclist a { font-size: .8rem; }
+  /* Названия работ в направлениях — мельче на мобильном */
+  .sovet-dir-title { font-size: .8rem; }
 
   /* Строки списков — комфортнее для пальца */
   .sovet-doclist li, .sovet-roster li { min-height: 52px; }

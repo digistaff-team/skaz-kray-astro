@@ -75,6 +75,7 @@ final class CouncilData
     public static function protocols(): array
     {
         return [
+            ['title' => 'Протокол встречи Совета 07.09.2026', 'href' => 'https://docs.google.com/document/d/1PecerQK3pH13BDITJBHOPW27Uub-v5rJWGPIFHfRQm8/edit?usp=sharing'],
             ['title' => 'Протокол встречи Совета 31.08.2026', 'href' => 'https://docs.google.com/document/d/19jvEIG5hRWNoUV_xorT8Zh0r_0grnO8vp-tFbws1Osk/edit?usp=drive_link'],
             ['title' => 'Протокол встречи Совета 17.08.2026', 'href' => 'https://docs.google.com/document/d/1mMVSirvpxGw7XyOeKqySSsiVJz6xIjzjwf06QHtS2sQ/edit?usp=drive_link'],
             ['title' => 'Протокол встречи Совета 27.07.2026', 'href' => 'https://docs.google.com/document/d/1NfnG7uKJnf_M--jPxmiTA7pRmgF1rI7jNg9cJr3G9U8/edit?usp=drive_link'],

@@ -117,8 +117,12 @@ body.map-open { overflow: hidden; }
 .sovet-dir-head { display: flex; flex-direction: column; gap: .15rem; }
 .sovet-dir-head .sovet-eyebrow { display: block; }
 .sovet-dir-head h2 { margin: 0; }
-.sovet-meet > summary > .sovet-meet-info { flex: 1; }
-.sovet-meet .sovet-h3 { margin-bottom: 0; }
+/* Повестка встречи — триггер модалки и само окно */
+.sovet-agenda-trigger { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--green); cursor: pointer; text-decoration: underline; }
+.sovet-dialog { border: 0; border-radius: 14px; padding: 1.5rem 1.6rem; max-width: 440px; width: calc(100% - 2rem); box-shadow: 0 12px 44px rgba(0,0,0,.22); }
+.sovet-dialog::backdrop { background: rgba(0,0,0,.45); }
+.sovet-dialog .sovet-h3 { margin-top: 0; }
+.sovet-dialog-actions { margin-top: 1.2rem; text-align: right; }
 
 .sovet-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; align-items: start; }
 @media (max-width: 760px) { .sovet-cols { grid-template-columns: 1fr; } }

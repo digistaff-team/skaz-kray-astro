@@ -9,29 +9,20 @@
     <p class="sovet-whoami">Вы вошли как <strong><?= View::e($me['name']) ?></strong> — <?= View::e(CouncilData::roleLabel($me)) ?></p>
 <?php endif; ?>
 
-<details class="res-card sovet-acc sovet-meet">
-    <summary>
-        <div class="sovet-meet-info">
-            <div class="sovet-card-head">
-                <h2>Встреча Совета</h2>
-                <?php if (!empty($canEditMeeting)): ?>
-                    <a class="res-link-btn" href="/sovet/vstrecha">Редактировать</a>
-                <?php endif; ?>
-            </div>
-            <p class="sovet-meet-date"><?= View::e($nextMeeting['date']) ?></p>
-            <p class="res-meta"><?= View::e($nextMeeting['place']) ?></p>
-            <p class="res-meta">
-                Дежурный председатель: <strong><?= View::e($nextMeeting['dutyChair']) ?></strong><br>
-                Дежурный секретарь: <strong><?= View::e($nextMeeting['dutySecretary']) ?></strong>
-            </p>
-            <h3 class="sovet-h3">Повестка:</h3>
-        </div>
-    </summary>
-    <ol class="sovet-agenda">
-        <?php foreach ($nextMeeting['agenda'] as $item): ?>
-            <li><?= View::e($item) ?></li>
-        <?php endforeach; ?>
-    </ol>
+<div class="res-card">
+    <div class="sovet-card-head">
+        <h2>Встреча Совета</h2>
+        <?php if (!empty($canEditMeeting)): ?>
+            <a class="res-link-btn" href="/sovet/vstrecha">Редактировать</a>
+        <?php endif; ?>
+    </div>
+    <p class="sovet-meet-date"><?= View::e($nextMeeting['date']) ?></p>
+    <p class="res-meta"><?= View::e($nextMeeting['place']) ?></p>
+    <p class="res-meta">
+        Дежурный председатель: <strong><?= View::e($nextMeeting['dutyChair']) ?></strong><br>
+        Дежурный секретарь: <strong><?= View::e($nextMeeting['dutySecretary']) ?></strong>
+    </p>
+    <p><button type="button" id="agenda-open" class="sovet-agenda-trigger">Повестка встречи</button></p>
     <?php if (!empty($canEditMeeting) && !empty($dutyCandidates)): ?>
         <form class="res-form sovet-handoff" method="post" action="/sovet/dezhurstvo/peredat">
             <?= \SkazResidents\Csrf::field() ?>
@@ -46,7 +37,28 @@
             <button class="res-btn" type="submit">Передать дежурство</button>
         </form>
     <?php endif; ?>
-</details>
+
+    <dialog id="agenda-dialog" class="sovet-dialog">
+        <h3 class="sovet-h3">Повестка встречи</h3>
+        <ol class="sovet-agenda">
+            <?php foreach ($nextMeeting['agenda'] as $item): ?>
+                <li><?= View::e($item) ?></li>
+            <?php endforeach; ?>
+        </ol>
+        <form method="dialog" class="sovet-dialog-actions">
+            <button class="res-btn res-btn--ghost" type="submit">Закрыть</button>
+        </form>
+    </dialog>
+    <script>
+    (function () {
+        var btn = document.getElementById('agenda-open');
+        var dlg = document.getElementById('agenda-dialog');
+        if (!btn || !dlg || !dlg.showModal) { return; }
+        btn.addEventListener('click', function () { dlg.showModal(); });
+        dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+    })();
+    </script>
+</div>
 
 <div class="sovet-actions">
     <a class="res-btn sovet-action" href="/sovet/zadachi"><span>Текущие задачи</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>

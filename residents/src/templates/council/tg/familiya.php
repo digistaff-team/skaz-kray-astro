@@ -1,6 +1,6 @@
 <?php use SkazResidents\View; ?>
 <h1>Вход в Попечительский совет</h1>
-<p class="res-meta">Вы вошли через Telegram. Укажите свою фамилию — как в списке членов совета.</p>
+<p class="res-meta">Вы входите в первый раз. Укажите свою фамилию для идентификации.</p>
 
 <?php if (!empty($error)): ?>
     <p class="res-flash res-flash--error"><?= View::e($error) ?></p>

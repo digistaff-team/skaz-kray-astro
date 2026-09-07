@@ -73,8 +73,9 @@ final class CouncilDutyRotation
         $newIdx = ($meetingRepo->rotationIndex() + 1) % count(self::ORDER);
         $chair = self::nameForIndex($newIdx);
 
-        // Новая встреча: та же площадка, новый дежурный, секретарь и повестка сброшены.
-        $meetingRepo->update($newStartsDb, null, (string) ($m['place'] ?? ''), $chair, '', 'В процессе формирования');
+        // Новая встреча: та же площадка, новый дежурный, повестка сброшена.
+        // Дежурный секретарь НЕ ротируется — переносим как есть.
+        $meetingRepo->update($newStartsDb, null, (string) ($m['place'] ?? ''), $chair, (string) ($m['dutySecretary'] ?? ''), 'В процессе формирования');
         $meetingRepo->setRotationIndex($newIdx);
 
         $members = new CouncilMemberRepository();

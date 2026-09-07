@@ -69,6 +69,13 @@ final class CouncilMeetingRepository
         $st->execute([$display, $startsAt, $endsAt, $place, $dutyChair, $dutySecretary, $agenda]);
     }
 
+    /** Обновить только подпись дежурного председателя в карточке собрания. */
+    public function setDutyChairName(string $name): void
+    {
+        $st = $this->db->prepare('UPDATE council_meeting SET duty_chair = ? WHERE id = 1');
+        $st->execute([$name]);
+    }
+
     /** Повестка как единый текст (для textarea в форме). */
     public function agendaText(): string
     {

@@ -2,37 +2,12 @@
 <section class="sovet-hero">
     <p class="sovet-eyebrow">Внутренний портал</p>
     <h1>Попечительский совет Общего дома</h1>
-    <p>Положение, протоколы и правила, состав совета, ближайшее собрание и живой список текущих задач по содержанию Сказочного Терема.</p>
+    <p class="sovet-lead">Положение, протоколы и правила, состав совета, ближайшее собрание и живой список текущих задач по содержанию Сказочного Терема.</p>
 </section>
 
 <?php if (!empty($me)): ?>
     <p class="sovet-whoami">Вы вошли как <strong><?= View::e($me['name']) ?></strong> — <?= View::e(CouncilData::roleLabel($me)) ?></p>
 <?php endif; ?>
-
-<div class="res-card sovet-duty">
-    <div class="sovet-card-head">
-        <h2>Дежурный председатель</h2>
-    </div>
-    <p class="sovet-meet-date"><?= $dutyChair ? View::e($dutyChair['name']) : 'не назначен' ?></p>
-    <?php if (!empty($canEditMeeting)): ?>
-        <?php if (!empty($dutyCandidates)): ?>
-            <form class="res-form sovet-handoff" method="post" action="/sovet/dezhurstvo/peredat">
-                <?= \SkazResidents\Csrf::field() ?>
-                <label>Передать роль дежурного
-                    <select name="member_id" required>
-                        <option value="">— выберите члена совета —</option>
-                        <?php foreach ($dutyCandidates as $c): ?>
-                            <option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-                <button class="res-btn" type="submit">Передать дежурство</button>
-            </form>
-        <?php else: ?>
-            <p class="res-meta">Нет других активных членов совета для передачи дежурства.</p>
-        <?php endif; ?>
-    <?php endif; ?>
-</div>
 
 <div class="sovet-actions">
     <a class="res-btn sovet-action" href="/sovet/zadachi"><span>Текущие задачи</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>
@@ -58,6 +33,20 @@
             <li><?= View::e($item) ?></li>
         <?php endforeach; ?>
     </ol>
+    <?php if (!empty($canEditMeeting) && !empty($dutyCandidates)): ?>
+        <form class="res-form sovet-handoff" method="post" action="/sovet/dezhurstvo/peredat">
+            <?= \SkazResidents\Csrf::field() ?>
+            <label>Передать роль дежурного
+                <select name="member_id" required>
+                    <option value="">— выберите члена совета —</option>
+                    <?php foreach ($dutyCandidates as $c): ?>
+                        <option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <button class="res-btn" type="submit">Передать дежурство</button>
+        </form>
+    <?php endif; ?>
 </div>
 
 <div class="res-card">

@@ -121,6 +121,8 @@ final class MeetingController
             Flash::set('error', 'Передать дежурство можно только активному члену совета.');
         } else {
             $this->members->setDutyChair($newId);
+            // Подпись дежурного в карточке собрания держим в синхроне.
+            $this->meeting->setDutyChairName($member['name']);
             Flash::set('success', "Роль Дежурного председателя передана: {$member['name']}.");
         }
         header('Location: /sovet');

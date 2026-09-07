@@ -397,6 +397,11 @@ body.map-open { overflow: hidden; }
   /* Компактные быстрые действия на доске задач — тоже крупнее */
   .sovet-quick .res-btn { min-height: 44px; }
 
+  /* Подзаголовок Совета — мельче на мобильном */
+  .sovet-hero .sovet-lead { font-size: .8rem; line-height: 1.4; }
+  /* Названия документов и протоколов — мельче на мобильном */
+  .sovet-doclist a { font-size: .8rem; }
+
   /* Строки списков — комфортнее для пальца */
   .sovet-doclist li, .sovet-roster li { min-height: 52px; }
 }

@@ -50,6 +50,7 @@ a { color: var(--green); }
 /* Ссылка-надпись «← На главную» над заголовком страницы (не кнопка). */
 .res-back { display: inline-block; margin: 0 0 .5rem; font-size: .9rem; color: var(--green); text-decoration: none; }
 .res-back:hover { text-decoration: underline; }
+.sovet-topback { font-size: .8rem; }
 .res-footer { text-align: center; color: var(--muted); padding: 2rem 1rem; }
 .res-footer p { font-size: .78rem; margin: .2rem 0; }
 /* Ссылка-надпись в футере, открывающая карту поселения. */

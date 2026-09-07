@@ -43,6 +43,14 @@
     </details>
 </header>
 <main class="res-main sovet-main">
+    <?php
+        // Ссылка «На главную» — на всех внутренних страницах Совета, кроме самой
+        // главной и экранов входа (только для вошедших).
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+        if (CouncilAuth::id() !== null && $path !== '/sovet' && $path !== '/sovet/'):
+    ?>
+        <a class="res-back sovet-topback" href="/sovet">← На главную</a>
+    <?php endif; ?>
     <?php require __DIR__ . '/../partials/flash.php'; ?>
     <?= $content ?>
 </main>

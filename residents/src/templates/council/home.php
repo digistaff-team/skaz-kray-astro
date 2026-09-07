@@ -9,41 +9,6 @@
     <p class="sovet-whoami">Вы вошли как <strong><?= View::e($me['name']) ?></strong> — <?= View::e(CouncilData::roleLabel($me)) ?></p>
 <?php endif; ?>
 
-<?php /* Кнопка появляется только внутри Telegram Mini App и только если приложения ещё нет на главном экране (Bot API 8.0+). */ ?>
-<div id="sovet-addhome" class="sovet-addhome" style="display:none;">
-    <button type="button" class="res-btn res-btn--ghost" id="sovet-addhome-btn">Добавить на главный экран</button>
-</div>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-(function () {
-  var wa = window.Telegram && window.Telegram.WebApp;
-  var wrap = document.getElementById('sovet-addhome');
-  var btn = document.getElementById('sovet-addhome-btn');
-  if (!wa || !wrap || !btn) { return; }
-  // Функции есть только в поддерживающих клиентах Telegram (Bot API 8.0+);
-  // в обычном браузере их нет — кнопку не показываем.
-  if (typeof wa.checkHomeScreenStatus !== 'function' || typeof wa.addToHomeScreen !== 'function') { return; }
-
-  function apply(status) {
-    // 'missed' | 'unknown' — можно предложить добавить; 'added' — уже есть; 'unsupported' — нельзя.
-    wrap.style.display = (status === 'missed' || status === 'unknown') ? '' : 'none';
-  }
-  function refresh() {
-    try { wa.checkHomeScreenStatus(function (status) { apply(status); }); } catch (e) {}
-  }
-
-  btn.addEventListener('click', function () {
-    try { wa.addToHomeScreen(); } catch (e) {}
-  });
-
-  // Асинхронные события статуса/добавления — прячем кнопку, когда приложение добавлено.
-  try { wa.onEvent('homeScreenChecked', function (d) { if (d && d.status) apply(d.status); }); } catch (e) {}
-  try { wa.onEvent('homeScreenAdded', function () { wrap.style.display = 'none'; }); } catch (e) {}
-
-  refresh();
-})();
-</script>
-
 <div class="res-card sovet-duty">
     <div class="sovet-card-head">
         <h2>Дежурный председатель</h2>

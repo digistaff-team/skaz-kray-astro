@@ -147,7 +147,6 @@ body.map-open { overflow: hidden; }
 .sovet-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .sovet-card-head h2 { margin: 0; }
 .sovet-whoami { margin: 0 0 1rem; font-size: .92rem; color: var(--muted); }
-.sovet-addhome { margin: 0 0 1rem; }
 .sovet-duty .sovet-meet-date { margin-bottom: .6rem; }
 .sovet-handoff { margin-top: .8rem; }
 .sovet-empty { padding: 1.5rem 0; }

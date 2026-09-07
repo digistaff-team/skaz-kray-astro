@@ -42,7 +42,7 @@
                     <form method="post" action="/sovet/povestka/peremestit"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><input type="hidden" name="dir" value="down"><button class="res-link-btn" type="submit" title="Ниже">↓</button></form>
                 <?php endif; ?>
                 <?php if ($isEditor || (string) $it['author'] === $me): ?>
-                    <form method="post" action="/sovet/povestka/udalit"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><button class="res-link-btn sovet-danger" type="submit">удалить</button></form>
+                    <form method="post" action="/sovet/povestka/udalit" onsubmit="return confirm('Удалить пункт повестки?');"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><button class="res-link-btn sovet-danger sovet-agenda-del" type="submit" title="Удалить" aria-label="Удалить">🗑</button></form>
                 <?php endif; ?>
             </div>
         </li>

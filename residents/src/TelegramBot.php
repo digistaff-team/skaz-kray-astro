@@ -8,7 +8,10 @@ namespace SkazResidents;
  */
 final class TelegramBot
 {
-    /** Отправить текстовое сообщение пользователю. true — доставлено Bot API. */
+    /**
+     * Отправить текстовое сообщение пользователю. true — доставлено Bot API.
+     * Доступ к api.telegram.org с сервера бывает нестабилен (таймауты) — до 3 попыток.
+     */
     public static function sendMessage(string $botToken, string $chatId, string $text): bool
     {
         if ($botToken === '' || $chatId === '') { return false; }
@@ -20,14 +23,18 @@ final class TelegramBot
             'disable_web_page_preview' => '1',
         ]);
 
-        $raw = self::httpPost($url, $payload);
-        if ($raw === null) { return false; }
-        $data = json_decode($raw, true);
-        if (!is_array($data) || empty($data['ok'])) {
-            error_log('TelegramBot::sendMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
-            return false;
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $raw = self::httpPost($url, $payload);
+            if ($raw !== null) {
+                $data = json_decode($raw, true);
+                if (is_array($data) && !empty($data['ok'])) { return true; }
+                // Ответ есть, но не ок (403/400 и т.п.) — повтор не поможет.
+                error_log('TelegramBot::sendMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+                return false;
+            }
+            if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
         }
-        return true;
+        return false;
     }
 
     private static function httpPost(string $url, string $body): ?string

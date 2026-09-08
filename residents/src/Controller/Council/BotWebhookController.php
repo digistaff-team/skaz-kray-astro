@@ -58,7 +58,7 @@ final class BotWebhookController
         $task = $tasks->find($taskId);
         if (!$task) {
             TelegramBot::answerCallback($token, $callbackId, 'Задача не найдена');
-            if ($chatId !== '' && $msgId) { TelegramBot::editMessageText($token, $chatId, $msgId, $msgText . "\n\n⚠️ Задача уже удалена."); }
+            self::editWithLink($token, $chatId, $msgId, $msgText, '⚠️ Задача уже удалена.');
             return;
         }
 
@@ -80,9 +80,30 @@ final class BotWebhookController
         }
 
         TelegramBot::answerCallback($token, $callbackId, $result);
-        if ($chatId !== '' && $msgId) {
-            // reply_markup не передаём → кнопки исчезают; результат дописываем в конец.
-            TelegramBot::editMessageText($token, $chatId, $msgId, $msgText . "\n\n" . $result);
+        // reply_markup не передаём → кнопки исчезают; результат дописываем, ссылку сохраняем.
+        self::editWithLink($token, $chatId, $msgId, $msgText, $result);
+    }
+
+    /**
+     * Отредактировать сообщение: убрать кнопки, дописать $suffix и СОХРАНИТЬ ссылку
+     * в слове «Подробнее» (в callback.message.text ссылка приходит как plain-текст —
+     * пересобираем как HTML и заново вшиваем детерминированный deep-link на задачи).
+     */
+    private static function editWithLink(string $token, string $chatId, int $msgId, string $msgText, string $suffix): void
+    {
+        if ($token === '' || $chatId === '' || !$msgId) { return; }
+
+        $base = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
+        $link = $base . '?startapp=' . rtrim(strtr(base64_encode('/sovet/zadachi'), '+/', '-_'), '=');
+        $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        $html = [];
+        foreach (explode("\n", $msgText) as $line) {
+            $html[] = trim($line) === 'Подробнее'
+                ? '<a href="' . $e($link) . '">Подробнее</a>'
+                : $e($line);
         }
+        $text = implode("\n", $html) . "\n\n" . $e($suffix);
+        TelegramBot::editMessageText($token, $chatId, $msgId, $text, 'HTML');
     }
 }

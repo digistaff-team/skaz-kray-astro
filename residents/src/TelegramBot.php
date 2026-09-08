@@ -52,17 +52,19 @@ final class TelegramBot
     }
 
     /** Заменить текст сообщения (reply_markup не шлём → кнопки убираются). */
-    public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text): bool
+    public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text, ?string $parseMode = null): bool
     {
         if ($botToken === '' || $chatId === '') { return false; }
+        $params = [
+            'chat_id'                  => $chatId,
+            'message_id'               => $messageId,
+            'text'                     => $text,
+            'disable_web_page_preview' => '1',
+        ];
+        if ($parseMode !== null) { $params['parse_mode'] = $parseMode; }
         $raw = self::httpPost(
             'https://api.telegram.org/bot' . $botToken . '/editMessageText',
-            http_build_query([
-                'chat_id'                  => $chatId,
-                'message_id'               => $messageId,
-                'text'                     => $text,
-                'disable_web_page_preview' => '1',
-            ])
+            http_build_query($params)
         );
         $d = json_decode((string) $raw, true);
         return is_array($d) && !empty($d['ok']);

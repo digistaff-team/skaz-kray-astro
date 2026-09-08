@@ -20,7 +20,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 </div>
 
 <details class="sovet-newtask">
-    <summary class="res-btn">+ Новая задача</summary>
+    <summary class="sovet-addlink">+ Новая задача</summary>
     <form class="res-form" method="post" action="/sovet/zadachi/novaya">
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">

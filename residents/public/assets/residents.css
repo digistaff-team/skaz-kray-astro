@@ -175,6 +175,8 @@ body.map-open { overflow: hidden; }
 .sovet-newtask > summary { display: inline-block; list-style: none; cursor: pointer; }
 .sovet-newtask > summary::-webkit-details-marker { display: none; }
 .sovet-newtask[open] > summary { display: none; }
+.sovet-addlink { color: var(--green); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.sovet-addlink:hover { text-decoration: none; }
 .sovet-form-actions { display: flex; gap: 10px; margin-top: 1rem; }
 .sovet-form-actions .res-btn { margin-top: 0; }
 .sovet-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }

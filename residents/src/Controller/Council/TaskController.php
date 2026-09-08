@@ -230,8 +230,10 @@ final class TaskController
         $due = ($dueDate !== null && $dueDate !== '') ? ru_date($dueDate) : 'не задан';
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        $text = "👋 Вам поставлена задача:\n"
-              . '😃 Поставил: ' . $e(CouncilAuth::name()) . "\n"
+        // Самоназначение: свой заголовок, без строки «Поставил».
+        $self = ($assignee === CouncilAuth::name());
+        $text = ($self ? "👋 Вы взяли себе задачу\n" : "👋 Вам поставлена задача:\n")
+              . ($self ? '' : '😃 Поставил: ' . $e(CouncilAuth::name()) . "\n")
               . '🌟 ' . $e($title) . "\n"
               . $prioEmoji . ' Приоритет: ' . $e($prioWord) . "\n"
               . '⏰ Срок: ' . $e($due) . "\n\n"
@@ -239,7 +241,7 @@ final class TaskController
 
         // От своей задачи отказаться нельзя — для самоназначения только «Взял в работу».
         $buttons = [['text' => '✅ Взял в работу', 'callback_data' => "t:{$taskId}:take"]];
-        if ($assignee !== CouncilAuth::name()) {
+        if (!$self) {
             $buttons[] = ['text' => '🚫 Отказался', 'callback_data' => "t:{$taskId}:decline"];
         }
         $keyboard = json_encode(['inline_keyboard' => [$buttons]], JSON_UNESCAPED_UNICODE);

@@ -188,7 +188,8 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <?php endforeach; ?>
 
 <?php if ($archive): ?>
-    <h2 class="sovet-archive-h">Архив выполненных · <?= count($archive) ?></h2>
+    <details class="sovet-acc sovet-archive">
+    <summary><h2 class="sovet-archive-h">Выполненные задачи · <?= count($archive) ?></h2></summary>
     <?php foreach ($archive as $t): $id = (int) $t['id']; ?>
         <div class="res-card sovet-arch">
             <span class="sovet-arch-title"><?= View::e($t['title']) ?></span>
@@ -205,6 +206,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </span>
         </div>
     <?php endforeach; ?>
+    </details>
 <?php endif; ?>
 
 <script>

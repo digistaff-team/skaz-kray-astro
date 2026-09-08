@@ -345,6 +345,9 @@ body.map-open { overflow: hidden; }
 .app-hello { display: flex; flex-direction: column; line-height: 1.2; }
 .app-hello b { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: #036844; }
 .app-hello span { font-size: 13px; color: var(--muted); }
+.app-map { margin-left: auto; flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+           background: none; border: 0; border-radius: 10px; font-size: 24px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.app-map:hover, .app-map:active { background: #e7f2ec; }
 
 .app-card { background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
 .app-card-body { padding: 16px 18px 6px; display: flex; flex-direction: column; gap: 2px; }

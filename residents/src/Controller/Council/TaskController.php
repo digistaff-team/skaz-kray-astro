@@ -237,10 +237,12 @@ final class TaskController
               . '⏰ Срок: ' . $e($due) . "\n\n"
               . '<a href="' . $e($link) . '">Подробнее</a>';
 
-        $keyboard = json_encode(['inline_keyboard' => [[
-            ['text' => '✅ Взял в работу', 'callback_data' => "t:{$taskId}:take"],
-            ['text' => '🚫 Отказался',      'callback_data' => "t:{$taskId}:decline"],
-        ]]], JSON_UNESCAPED_UNICODE);
+        // От своей задачи отказаться нельзя — для самоназначения только «Взял в работу».
+        $buttons = [['text' => '✅ Взял в работу', 'callback_data' => "t:{$taskId}:take"]];
+        if ($assignee !== CouncilAuth::name()) {
+            $buttons[] = ['text' => '🚫 Отказался', 'callback_data' => "t:{$taskId}:decline"];
+        }
+        $keyboard = json_encode(['inline_keyboard' => [$buttons]], JSON_UNESCAPED_UNICODE);
 
         if (function_exists('session_write_close')) { @session_write_close(); }
         if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }

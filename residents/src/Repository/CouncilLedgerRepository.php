@@ -61,6 +61,46 @@ final class CouncilLedgerRepository
         $this->db->prepare('DELETE FROM council_ledger_entries WHERE id = ?')->execute([$id]);
     }
 
+    // --- Синхронизация с затратами задач Совета (source_task_id) ---
+
+    /** Расходная операция, созданная из задачи (или null). */
+    public function findByTask(int $taskId): ?array
+    {
+        $st = $this->db->prepare('SELECT * FROM council_ledger_entries WHERE source_task_id = ?');
+        $st->execute([$taskId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Создать/обновить расходную операцию из задачи (ключ — source_task_id).
+     * Портируемый upsert без диалектного SQL: find → update | insert.
+     */
+    public function upsertFromTask(int $taskId, int $categoryId, float $amount, string $entryDate, string $note, string $author): void
+    {
+        $note   = mb_substr($note, 0, 300);
+        $author = mb_substr($author, 0, 160);
+        if ($this->findByTask($taskId)) {
+            $st = $this->db->prepare(
+                'UPDATE council_ledger_entries
+                    SET category_id = ?, amount = ?, entry_date = ?, note = ?
+                  WHERE source_task_id = ?'
+            );
+            $st->execute([$categoryId, $amount, $entryDate, $note, $taskId]);
+            return;
+        }
+        $st = $this->db->prepare(
+            'INSERT INTO council_ledger_entries (kind, category_id, amount, entry_date, note, author, source_task_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        $st->execute(['expense', $categoryId, $amount, $entryDate, $note, $author, $taskId]);
+    }
+
+    /** Удалить расходную операцию, связанную с задачей (если есть). */
+    public function deleteByTask(int $taskId): void
+    {
+        $this->db->prepare('DELETE FROM council_ledger_entries WHERE source_task_id = ?')->execute([$taskId]);
+    }
+
     /**
      * Все операции с именем статьи, новые сверху. amount приведён к float.
      * @return array<int,array<string,mixed>>
@@ -69,7 +109,7 @@ final class CouncilLedgerRepository
     {
         $rows = $this->db->query(
             'SELECT e.id, e.kind, e.category_id, e.amount, e.entry_date, e.note, e.author, e.created_at,
-                    c.name AS category_name
+                    e.source_task_id, c.name AS category_name
              FROM council_ledger_entries e
              JOIN council_ledger_categories c ON c.id = e.category_id
              ORDER BY e.entry_date DESC, e.id DESC'

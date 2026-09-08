@@ -322,6 +322,20 @@ body.map-open { overflow: hidden; }
 .bar-track { height: 12px; background: #f2f2ee; border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 999px; background: var(--green); }
 
+/* Круговая диаграмма расходов по статьям (conic-gradient, без JS) */
+.ledger-pie-wrap { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: .6rem; }
+.ledger-pie { flex: none; width: 150px; height: 150px; border-radius: 50%;
+    -webkit-mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%);
+            mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%); }
+.ledger-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 12rem; }
+.ledger-legend li { display: flex; align-items: center; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
+.ledger-legend li:last-child { border-bottom: 0; }
+.lg-dot { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.lg-name { flex: 1; font-weight: 600; font-size: .9rem; }
+.lg-sum { white-space: nowrap; color: var(--muted); font-size: .85rem; }
+@media (max-width: 640px) { .ledger-pie-wrap { justify-content: center; } }
+.ledger-op-src { margin: .4rem 0 0; padding-top: .5rem; border-top: 1px dashed #e6e5df; font-size: .82rem; color: var(--muted); }
+
 .ops { list-style: none; margin: .4rem 0 0; padding: 0; }
 .op-row { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
 .op-row:last-child { border-bottom: 0; }

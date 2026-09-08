@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
 use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config};
-use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository};
+use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilLedgerRepository, CouncilCategoryRepository};
 
 /**
  * Доска текущих задач совета. Все залогиненные члены совета могут добавлять
@@ -18,7 +18,9 @@ final class TaskController
     private const SORTS      = ['priority', 'created', 'progress', 'spent'];
 
     public function __construct(
-        private CouncilTaskRepository $tasks = new CouncilTaskRepository()
+        private CouncilTaskRepository $tasks = new CouncilTaskRepository(),
+        private CouncilLedgerRepository $ledger = new CouncilLedgerRepository(),
+        private CouncilCategoryRepository $cats = new CouncilCategoryRepository()
     ) {}
 
     public function index(): void
@@ -28,11 +30,12 @@ final class TaskController
         if (!in_array($sort, self::SORTS, true)) { $sort = 'priority'; }
 
         View::render('council/tasks', [
-            'active'  => $this->tasks->listWithSubtasks(false, $sort),
-            'archive' => $this->tasks->listWithSubtasks(true, $sort),
-            'sort'    => $sort,
-            'me'      => CouncilAuth::name(),
-            'members' => CouncilData::members(),
+            'active'      => $this->tasks->listWithSubtasks(false, $sort),
+            'archive'     => $this->tasks->listWithSubtasks(true, $sort),
+            'sort'        => $sort,
+            'me'          => CouncilAuth::name(),
+            'members'     => CouncilData::members(),
+            'expenseCats' => $this->cats->listByKind('expense', true),
         ], 'Текущие задачи', self::LAYOUT);
     }
 
@@ -62,7 +65,9 @@ final class TaskController
             if ($_POST['status'] === 'выполнена') { $patch['progress'] = 100; }
         }
         if (isset($_POST['spent'])) { $patch['spent'] = max(0, (float) str_replace(',', '.', (string) $_POST['spent'])); }
-        if ($patch) { $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s')); }
+        $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id'] ?? null);
+        $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
+        $this->syncExpense($id);
         Flash::set('success', 'Задача добавлена.');
         $this->back();
         $this->notifyAssignee($id, $assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
@@ -91,8 +96,10 @@ final class TaskController
             $patch['status'] = $_POST['status'];
             if ($_POST['status'] === 'выполнена' && !isset($patch['progress'])) { $patch['progress'] = 100; }
         }
+        if (isset($_POST['expense_category_id'])) { $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id']); }
 
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
+        $this->syncExpense($id);
         Flash::set('success', 'Задача обновлена.');
         $this->back();
         if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {
@@ -126,6 +133,7 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         if ($this->tasks->find($id)) {
             $this->tasks->updateFields($id, ['status' => 'выполнена', 'progress' => 100], date('Y-m-d H:i:s'));
+            $this->syncExpense($id);
             Flash::set('success', 'Задача перенесена в архив выполненных.');
         }
         $this->back();
@@ -137,6 +145,7 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         if ($this->tasks->find($id)) {
             $this->tasks->updateFields($id, ['status' => 'в работе', 'progress' => 50], date('Y-m-d H:i:s'));
+            $this->syncExpense($id);
             Flash::set('info', 'Задача возвращена в работу.');
         }
         $this->back();
@@ -146,6 +155,7 @@ final class TaskController
     {
         $this->guard();
         $id = (int) ($params['id'] ?? 0);
+        $this->ledger->deleteByTask($id);
         $this->tasks->delete($id);
         Flash::set('info', 'Задача удалена.');
         $this->back();
@@ -261,6 +271,46 @@ final class TaskController
     {
         $v = trim($v);
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+    }
+
+    /** id существующей расходной статьи бюджета или null. */
+    private function pickCategory(mixed $raw): ?int
+    {
+        $id = (int) $raw;
+        if ($id <= 0) { return null; }
+        $cat = $this->cats->find($id);
+        return ($cat && $cat['kind'] === 'expense') ? $id : null;
+    }
+
+    /**
+     * Синхронизировать затраты задачи с бюджетом: если есть сумма и статья —
+     * создаём/обновляем расходную операцию (source_task_id), иначе удаляем.
+     * Источник истины — задача; операция в бюджете правится только отсюда.
+     */
+    private function syncExpense(int $taskId): void
+    {
+        $task = $this->tasks->find($taskId);
+        if (!$task) { $this->ledger->deleteByTask($taskId); return; }
+        $spent = (float) ($task['spent'] ?? 0);
+        $catId = (int) ($task['expense_category_id'] ?? 0);
+        if ($spent > 0 && $catId > 0) {
+            $this->ledger->upsertFromTask(
+                $taskId, $catId, $spent, $this->expenseDate($task),
+                (string) ($task['title'] ?? ''), (string) ($task['author'] ?? '')
+            );
+        } else {
+            $this->ledger->deleteByTask($taskId);
+        }
+    }
+
+    /** Дата расхода = дата выполнения → срок → дата создания (YYYY-MM-DD). */
+    private function expenseDate(array $task): string
+    {
+        foreach (['completed_at', 'due_date', 'created_at'] as $k) {
+            $v = (string) ($task[$k] ?? '');
+            if ($v !== '') { return substr($v, 0, 10); }
+        }
+        return date('Y-m-d');
     }
 
     private function guard(): void

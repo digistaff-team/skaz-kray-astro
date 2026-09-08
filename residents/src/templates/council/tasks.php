@@ -43,6 +43,12 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         </label>
         <label>До какого дня сделать<input type="date" name="due_date"></label>
         <label>Стоимость работ, ₽<input type="number" name="spent" min="0" step="1"></label>
+        <label>Статья расхода (для отчёта по бюджету)
+            <select name="expense_category_id">
+                <option value="">— не относить к бюджету —</option>
+                <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
+            </select>
+        </label>
         <label>Статус выполнения
             <select name="status">
                 <option value="новая" selected>Поставлена</option>
@@ -133,6 +139,14 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 <label>Прогресс, %<input type="number" name="progress" min="0" max="100" step="5" value="<?= (int) $t['progress'] ?>"></label>
                 <label>Затрачено, ₽<input type="number" name="spent" min="0" step="1" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             </div>
+            <?php $curCat = (int) ($t['expense_category_id'] ?? 0); $activeIds = array_map('intval', array_column($expenseCats ?? [], 'id')); ?>
+            <label>Статья расхода (для отчёта по бюджету)
+                <select name="expense_category_id">
+                    <option value="">— не относить к бюджету —</option>
+                    <?php if ($curCat > 0 && !in_array($curCat, $activeIds, true)): ?><option value="<?= $curCat ?>" selected>Текущая статья (архив)</option><?php endif; ?>
+                    <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"<?= $curCat === (int) $c['id'] ? ' selected' : '' ?>><?= View::e($c['name']) ?></option><?php endforeach; ?>
+                </select>
+            </label>
             <label>До какого дня сделать<input type="date" name="due_date" value="<?= View::e($t['due_date'] ?? '') ?>"></label>
             <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
             <label>Контакты специалистов<textarea name="contacts" placeholder="Электрик Виктор, +7 900 000-00-00"><?= View::e($t['contacts'] ?? '') ?></textarea></label>

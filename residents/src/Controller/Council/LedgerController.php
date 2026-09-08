@@ -67,6 +67,10 @@ final class LedgerController
         $id = (int) ($params['id'] ?? 0);
         $entry = $this->ledger->find($id);
         if (!$entry) { $this->back(); return; }
+        if (!empty($entry['source_task_id'])) {
+            Flash::set('error', 'Эта операция создана из задачи — правьте сумму или статью в разделе «Задачи».');
+            $this->back(); return;
+        }
 
         $patch = [];
         if (isset($_POST['category_id'])) {
@@ -87,7 +91,12 @@ final class LedgerController
     {
         $this->guard();
         $id = (int) ($params['id'] ?? 0);
-        if ($this->ledger->find($id)) {
+        $entry = $this->ledger->find($id);
+        if ($entry && !empty($entry['source_task_id'])) {
+            Flash::set('error', 'Операция из задачи убирается обнулением суммы или удалением самой задачи.');
+            $this->back(); return;
+        }
+        if ($entry) {
             $this->deleteReceiptFiles($id);
             $this->images->deleteFor('expense', $id);
             $this->ledger->delete($id);

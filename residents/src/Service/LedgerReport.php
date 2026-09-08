@@ -26,6 +26,9 @@ final class LedgerReport
         7 => 'Июль', 8 => 'Август', 9 => 'Сентябрь', 10 => 'Октябрь', 11 => 'Ноябрь', 12 => 'Декабрь',
     ];
 
+    /** Палитра секторов круговой диаграммы и полос (по порядку убывания суммы). */
+    private const PALETTE = ['#3f9b6d', '#e0a458', '#c0603a', '#6b8fb5', '#9b7cb0', '#8aa63f', '#c98aa6', '#7ba0a8'];
+
     public function __construct(
         private CouncilLedgerRepository $ledger = new CouncilLedgerRepository(),
         private ImageRepository $images = new ImageRepository()
@@ -63,12 +66,16 @@ final class LedgerReport
         if ($selectedYm !== null) {
             $rows = $this->ledger->expenseByCategory($selectedYm);
             $expTotal = array_sum(array_map(static fn($r) => $r['sum'], $rows));
+            $i = 0;
             foreach ($rows as $r) {
                 $breakdown[] = [
-                    'name' => $r['name'],
-                    'sum'  => $r['sum'],
-                    'pct'  => $expTotal > 0 ? (int) round($r['sum'] / $expTotal * 100) : 0,
+                    'name'  => $r['name'],
+                    'sum'   => $r['sum'],
+                    'pct'   => $expTotal > 0 ? (int) round($r['sum'] / $expTotal * 100) : 0,
+                    'share' => $expTotal > 0 ? $r['sum'] / $expTotal * 100 : 0.0, // точная доля для диаграммы
+                    'color' => self::PALETTE[$i % count(self::PALETTE)],
                 ];
+                $i++;
             }
             foreach ($this->ledger->listForMonth($selectedYm) as $op) {
                 $receipt = $op['kind'] === 'expense'
@@ -84,6 +91,8 @@ final class LedgerReport
                     'note'        => (string) $op['note'],
                     'hasReceipt'  => count($receipt) > 0,
                     'receiptPath' => $receipt[0]['path'] ?? null,
+                    'fromTask'    => !empty($op['source_task_id']),
+                    'taskId'      => (int) ($op['source_task_id'] ?? 0),
                 ];
             }
         }

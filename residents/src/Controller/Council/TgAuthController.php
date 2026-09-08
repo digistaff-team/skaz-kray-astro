@@ -54,7 +54,19 @@ final class TgAuthController
         }
 
         CouncilAuth::login($member);
-        echo json_encode(['ok' => true, 'redirect' => '/sovet']);
+        echo json_encode(['ok' => true, 'redirect' => self::decodeStart((string) ($_POST['startapp'] ?? ''))]);
+    }
+
+    /** base64url(путь) из start_param → безопасный путь внутри /sovet, иначе /sovet. */
+    private static function decodeStart(string $startParam, string $fallback = '/sovet'): string
+    {
+        if ($startParam === '') { return $fallback; }
+        $b64 = strtr($startParam, '-_', '+/');
+        $pad = strlen($b64) % 4;
+        if ($pad > 0) { $b64 .= str_repeat('=', 4 - $pad); }
+        $decoded = base64_decode($b64, true);
+        if ($decoded === false || strpos($decoded, '/sovet') !== 0) { return $fallback; }
+        return $decoded;
     }
 
     /** Форма ввода фамилии (внутри Mini App; initData подставляет клиентский JS). */

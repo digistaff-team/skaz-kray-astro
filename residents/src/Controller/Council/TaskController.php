@@ -65,7 +65,7 @@ final class TaskController
         if ($patch) { $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s')); }
         Flash::set('success', 'Задача добавлена.');
         $this->back();
-        $this->notifyAssignee(mb_substr($title, 0, 300), $assignee);
+        $this->notifyAssignee($assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
     }
 
     public function update(array $params = []): void
@@ -96,7 +96,12 @@ final class TaskController
         Flash::set('success', 'Задача обновлена.');
         $this->back();
         if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {
-            $this->notifyAssignee((string) ($patch['title'] ?? $task['title']), (string) $patch['assignee']);
+            $this->notifyAssignee(
+                (string) $patch['assignee'],
+                (string) ($patch['title'] ?? $task['title']),
+                (string) ($patch['priority'] ?? $task['priority']),
+                $patch['due_date'] ?? ($task['due_date'] ?? null)
+            );
         }
     }
 
@@ -194,7 +199,7 @@ final class TaskController
      * Отправка — ПОСЛЕ ответа клиенту (fastcgi_finish_request), чтобы возможная
      * задержка Telegram API не тормозила сохранение задачи.
      */
-    private function notifyAssignee(string $title, string $assignee): void
+    private function notifyAssignee(string $assignee, string $title, string $priority, ?string $dueDate): void
     {
         $assignee = trim($assignee);
         if ($assignee === '' || $assignee === CouncilAuth::name()) { return; }
@@ -204,8 +209,18 @@ final class TaskController
 
         $token = (string) (Config::get('telegram')['bot_token'] ?? '');
         if ($token === '') { return; }
-        $link = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
-        $text = "📋 Вам поставлена задача Попечительского совета:\n{$title}\n\nОткрыть в приложении (раздел «Текущие задачи»):\n{$link}";
+
+        // Прямая ссылка на раздел «Текущие задачи» (deep-link Mini App).
+        $base = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
+        $link = $base . '?startapp=' . rtrim(strtr(base64_encode('/sovet/zadachi'), '+/', '-_'), '=');
+
+        $due = ($dueDate !== null && $dueDate !== '') ? ru_date($dueDate) : 'не задан';
+        $text = "📋 Вам поставлена задача:\n"
+              . 'Поставил: ' . CouncilAuth::name() . "\n"
+              . $title . "\n"
+              . 'Приоритет: ' . $priority . "\n"
+              . 'Срок: ' . $due . "\n\n"
+              . "Подробнее в приложении:\n" . $link;
 
         if (function_exists('session_write_close')) { @session_write_close(); }
         if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }

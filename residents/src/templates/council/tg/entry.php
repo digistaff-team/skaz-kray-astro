@@ -10,8 +10,22 @@
 
   var wa = window.Telegram && window.Telegram.WebApp;
 
+  // Deep-link: startapp=base64url(путь внутри /sovet) — из initDataUnsafe или query.
+  var qs = new URLSearchParams(window.location.search);
+  var startParam = (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param)
+    || qs.get('startapp') || qs.get('tgWebAppStartParam') || '';
+  function decodeStart(sp, fallback) {
+    if (!sp) { return fallback; }
+    try {
+      var b64 = sp.replace(/-/g, '+').replace(/_/g, '/');
+      var pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+      var decoded = atob(b64 + pad);
+      return decoded.indexOf('/sovet') === 0 ? decoded : fallback;
+    } catch (e) { return fallback; }
+  }
+
   <?php if ($alreadyLoggedIn): ?>
-  window.location.assign('/sovet');
+  window.location.assign(decodeStart(startParam, '/sovet'));
   return;
   <?php endif; ?>
 
@@ -25,7 +39,7 @@
   fetch('/sovet/tg/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'initData=' + encodeURIComponent(wa.initData)
+    body: 'initData=' + encodeURIComponent(wa.initData) + '&startapp=' + encodeURIComponent(startParam)
   }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
     .then(function (data) {
       if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }

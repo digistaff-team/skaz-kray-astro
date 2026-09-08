@@ -75,6 +75,7 @@ CREATE TABLE council_tasks (
     status TEXT NOT NULL DEFAULT 'новая',
     progress INTEGER NOT NULL DEFAULT 0,
     spent REAL NOT NULL DEFAULT 0,
+    expense_category_id INTEGER,
     contacts TEXT,
     links TEXT,
     due_date TEXT,
@@ -184,6 +185,7 @@ CREATE TABLE council_ledger_entries (
     entry_date TEXT NOT NULL,           -- YYYY-MM-DD
     note TEXT NOT NULL DEFAULT '',
     author TEXT NOT NULL DEFAULT '',
+    source_task_id INTEGER,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE app_sections (

@@ -52,14 +52,30 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
     <?php if (!$report['breakdown']): ?>
         <p class="res-meta">В этом месяце расходов не было.</p>
     <?php else: ?>
-        <ul class="bars">
-            <?php foreach ($report['breakdown'] as $b): ?>
-                <li class="bar">
-                    <div class="bar-top"><span class="bar-name"><?= View::e($b['name']) ?></span><span class="bar-sum"><?= View::e($fmt($b['sum'])) ?><span class="bar-pct"><?= (int) $b['pct'] ?>%</span></span></div>
-                    <div class="bar-track"><div class="bar-fill" style="width:<?= (int) $b['pct'] ?>%"></div></div>
-                </li>
-            <?php endforeach; ?>
-        </ul>
+        <?php
+            $stops = [];
+            $acc = 0.0;
+            $last = count($report['breakdown']) - 1;
+            foreach ($report['breakdown'] as $bi => $b) {
+                $from = $acc;
+                $acc += (float) ($b['share'] ?? $b['pct']);
+                $to = $bi === $last ? 100.0 : $acc; // хвост округления добиваем до 100%
+                $stops[] = $b['color'] . ' ' . round($from, 2) . '% ' . round($to, 2) . '%';
+            }
+            $gradient = 'conic-gradient(' . implode(', ', $stops) . ')';
+        ?>
+        <div class="ledger-pie-wrap">
+            <div class="ledger-pie" style="background:<?= $gradient ?>" role="img" aria-label="Круговая диаграмма расходов по статьям"></div>
+            <ul class="ledger-legend">
+                <?php foreach ($report['breakdown'] as $b): ?>
+                    <li>
+                        <span class="lg-dot" style="background:<?= View::e($b['color']) ?>"></span>
+                        <span class="lg-name"><?= View::e($b['name']) ?></span>
+                        <span class="lg-sum"><?= View::e($fmt($b['sum'])) ?> · <?= (int) $b['pct'] ?>%</span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     <?php endif; ?>
 </div>
 
@@ -80,7 +96,9 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
                             <?php if ($op['hasReceipt']): ?><a class="op-doc" href="<?= View::e($uploadsUrl) ?>/<?= View::e($op['receiptPath'] ?? '') ?>" target="_blank" rel="noopener">чек</a><?php endif; ?>
                         </span>
                     </div>
-                    <?php if ($editable): ?>
+                    <?php if ($editable && !empty($op['fromTask'])): ?>
+                        <p class="ledger-op-src">🔗 Из задачи №<?= (int) $op['taskId'] ?> — сумма и статья правятся в разделе «Задачи».</p>
+                    <?php elseif ($editable): ?>
                         <details class="ledger-op-edit">
                             <summary>Изменить / удалить</summary>
                             <form method="post" action="<?= View::e($basePath) ?>/operaciya/<?= (int) $op['id'] ?>/obnovit" class="res-form">

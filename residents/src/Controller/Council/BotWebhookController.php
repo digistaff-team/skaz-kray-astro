@@ -97,8 +97,8 @@ final class BotWebhookController
                 $tasks->updateFields($taskId, ['status' => 'выполнена', 'progress' => 100], $now);
                 TelegramBot::answerCallback($token, $callbackId, '🎉 Задача выполнена');
                 $plain = strpos($msgText, '✅ Вы взяли задачу в работу') !== false
-                    ? str_replace('✅ Вы взяли задачу в работу', '🎉 Вы выполнили эту задачу!', $msgText)
-                    : $msgText . "\n\n🎉 Вы выполнили эту задачу!";
+                    ? str_replace('✅ Вы взяли задачу в работу', '🎉 Вы выполнили эту задачу, большое спасибо!', $msgText)
+                    : $msgText . "\n\n🎉 Вы выполнили эту задачу, большое спасибо!";
                 self::renderEdit($token, $chatId, $msgId, $plain, null);
                 return;
         }

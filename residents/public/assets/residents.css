@@ -218,9 +218,11 @@ body.map-open { overflow: hidden; }
 .sovet-check { background: none; border: 0; font-size: 1.15rem; cursor: pointer; color: var(--green); padding: 0; }
 .sovet-sub-rename { display: flex; gap: .3rem; flex: 1; align-items: center; }
 .sovet-sub-rename input { flex: 1; padding: .3rem .5rem; font: inherit; border: 1px solid #e0e0da; border-radius: 5px; }
-.sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: center; }
+.sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: stretch; }
 .sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
-.sovet-sub-add .res-btn { margin-top: 0; padding: .35rem .9rem; font-size: .85rem; }
+/* Компактная кнопка «+» — по высоте не выше поля ввода (align-items:stretch). */
+.sovet-sub-add .res-btn { margin-top: 0; min-height: 0; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.sovet-save { margin-top: .8rem; }
 
 .sovet-archive-h { margin-top: 2rem; }
 .sovet-arch { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem; }

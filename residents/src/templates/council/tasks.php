@@ -102,7 +102,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </form>
         </div>
 
-        <form class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
+        <form id="edit-<?= $id ?>" class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
             <label>Что сделать<input type="text" name="title" maxlength="300" value="<?= View::e($t['title']) ?>"></label>
             <label>Кто сделает
@@ -155,9 +155,6 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 </select>
             </label>
             <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
-            <label>Контакты специалистов<textarea name="contacts" placeholder="Электрик Виктор, +7 900 000-00-00"><?= View::e($t['contacts'] ?? '') ?></textarea></label>
-            <label>Ссылки на товары<textarea name="links" placeholder="https://…"><?= View::e($t['links'] ?? '') ?></textarea></label>
-            <button class="res-btn" type="submit">Сохранить</button>
         </form>
 
         <div class="sovet-subs">
@@ -182,9 +179,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <form class="sovet-sub-add" method="post" action="/sovet/zadachi/<?= $id ?>/podzadacha">
                 <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
                 <input type="text" name="title" maxlength="300" placeholder="Новая подзадача">
-                <button class="res-btn res-btn--ghost" type="submit">Добавить</button>
+                <button class="res-btn" type="submit" title="Добавить подзадачу" aria-label="Добавить подзадачу">+</button>
             </form>
         </div>
+
+        <button class="res-btn sovet-save" type="submit" form="edit-<?= $id ?>">Сохранить</button>
     </details>
 <?php endforeach; ?>
 

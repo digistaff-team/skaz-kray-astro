@@ -60,10 +60,8 @@ a { color: var(--green); }
 /* Полноэкранная карта поселения. */
 .map-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 22, 20, .92); display: flex; }
 .map-overlay[hidden] { display: none; }
-.map-scroll { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; -webkit-overflow-scrolling: touch; }
-.map-img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
-/* Тап по карте — натуральный размер со скроллом (для чтения мелких подписей). */
-.map-img--zoom { max-width: none; max-height: none; width: 1608px; cursor: zoom-out; margin: auto; }
+.map-scroll { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.map-img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; will-change: transform; cursor: grab; user-select: none; -webkit-user-drag: none; }
 .map-close {
     position: fixed; top: 10px; right: 12px; z-index: 1001;
     top: calc(env(safe-area-inset-top, 0px) + 10px);

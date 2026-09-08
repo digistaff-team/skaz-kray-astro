@@ -65,7 +65,7 @@ final class TaskController
         if ($patch) { $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s')); }
         Flash::set('success', 'Задача добавлена.');
         $this->back();
-        $this->notifyAssignee($assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
+        $this->notifyAssignee($id, $assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
     }
 
     public function update(array $params = []): void
@@ -97,6 +97,7 @@ final class TaskController
         $this->back();
         if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {
             $this->notifyAssignee(
+                $id,
                 (string) $patch['assignee'],
                 (string) ($patch['title'] ?? $task['title']),
                 (string) ($patch['priority'] ?? $task['priority']),
@@ -199,7 +200,17 @@ final class TaskController
      * Отправка — ПОСЛЕ ответа клиенту (fastcgi_finish_request), чтобы возможная
      * задержка Telegram API не тормозила сохранение задачи.
      */
-    private function notifyAssignee(string $assignee, string $title, string $priority, ?string $dueDate): void
+    /** Приоритет в мужском роде (для строки «Приоритет: …») + цветной кружок. */
+    private static function priorityView(string $p): array
+    {
+        return [
+            'высокая' => ['высокий', '🔴'],
+            'средняя' => ['средний', '🟠'],
+            'низкая'  => ['низкий',  '🟢'],
+        ][$p] ?? [$p, '⚪'];
+    }
+
+    private function notifyAssignee(int $taskId, string $assignee, string $title, string $priority, ?string $dueDate): void
     {
         $assignee = trim($assignee);
         if ($assignee === '' || $assignee === CouncilAuth::name()) { return; }
@@ -210,21 +221,29 @@ final class TaskController
         $token = (string) (Config::get('telegram')['bot_token'] ?? '');
         if ($token === '') { return; }
 
-        // Прямая ссылка на раздел «Текущие задачи» (deep-link Mini App).
+        // Прямая ссылка на раздел «Текущие задачи» (deep-link Mini App), зашита в «Подробнее».
         $base = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
         $link = $base . '?startapp=' . rtrim(strtr(base64_encode('/sovet/zadachi'), '+/', '-_'), '=');
 
+        [$prioWord, $prioEmoji] = self::priorityView($priority);
         $due = ($dueDate !== null && $dueDate !== '') ? ru_date($dueDate) : 'не задан';
+        $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
         $text = "📋 Вам поставлена задача:\n"
-              . 'Поставил: ' . CouncilAuth::name() . "\n"
-              . $title . "\n"
-              . 'Приоритет: ' . $priority . "\n"
-              . 'Срок: ' . $due . "\n\n"
-              . "Подробнее в приложении:\n" . $link;
+              . '👤 Поставил: ' . $e(CouncilAuth::name()) . "\n"
+              . '📝 ' . $e($title) . "\n"
+              . $prioEmoji . ' Приоритет: ' . $e($prioWord) . "\n"
+              . '📅 Срок: ' . $e($due) . "\n\n"
+              . '<a href="' . $e($link) . '">Подробнее</a>';
+
+        $keyboard = json_encode(['inline_keyboard' => [[
+            ['text' => '✅ Взял в работу', 'callback_data' => "t:{$taskId}:take"],
+            ['text' => '🚫 Отказался',      'callback_data' => "t:{$taskId}:decline"],
+        ]]], JSON_UNESCAPED_UNICODE);
 
         if (function_exists('session_write_close')) { @session_write_close(); }
         if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
-        TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text);
+        TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text, 'HTML', $keyboard);
     }
 
     private function pickPriority(string $v): string

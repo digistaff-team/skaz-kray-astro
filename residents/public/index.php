@@ -28,6 +28,7 @@ use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController
 use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
 use SkazResidents\Controller\Council\AgendaController as CouncilAgendaController;
 use SkazResidents\Controller\Council\TgAuthController as CouncilTgAuthController;
+use SkazResidents\Controller\Council\BotWebhookController as CouncilBotWebhookController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
@@ -202,6 +203,8 @@ $router->get('/sovet/tg', [$cTg, 'entry']);
 $router->post('/sovet/tg/login', [$cTg, 'login']);
 $router->get('/sovet/tg/familiya', [$cTg, 'showClaim']);
 $router->post('/sovet/tg/claim', [$cTg, 'claim']);
+// Webhook бота — нажатия кнопок под уведомлением о задаче (проверка секрет-заголовком).
+$router->post('/sovet/tg/webhook', [new CouncilBotWebhookController(), 'handle']);
 
 $cAuth = new CouncilAuthController();
 $router->get('/sovet/vhod', [$cAuth, 'showLogin']);

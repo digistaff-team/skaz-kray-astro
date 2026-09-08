@@ -22,6 +22,9 @@ return [
         'bot_token'     => getenv('SKAZKRAY_BOT_TOKEN') ?: '',
         'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
         'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
+        // Секрет webhook бота (X-Telegram-Bot-Api-Secret-Token) для кнопок под
+        // уведомлениями о задачах. Задаётся при setWebhook (bin/council-set-webhook.php).
+        'webhook_secret' => getenv('SKAZKRAY_WEBHOOK_SECRET') ?: '',
     ],
     // Фото дневника уходят в приватный Telegram-канал «Skaz-Kray Media» (тот же,
     // что у новостей блога) и отдаются через /tg-media/<file_id>.jpg. Чтобы не

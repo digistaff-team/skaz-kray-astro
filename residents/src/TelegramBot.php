@@ -11,17 +11,21 @@ final class TelegramBot
     /**
      * Отправить текстовое сообщение пользователю. true — доставлено Bot API.
      * Доступ к api.telegram.org с сервера бывает нестабилен (таймауты) — до 3 попыток.
+     * $parseMode — 'HTML'|'MarkdownV2'|null; $replyMarkup — JSON inline-клавиатуры.
      */
-    public static function sendMessage(string $botToken, string $chatId, string $text): bool
+    public static function sendMessage(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): bool
     {
         if ($botToken === '' || $chatId === '') { return false; }
 
         $url = 'https://api.telegram.org/bot' . $botToken . '/sendMessage';
-        $payload = http_build_query([
+        $params = [
             'chat_id'                  => $chatId,
             'text'                     => $text,
             'disable_web_page_preview' => '1',
-        ]);
+        ];
+        if ($parseMode !== null)   { $params['parse_mode']   = $parseMode; }
+        if ($replyMarkup !== null) { $params['reply_markup'] = $replyMarkup; }
+        $payload = http_build_query($params);
 
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             $raw = self::httpPost($url, $payload);
@@ -35,6 +39,33 @@ final class TelegramBot
             if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
         }
         return false;
+    }
+
+    /** Ответить на нажатие inline-кнопки (обязательно, иначе у пользователя «часики»). */
+    public static function answerCallback(string $botToken, string $callbackId, string $text = ''): void
+    {
+        if ($botToken === '' || $callbackId === '') { return; }
+        self::httpPost(
+            'https://api.telegram.org/bot' . $botToken . '/answerCallbackQuery',
+            http_build_query(['callback_query_id' => $callbackId, 'text' => $text])
+        );
+    }
+
+    /** Заменить текст сообщения (reply_markup не шлём → кнопки убираются). */
+    public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text): bool
+    {
+        if ($botToken === '' || $chatId === '') { return false; }
+        $raw = self::httpPost(
+            'https://api.telegram.org/bot' . $botToken . '/editMessageText',
+            http_build_query([
+                'chat_id'                  => $chatId,
+                'message_id'               => $messageId,
+                'text'                     => $text,
+                'disable_web_page_preview' => '1',
+            ])
+        );
+        $d = json_decode((string) $raw, true);
+        return is_array($d) && !empty($d['ok']);
     }
 
     private static function httpPost(string $url, string $body): ?string

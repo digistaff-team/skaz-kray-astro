@@ -76,7 +76,12 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($statusLabel($t['status'])) ?></span>
             <span class="sovet-task-assignee"><?= $t['assignee'] !== '' ? '👤 ' . View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span>
             <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>
+            <button class="sovet-del-ico" type="submit" form="del-<?= $id ?>" title="Удалить задачу" aria-label="Удалить задачу" onclick="event.stopPropagation()">🗑</button>
         </summary>
+
+        <form id="del-<?= $id ?>" method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
+            <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
+        </form>
 
         <p class="sovet-task-meta">
             Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
@@ -87,20 +92,6 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         </p>
         <?php if (!empty($t['description'])): ?><p class="sovet-task-desc"><?= nl2br(View::e($t['description'])) ?></p><?php endif; ?>
 
-        <div class="sovet-quick">
-            <form method="post" action="/sovet/zadachi/<?= $id ?>/vzyat">
-                <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                <button class="res-btn res-btn--ghost" type="submit">Взять на себя</button>
-            </form>
-            <form method="post" action="/sovet/zadachi/<?= $id ?>/gotovo">
-                <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                <button class="res-btn res-btn--ghost" type="submit">Выполнено</button>
-            </form>
-            <form method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
-                <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                <button class="res-link-btn sovet-danger" type="submit">удалить</button>
-            </form>
-        </div>
 
         <form id="edit-<?= $id ?>" class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">

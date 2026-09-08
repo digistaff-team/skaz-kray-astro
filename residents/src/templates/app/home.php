@@ -6,6 +6,7 @@
       <b>Сказочный Край</b>
       <span><?= View::e($me) ?></span>
     </div>
+    <button type="button" class="app-map js-map-open" aria-label="Карта поселения" title="Карта поселения">🗺</button>
   </div>
 
   <?php $d = $dash['diary']; ?>
@@ -47,6 +48,8 @@
     <span>Сети нет. Показываем сохранённое на <?= View::e($savedAt) ?>, изменения уйдут при связи.</span>
   </div>
 </div>
+
+<?php require __DIR__ . '/../partials/map.php'; ?>
 
 <script>
 (function () {

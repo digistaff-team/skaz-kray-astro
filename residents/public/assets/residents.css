@@ -235,7 +235,10 @@ body.map-open { overflow: hidden; }
 .sovet-arch { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem; }
 .sovet-arch-title { flex: 1; text-decoration: line-through; color: var(--muted); min-width: 10rem; font-size: .8rem; }
 .sovet-arch-actions { display: flex; gap: .8rem; }
-.sovet-arch-ico { background: none; border: 0; padding: 4px; font-size: 18px; line-height: 1; cursor: pointer; }
+.sovet-arch-ico { background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: var(--green); -webkit-tap-highlight-color: transparent; }
+.sovet-arch-ico svg { display: block; }
+.sovet-arch-ico--del { color: #c0392b; }
+.sovet-arch-ico:hover { opacity: .6; }
 .sovet-arch-actions form { margin: 0; }
 
 .sovet-members { width: 100%; border-collapse: collapse; font-size: .9rem; }

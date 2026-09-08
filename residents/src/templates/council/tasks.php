@@ -190,11 +190,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <span class="sovet-arch-actions">
                 <form method="post" action="/sovet/zadachi/<?= $id ?>/vernut">
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                    <button class="sovet-arch-ico" type="submit" title="Вернуть в работу" aria-label="Вернуть в работу">↩️</button>
+                    <button class="sovet-arch-ico" type="submit" title="Вернуть в работу" aria-label="Вернуть в работу"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg></button>
                 </form>
                 <form method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                    <button class="sovet-arch-ico" type="submit" title="Удалить" aria-label="Удалить">🗑</button>
+                    <button class="sovet-arch-ico sovet-arch-ico--del" type="submit" title="Удалить" aria-label="Удалить"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
                 </form>
             </span>
         </div>

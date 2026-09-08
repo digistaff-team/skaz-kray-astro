@@ -51,8 +51,8 @@ final class TelegramBot
         );
     }
 
-    /** Заменить текст сообщения (reply_markup не шлём → кнопки убираются). */
-    public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text, ?string $parseMode = null): bool
+    /** Заменить текст сообщения. $replyMarkup=null → кнопки убираются; иначе задаёт новые. */
+    public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): bool
     {
         if ($botToken === '' || $chatId === '') { return false; }
         $params = [
@@ -61,7 +61,8 @@ final class TelegramBot
             'text'                     => $text,
             'disable_web_page_preview' => '1',
         ];
-        if ($parseMode !== null) { $params['parse_mode'] = $parseMode; }
+        if ($parseMode !== null)   { $params['parse_mode']   = $parseMode; }
+        if ($replyMarkup !== null) { $params['reply_markup'] = $replyMarkup; }
         $raw = self::httpPost(
             'https://api.telegram.org/bot' . $botToken . '/editMessageText',
             http_build_query($params)

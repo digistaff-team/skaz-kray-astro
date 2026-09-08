@@ -2,8 +2,8 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View};
-use SkazResidents\Repository\CouncilTaskRepository;
+use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config};
+use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository};
 
 /**
  * Доска текущих задач совета. Все залогиненные члены совета могут добавлять
@@ -47,11 +47,12 @@ final class TaskController
         }
         $priority = $this->pickPriority($_POST['priority'] ?? '');
         $desc = trim($_POST['description'] ?? '');
+        $assignee = trim($_POST['assignee'] ?? '');
         $id = $this->tasks->create(
             mb_substr($title, 0, 300),
             $desc !== '' ? $desc : null,
             trim($_POST['author'] ?? '') ?: CouncilAuth::name(),
-            trim($_POST['assignee'] ?? ''),
+            $assignee,
             $priority,
             $this->pickDate($_POST['due_date'] ?? '')
         );
@@ -64,13 +65,16 @@ final class TaskController
         if ($patch) { $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s')); }
         Flash::set('success', 'Задача добавлена.');
         $this->back();
+        $this->notifyAssignee(mb_substr($title, 0, 300), $assignee);
     }
 
     public function update(array $params = []): void
     {
         $this->guard();
         $id = (int) ($params['id'] ?? 0);
-        if (!$this->tasks->find($id)) { $this->back(); return; }
+        $task = $this->tasks->find($id);
+        if (!$task) { $this->back(); return; }
+        $oldAssignee = (string) ($task['assignee'] ?? '');
 
         $patch = [];
         if (isset($_POST['title']))       { $patch['title']       = mb_substr(trim($_POST['title']), 0, 300) ?: 'Без названия'; }
@@ -91,6 +95,9 @@ final class TaskController
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
         Flash::set('success', 'Задача обновлена.');
         $this->back();
+        if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {
+            $this->notifyAssignee((string) ($patch['title'] ?? $task['title']), (string) $patch['assignee']);
+        }
     }
 
     public function take(array $params = []): void
@@ -180,6 +187,29 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         $this->tasks->deleteSubtask($id);
         $this->back();
+    }
+
+    /**
+     * Уведомить исполнителя в Telegram о поставленной задаче. Себе не шлём.
+     * Отправка — ПОСЛЕ ответа клиенту (fastcgi_finish_request), чтобы возможная
+     * задержка Telegram API не тормозила сохранение задачи.
+     */
+    private function notifyAssignee(string $title, string $assignee): void
+    {
+        $assignee = trim($assignee);
+        if ($assignee === '' || $assignee === CouncilAuth::name()) { return; }
+
+        $member = (new CouncilMemberRepository())->findByName($assignee);
+        if (!$member || empty($member['telegram_id'])) { return; }
+
+        $token = (string) (Config::get('telegram')['bot_token'] ?? '');
+        if ($token === '') { return; }
+        $link = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
+        $text = "📋 Вам поставлена задача Попечительского совета:\n{$title}\n\nОткрыть в приложении (раздел «Текущие задачи»):\n{$link}";
+
+        if (function_exists('session_write_close')) { @session_write_close(); }
+        if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
+        TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text);
     }
 
     private function pickPriority(string $v): string

@@ -51,7 +51,11 @@ final class TelegramBot
         );
     }
 
-    /** Заменить текст сообщения. $replyMarkup=null → кнопки убираются; иначе задаёт новые. */
+    /**
+     * Заменить текст сообщения. $replyMarkup=null → кнопки убираются; иначе задаёт новые.
+     * Как и sendMessage — до 3 попыток: доступ к api.telegram.org с сервера бывает
+     * нестабилен (таймауты), а без ретрая правка сообщения молча не применяется.
+     */
     public static function editMessageText(string $botToken, string $chatId, int $messageId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): bool
     {
         if ($botToken === '' || $chatId === '') { return false; }
@@ -63,12 +67,20 @@ final class TelegramBot
         ];
         if ($parseMode !== null)   { $params['parse_mode']   = $parseMode; }
         if ($replyMarkup !== null) { $params['reply_markup'] = $replyMarkup; }
-        $raw = self::httpPost(
-            'https://api.telegram.org/bot' . $botToken . '/editMessageText',
-            http_build_query($params)
-        );
-        $d = json_decode((string) $raw, true);
-        return is_array($d) && !empty($d['ok']);
+        $url     = 'https://api.telegram.org/bot' . $botToken . '/editMessageText';
+        $payload = http_build_query($params);
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $raw = self::httpPost($url, $payload);
+            if ($raw !== null) {
+                $d = json_decode($raw, true);
+                if (is_array($d) && !empty($d['ok'])) { return true; }
+                error_log('TelegramBot::editMessageText не ок: ' . mb_substr((string) $raw, 0, 200));
+                return false;   // ответ есть, но не ок — повтор не поможет
+            }
+            if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
+        }
+        return false;
     }
 
     private static function httpPost(string $url, string $body): ?string

@@ -40,16 +40,18 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) hide(); });
 
   // --- Сенсор: пинч-зум двумя пальцами, панорамирование одним, двойной тап ---
-  var prevDist = 0, lastX = 0, lastY = 0, panning = false, lastTap = 0;
+  var prevDist = 0, lastX = 0, lastY = 0, panning = false, lastTap = 0, isTouch = false;
   function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
   function midC(t) { var r = crect(); return { x: (t[0].clientX + t[1].clientX) / 2 - r.left, y: (t[0].clientY + t[1].clientY) / 2 - r.top }; }
 
   scroll.addEventListener('touchstart', function (e) {
+    isTouch = true;
     if (e.touches.length === 2) { prevDist = dist(e.touches); }
     else if (e.touches.length === 1) {
       panning = s > 1; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
       var now = e.timeStamp || 0;
       if (now - lastTap < 300) {           // двойной тап — приблизить/сбросить
+        e.preventDefault();                // гасим синтетический dblclick браузера
         var r = crect();
         zoomTo(s > 1 ? 1 : 2.5, e.touches[0].clientX - r.left, e.touches[0].clientY - r.top);
         lastTap = 0;
@@ -86,6 +88,6 @@
   scroll.addEventListener('mousedown', function (e) { if (s > 1) { mdown = true; mx = e.clientX; my = e.clientY; img.style.cursor = 'grabbing'; e.preventDefault(); } });
   window.addEventListener('mousemove', function (e) { if (mdown) { tx += e.clientX - mx; ty += e.clientY - my; mx = e.clientX; my = e.clientY; apply(); } });
   window.addEventListener('mouseup', function () { mdown = false; img.style.cursor = 'grab'; });
-  scroll.addEventListener('dblclick', function (e) { var r = crect(); zoomTo(s > 1 ? 1 : 2.5, e.clientX - r.left, e.clientY - r.top); });
+  scroll.addEventListener('dblclick', function (e) { if (isTouch) return; var r = crect(); zoomTo(s > 1 ? 1 : 2.5, e.clientX - r.left, e.clientY - r.top); });
 })();
 </script>

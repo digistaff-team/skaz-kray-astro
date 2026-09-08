@@ -189,8 +189,11 @@ body.map-open { overflow: hidden; }
 .sovet-task > summary::-webkit-details-marker { display: none; }
 .sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
 .sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; font-size: .8rem; }
-.sovet-del-ico { flex: none; background: none; border: 0; padding: 4px; font-size: 1rem; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.sovet-del-ico:hover { opacity: .65; }
+.sovet-task { position: relative; }
+.sovet-task > summary { padding-right: 2.6rem; }
+.sovet-del-ico { position: absolute; top: 8px; right: 8px; z-index: 2; flex: none; background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: #c0392b; -webkit-tap-highlight-color: transparent; }
+.sovet-del-ico svg { display: block; }
+.sovet-del-ico:hover { opacity: .6; }
 .sovet-task-assignee { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 .sovet-vacant { color: #c0392b; font-weight: 700; }
 /* Приоритет — цветной кружок: зелёный (низкий) · оранжевый (средний) · красный (высокий) */

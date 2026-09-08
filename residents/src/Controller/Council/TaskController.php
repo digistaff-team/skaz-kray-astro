@@ -196,7 +196,8 @@ final class TaskController
     }
 
     /**
-     * Уведомить исполнителя в Telegram о поставленной задаче. Себе не шлём.
+     * Уведомить исполнителя в Telegram о поставленной задаче (в т.ч. самому себе —
+     * чтобы можно было работать с задачей кнопками прямо в чате).
      * Отправка — ПОСЛЕ ответа клиенту (fastcgi_finish_request), чтобы возможная
      * задержка Telegram API не тормозила сохранение задачи.
      */
@@ -213,7 +214,7 @@ final class TaskController
     private function notifyAssignee(int $taskId, string $assignee, string $title, string $priority, ?string $dueDate): void
     {
         $assignee = trim($assignee);
-        if ($assignee === '' || $assignee === CouncilAuth::name()) { return; }
+        if ($assignee === '') { return; }
 
         $member = (new CouncilMemberRepository())->findByName($assignee);
         if (!$member || empty($member['telegram_id'])) { return; }

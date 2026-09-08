@@ -42,7 +42,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </select>
         </label>
         <label>До какого дня сделать<input type="date" name="due_date"></label>
-        <label>Стоимость работ, ₽<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
+        <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
         <label class="js-expense-cat" style="display:none">Статья расхода (для отчёта по бюджету)
             <select name="expense_category_id">
                 <option value="">— не относить к бюджету —</option>

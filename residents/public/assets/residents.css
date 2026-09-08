@@ -221,7 +221,8 @@ body.map-open { overflow: hidden; }
 .sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: stretch; }
 .sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
 /* Компактная кнопка «+» — по высоте не выше поля ввода (align-items:stretch). */
-.sovet-sub-add .res-btn { margin-top: 0; min-height: 0; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.sovet-sub-add .res-btn { margin-top: 0; min-height: 0; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--green); border: 1px solid #ccc; }
+.sovet-sub-add .res-btn:hover { background: #e7f2ec; }
 .sovet-task .sovet-save { display: block; width: fit-content; margin: 1rem auto 1.2rem; }
 
 .sovet-archive { margin-top: 2rem; }

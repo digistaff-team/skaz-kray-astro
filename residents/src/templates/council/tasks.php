@@ -136,7 +136,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     </select>
                 </label>
             </div>
-            <label>Затрачено, ₽<input type="number" name="spent" min="0" step="1" class="js-spent" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
+            <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             <?php $curCat = (int) ($t['expense_category_id'] ?? 0); $activeIds = array_map('intval', array_column($expenseCats ?? [], 'id')); ?>
             <label class="js-expense-cat"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Статья расхода (для отчёта по бюджету)
                 <select name="expense_category_id">

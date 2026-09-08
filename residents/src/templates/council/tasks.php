@@ -177,11 +177,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <span class="sovet-arch-actions">
                 <form method="post" action="/sovet/zadachi/<?= $id ?>/vernut">
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                    <button class="res-link-btn" type="submit">вернуть</button>
+                    <button class="sovet-arch-ico" type="submit" title="Вернуть в работу" aria-label="Вернуть в работу">↩️</button>
                 </form>
                 <form method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                    <button class="res-link-btn sovet-danger" type="submit">удалить</button>
+                    <button class="sovet-arch-ico" type="submit" title="Удалить" aria-label="Удалить">🗑</button>
                 </form>
             </span>
         </div>

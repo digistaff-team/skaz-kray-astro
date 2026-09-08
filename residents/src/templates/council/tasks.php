@@ -41,19 +41,21 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 <?php endif; ?>
             </select>
         </label>
-        <label>До какого дня сделать<input type="date" name="due_date"></label>
+        <div class="sovet-edit-row">
+            <label>Крайний срок<input type="date" name="due_date"></label>
+            <label>Приоритет
+                <select name="priority">
+                    <?php foreach (['низкая' => 'Низкий', 'средняя' => 'Средний', 'высокая' => 'Высокий'] as $pv => $pl): ?>
+                        <option value="<?= $pv ?>"<?= $pv === 'средняя' ? ' selected' : '' ?>><?= $pl ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+        </div>
         <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
         <label class="js-expense-cat" style="display:none">Статья расхода (для отчёта по бюджету)
             <select name="expense_category_id">
                 <option value="">— не относить к бюджету —</option>
                 <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
-            </select>
-        </label>
-        <label>Статус выполнения
-            <select name="status">
-                <option value="новая" selected>Поставлена</option>
-                <option value="в работе">В работе</option>
-                <option value="выполнена">Выполнена</option>
             </select>
         </label>
         <label>Как сделать и что учесть<textarea name="description"></textarea></label>

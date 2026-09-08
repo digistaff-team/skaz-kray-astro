@@ -229,7 +229,7 @@ final class TaskController
         $due = ($dueDate !== null && $dueDate !== '') ? ru_date($dueDate) : 'не задан';
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
-        $text = "👋🏻 Вам поставлена задача:\n"
+        $text = "👋 Вам поставлена задача:\n"
               . '😃 Поставил: ' . $e(CouncilAuth::name()) . "\n"
               . '🌟 ' . $e($title) . "\n"
               . $prioEmoji . ' Приоритет: ' . $e($prioWord) . "\n"

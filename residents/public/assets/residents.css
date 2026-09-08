@@ -140,7 +140,7 @@ body.map-open { overflow: hidden; }
 .sovet-agenda-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-agenda-item.is-discussed .sovet-agenda-text { text-decoration: line-through; color: var(--muted); }
 .sovet-agenda-body { flex: 1; min-width: 12rem; }
-.sovet-agenda-text { font-weight: 600; }
+.sovet-agenda-text { font-weight: 600; font-size: .8rem; }
 .sovet-agenda-badge { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #e5f4ec; color: #0a5; }
 .sovet-agenda-carried { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #fff6e5; color: var(--ochre); white-space: nowrap; }
 .sovet-agenda-actions { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }

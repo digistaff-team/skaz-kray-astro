@@ -38,6 +38,16 @@ final class EnvTest extends TestCase
         $this->assertSame('real', getenv('SKAZ_TEST_PRESET'));
     }
 
+    public function test_empty_env_is_overridden_by_file(): void
+    {
+        // Пустое значение = «не задано»: воркер, однажды загрузивший пустой
+        // секрет, должен подхватить значение из .env, а не держать пустоту.
+        putenv('SKAZ_TEST_PRESET=');
+        file_put_contents($this->file, "SKAZ_TEST_PRESET=fromfile\n");
+        Env::load($this->file);
+        $this->assertSame('fromfile', getenv('SKAZ_TEST_PRESET'));
+    }
+
     public function test_missing_file_is_noop(): void
     {
         Env::load('/nonexistent/path/.env'); // не бросает

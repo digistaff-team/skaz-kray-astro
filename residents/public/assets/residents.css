@@ -541,7 +541,7 @@ body.map-open { overflow: hidden; }
 
 /* Авто и питомцы поместья в справочнике «Наши соседи»: название, примечание, миниатюры */
 .res-asset { margin-top: .35rem; }
-.res-asset-name { font-weight: 700; }
+.res-asset-name { font-weight: 700; font-size: .98rem; } /* как имя жителя (.res-person-main b) */
 .res-asset .res-meta { display: block; }
 
 /* Лайтбокс: миниатюра фото раскрывается на полный размер поверх страницы */

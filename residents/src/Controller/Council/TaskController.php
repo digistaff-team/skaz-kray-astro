@@ -4,6 +4,7 @@ namespace SkazResidents\Controller\Council;
 
 use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config};
 use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilLedgerRepository, CouncilCategoryRepository};
+use SkazResidents\Service\CouncilExpenseApproval;
 
 /**
  * Доска текущих задач совета. Все залогиненные члены совета могут добавлять
@@ -20,7 +21,8 @@ final class TaskController
     public function __construct(
         private CouncilTaskRepository $tasks = new CouncilTaskRepository(),
         private CouncilLedgerRepository $ledger = new CouncilLedgerRepository(),
-        private CouncilCategoryRepository $cats = new CouncilCategoryRepository()
+        private CouncilCategoryRepository $cats = new CouncilCategoryRepository(),
+        private CouncilExpenseApproval $approval = new CouncilExpenseApproval()
     ) {}
 
     public function index(): void
@@ -67,10 +69,11 @@ final class TaskController
         if (isset($_POST['spent'])) { $patch['spent'] = max(0, (float) str_replace(',', '.', (string) $_POST['spent'])); }
         $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id'] ?? null);
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
-        $this->syncExpense($id);
+        $this->approval->sync($id);
         Flash::set('success', 'Задача добавлена.');
         $this->back();
         $this->notifyAssignee($id, $assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
+        $this->approval->requestIfNeeded($id);
     }
 
     public function update(array $params = []): void
@@ -99,7 +102,7 @@ final class TaskController
         if (isset($_POST['expense_category_id'])) { $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id']); }
 
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
-        $this->syncExpense($id);
+        $this->approval->sync($id);
         Flash::set('success', 'Задача обновлена.');
         $this->back();
         if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {
@@ -111,6 +114,7 @@ final class TaskController
                 $patch['due_date'] ?? ($task['due_date'] ?? null)
             );
         }
+        $this->approval->requestIfNeeded($id);
     }
 
     public function take(array $params = []): void
@@ -133,10 +137,11 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         if ($this->tasks->find($id)) {
             $this->tasks->updateFields($id, ['status' => 'выполнена', 'progress' => 100], date('Y-m-d H:i:s'));
-            $this->syncExpense($id);
+            $this->approval->sync($id);
             Flash::set('success', 'Задача перенесена в архив выполненных.');
         }
         $this->back();
+        $this->approval->requestIfNeeded($id);
     }
 
     public function reopen(array $params = []): void
@@ -145,7 +150,7 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         if ($this->tasks->find($id)) {
             $this->tasks->updateFields($id, ['status' => 'в работе', 'progress' => 50], date('Y-m-d H:i:s'));
-            $this->syncExpense($id);
+            $this->approval->sync($id);
             Flash::set('info', 'Задача возвращена в работу.');
         }
         $this->back();
@@ -280,37 +285,6 @@ final class TaskController
         if ($id <= 0) { return null; }
         $cat = $this->cats->find($id);
         return ($cat && $cat['kind'] === 'expense') ? $id : null;
-    }
-
-    /**
-     * Синхронизировать затраты задачи с бюджетом: если есть сумма и статья —
-     * создаём/обновляем расходную операцию (source_task_id), иначе удаляем.
-     * Источник истины — задача; операция в бюджете правится только отсюда.
-     */
-    private function syncExpense(int $taskId): void
-    {
-        $task = $this->tasks->find($taskId);
-        if (!$task) { $this->ledger->deleteByTask($taskId); return; }
-        $spent = (float) ($task['spent'] ?? 0);
-        $catId = (int) ($task['expense_category_id'] ?? 0);
-        if ($spent > 0 && $catId > 0) {
-            $this->ledger->upsertFromTask(
-                $taskId, $catId, $spent, $this->expenseDate($task),
-                (string) ($task['title'] ?? ''), (string) ($task['author'] ?? '')
-            );
-        } else {
-            $this->ledger->deleteByTask($taskId);
-        }
-    }
-
-    /** Дата расхода = дата выполнения → срок → дата создания (YYYY-MM-DD). */
-    private function expenseDate(array $task): string
-    {
-        foreach (['completed_at', 'due_date', 'created_at'] as $k) {
-            $v = (string) ($task[$k] ?? '');
-            if ($v !== '') { return substr($v, 0, 10); }
-        }
-        return date('Y-m-d');
     }
 
     private function guard(): void

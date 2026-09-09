@@ -4,6 +4,7 @@ namespace SkazResidents\Controller\Council;
 
 use SkazResidents\{Config, TelegramBot};
 use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository};
+use SkazResidents\Service\CouncilExpenseApproval;
 
 /**
  * Webhook @SkazKray_bot — обрабатывает нажатия inline-кнопок под уведомлением о
@@ -46,6 +47,12 @@ final class BotWebhookController
         $chatId     = (string) ($msg['chat']['id'] ?? '');
         $msgId      = (int) ($msg['message_id'] ?? 0);
         $msgText    = (string) ($msg['text'] ?? '');
+
+        // Кнопки казначея под запросом на одобрение расходов задачи.
+        if (preg_match('/^x:(\d+):(approve|reject)$/', $data, $xm)) {
+            $this->handleExpense($token, $cq, (int) $xm[1], $xm[2]);
+            return;
+        }
 
         if (!preg_match('/^t:(\d+):(take|decline|p20|p50|p80|done)$/', $data, $mm)) {
             TelegramBot::answerCallback($token, $callbackId);
@@ -100,8 +107,59 @@ final class BotWebhookController
                     ? str_replace('✅ Вы взяли задачу в работу', '🎉 Вы выполнили эту задачу, большое спасибо!', $msgText)
                     : $msgText . "\n\n🎉 Вы выполнили эту задачу, большое спасибо!";
                 self::renderEdit($token, $chatId, $msgId, $plain, null);
+                // Есть расход (сумма + статья) → казначею уйдёт запрос на одобрение.
+                (new CouncilExpenseApproval())->requestIfNeeded($taskId);
                 return;
         }
+    }
+
+    /**
+     * Кнопки казначея под запросом на одобрение расходов задачи. Одобрять/отклонять
+     * может ТОЛЬКО казначей (council_expense_approver). «Одобрить» — расход попадает
+     * в бюджет; «Отклонить» — исполнителю уходит уведомление (см. CouncilExpenseApproval).
+     * @param array<string,mixed> $cq
+     */
+    private function handleExpense(string $token, array $cq, int $taskId, string $action): void
+    {
+        $callbackId = (string) ($cq['id'] ?? '');
+        $fromId     = (int) ($cq['from']['id'] ?? 0);
+        $msg        = is_array($cq['message'] ?? null) ? $cq['message'] : [];
+        $chatId     = (string) ($msg['chat']['id'] ?? '');
+        $msgId      = (int) ($msg['message_id'] ?? 0);
+        $msgText    = (string) ($msg['text'] ?? '');
+
+        $approval = new CouncilExpenseApproval();
+
+        $member = (new CouncilMemberRepository())->findByTelegramId($fromId);
+        $name = $member ? (string) $member['name'] : '';
+        if ($name === '' || $name !== $approval->approverName()) {
+            TelegramBot::answerCallback($token, $callbackId, 'Одобрять расходы может только казначей');
+            return;
+        }
+
+        if (!(new CouncilTaskRepository())->find($taskId)) {
+            TelegramBot::answerCallback($token, $callbackId, 'Задача не найдена');
+            self::renderExpenseEdit($token, $chatId, $msgId, $msgText . "\n\n⚠️ Задача уже удалена.");
+            return;
+        }
+
+        if ($action === 'approve') {
+            $approval->approve($taskId);
+            TelegramBot::answerCallback($token, $callbackId, '✅ Одобрено');
+            self::renderExpenseEdit($token, $chatId, $msgId, $msgText . "\n\n✅ Одобрено");
+        } else {
+            $approval->reject($taskId);
+            TelegramBot::answerCallback($token, $callbackId, '🚫 Отклонено');
+            self::renderExpenseEdit($token, $chatId, $msgId, $msgText . "\n\n🚫 Отклонено");
+        }
+    }
+
+    /** Переписать сообщение-запрос расходов итоговым текстом, убрав кнопки. */
+    private static function renderExpenseEdit(string $token, string $chatId, int $msgId, string $plainText): void
+    {
+        if ($token === '' || $chatId === '' || !$msgId) { return; }
+        $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        TelegramBot::editMessageText($token, $chatId, $msgId, $e($plainText), 'HTML', null);
     }
 
     /** Клавиатура прогресса, появляется после «Взял в работу». */

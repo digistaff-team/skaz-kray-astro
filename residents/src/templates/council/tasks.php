@@ -89,7 +89,12 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
             · Автор: <?= $t['author'] !== '' ? View::e($t['author']) : '—' ?>
             · Подзадачи: <?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?>
-            <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php endif; ?>
+            <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php
+                // Статус одобрения расхода казначеём — только когда есть статья (иначе расход не учитывается).
+                $es = (string) ($t['expense_status'] ?? 'none');
+                $esLabel = ['pending' => '⏳ на одобрении', 'approved' => '✅ одобрено', 'rejected' => '🚫 отклонено'][$es] ?? '';
+                if ($esLabel !== '' && (int) ($t['expense_category_id'] ?? 0) > 0): ?> <span class="res-meta">(<?= $esLabel ?>)</span><?php endif; ?>
+            <?php endif; ?>
             · Прогресс: <?= (int) $t['progress'] ?>%<?php if (!empty($t['due_date'])): ?> · Срок: <?= View::e(ru_date((string) $t['due_date'])) ?><?php endif; ?>
         </p>
         <?php if (!empty($t['description'])): ?><p class="sovet-task-desc"><?= nl2br(View::e($t['description'])) ?></p><?php endif; ?>

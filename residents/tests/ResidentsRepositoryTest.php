@@ -13,14 +13,19 @@ final class ResidentsRepositoryTest extends TestCase
     {
         $pdo = make_test_db();
         // Поместья привязаны семьёй через Telegram (active + telegram_id) — иначе ПДн
-        // жителей скрыты (claim-гейт в ResidentsRepository::grouped).
-        $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status) VALUES
-            (1, 'agudariya@example.com', 111, 'x', 'Семья 1', 'active'),
-            (2, 'solnyshko@example.com', 222, 'x', 'Семья 2', 'active')");
+        // жителей скрыты (claim-гейт в ResidentsRepository::grouped). @username нужен
+        // для показа ссылки «Tg». Семья 3 — совладелец поместья 1 (второй участник).
+        $pdo->exec("INSERT INTO families (id, email, telegram_id, telegram_username, password_hash, name, status) VALUES
+            (1, 'agudariya@example.com', 111, 'sergey_tg', 'x', 'Сергей Руденко', 'active'),
+            (2, 'solnyshko@example.com', 222, 'andrey_tg', 'x', 'Андрей Вишняков', 'active'),
+            (3, 'anna@example.com', 333, 'anna_tg', 'x', 'Анна Руденко', 'active')");
         // Два поместья: у первого — двое жителей, у второго — один.
         $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort) VALUES
             (1, '(1) Обережная', '1', 'АгудариЯ', 1, 0),
             (2, '(4) Рассветная', '4', 'Солнышко', 2, 1)");
+        // Владельцы: семьи 1 и 3 — поместье 1 (основной + совладелец), семья 2 — поместье 2.
+        $pdo->exec("INSERT INTO household_owners (household_id, family_id) VALUES
+            (1, 1), (1, 3), (2, 2)");
         $pdo->exec("INSERT INTO residents (household_id, full_name, skills, hometown, sort) VALUES
             (1, 'Руденко Сергей', 'компьютерный дизайн', 'Краснодар', 0),
             (1, 'Руденко Анна', 'драматургия', 'Ростов-на-Дону', 1),
@@ -47,6 +52,18 @@ final class ResidentsRepositoryTest extends TestCase
         $this->assertSame('pets/barsik-1.jpg', $pet['images'][0]['path']);
         // У поместья без питомцев — пустой список.
         $this->assertSame([], $groups[1]['pets']);
+    }
+
+    public function test_grouped_lists_all_connected_accounts(): void
+    {
+        $groups = $this->repo->grouped();
+        // Поместье 1 — два подключённых аккаунта (основной + совладелец), оба с @username.
+        $users = array_map(static fn($a) => $a['tg_username'], $groups[0]['accounts']);
+        sort($users);
+        $this->assertSame(['anna_tg', 'sergey_tg'], $users);
+        // Поместье 2 — один аккаунт.
+        $this->assertCount(1, $groups[1]['accounts']);
+        $this->assertSame('andrey_tg', $groups[1]['accounts'][0]['tg_username']);
     }
 
     public function test_grouped_attaches_photos_to_cars(): void

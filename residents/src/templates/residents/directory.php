@@ -110,17 +110,24 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
             </button>
             <ul class="res-people">
                 <?php
-                // «Tg» — только жителю, который авторизовался. Определяем его как жителя
-                // с наибольшим совпадением ФИО с именем Telegram-профиля (эвристика
-                // допускает неполное совпадение: Бобков/Бобкова, Алекс/Александр).
-                $tgUser = (string) ($h['tg_username'] ?? '');
-                $tgTokens = $nameTokens((string) ($h['tg_name'] ?? ''));
-                $tgOwnerId = 0; $tgBest = 0;
-                if ($tgUser !== '' && $tgTokens) {
+                // «Tg» рядом с жителем: сопоставляем каждый подключённый аккаунт семьи
+                // (по его Telegram-имени) с самым похожим по ФИО жителем. Эвристика
+                // допускает неполное совпадение (Бобков/Бобкова, Алекс/Александр).
+                // Один житель — один аккаунт (жадно), чтобы супруги с общей фамилией
+                // не «слиплись» на одном человеке.
+                $tgByPerson = []; $tgUsed = [];
+                foreach (($h['accounts'] ?? []) as $acc) {
+                    $accUser = trim((string) ($acc['tg_username'] ?? ''));
+                    $accTokens = $nameTokens((string) ($acc['tg_name'] ?? ''));
+                    if ($accUser === '' || !$accTokens) { continue; }
+                    $bestId = 0; $bestScore = 0;
                     foreach ($h['people'] as $pp) {
-                        $sc = $nameScore($nameTokens((string) $pp['full_name']), $tgTokens);
-                        if ($sc > $tgBest) { $tgBest = $sc; $tgOwnerId = (int) $pp['id']; }
+                        $pid = (int) $pp['id'];
+                        if (isset($tgUsed[$pid])) { continue; }
+                        $sc = $nameScore($nameTokens((string) $pp['full_name']), $accTokens);
+                        if ($sc > $bestScore) { $bestScore = $sc; $bestId = $pid; }
                     }
+                    if ($bestId > 0 && $bestScore > 0) { $tgByPerson[$bestId] = $accUser; $tgUsed[$bestId] = true; }
                 }
                 ?>
                 <?php foreach ($h['people'] as $p): ?>
@@ -155,8 +162,8 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                             <?php if ($p['vk'] !== ''): ?>
                                 <a href="<?= View::e($vkUrl($p['vk'])) ?>" target="_blank" rel="noopener">VK</a>
                             <?php endif; ?>
-                            <?php if ($tgUser !== '' && $tgBest > 0 && (int) $p['id'] === $tgOwnerId): ?>
-                                <a href="https://t.me/<?= View::e($tgUser) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
+                            <?php if (isset($tgByPerson[(int) $p['id']])): ?>
+                                <a href="https://t.me/<?= View::e($tgByPerson[(int) $p['id']]) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
                             <?php endif; ?>
                         </div>
                     </li>

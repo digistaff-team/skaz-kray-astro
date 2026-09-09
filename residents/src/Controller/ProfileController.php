@@ -40,8 +40,6 @@ final class ProfileController
             'members'   => $members,
             'cars'      => $cars,
             'pets'      => $pets,
-            'owners'    => $this->repo->owners((int) $h['id']),
-            'uid'       => Auth::id(),
         ], 'Наше поместье');
     }
 

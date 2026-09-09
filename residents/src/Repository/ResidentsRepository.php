@@ -27,16 +27,19 @@ final class ResidentsRepository
      */
     public function grouped(?string $q = null): array
     {
-        // Признак привязки к Telegram-аккаунту (tg_id) и его @username берём из families:
-        // ПДн жителей раскрываем ТОЛЬКО для поместий, которые семья сама привязала при
-        // входе через Telegram. Непривязанные — серые статичные плашки без жителей.
+        // Признак привязки к Telegram-аккаунту (tg_id) берём из families: ПДн жителей
+        // раскрываем ТОЛЬКО для поместий, которые семья сама привязала при входе через
+        // Telegram. Непривязанные — серые статичные плашки без жителей.
         $households = $this->db->query(
-            "SELECT h.*, f.telegram_id AS tg_id, f.telegram_username AS tg_username, f.name AS tg_name
+            "SELECT h.*, f.telegram_id AS tg_id
              FROM households h
              LEFT JOIN families f ON f.id = h.family_id AND f.status = 'active'
              ORDER BY h.sort, h.id"
         )->fetchAll();
         if (!$households) { return []; }
+
+        // Подключённые аккаунты каждого поместья (для показа «Tg» рядом с жителем).
+        $accounts = $this->accountsByHousehold();
 
         $people = $this->db->query(
             'SELECT * FROM residents ORDER BY household_id, sort, id'
@@ -74,6 +77,8 @@ final class ResidentsRepository
             $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];
             $h['cars']   = $h['claimed'] ? ($byCars[(int) $h['id']] ?? []) : [];
             $h['pets']   = $h['claimed'] ? ($byPets[(int) $h['id']] ?? []) : [];
+            // Подключённые аккаунты (Telegram) — только для привязанных поместий.
+            $h['accounts'] = $h['claimed'] ? ($accounts[(int) $h['id']] ?? []) : [];
             // Имя главы (первый житель по sort) — для заголовка «Поместье {Фамилия}»;
             // берём независимо от привязки (в заголовок идёт только фамилия семьи).
             $h['head_name'] = $byHousehold[(int) $h['id']][0]['full_name'] ?? null;
@@ -81,6 +86,41 @@ final class ResidentsRepository
             $result[] = $h;
         }
         return $result;
+    }
+
+    /**
+     * Подключённые аккаунты поместий с Telegram-ссылкой — основной владелец
+     * (households.family_id) и совладельцы (household_owners). Только активные и
+     * только с публичным @username (без него ссылки t.me нет). UNION страхует от
+     * легаси-поместий, где основной не попал в household_owners; dedup по fid.
+     * @return array<int,array<int,array{tg_username:string,tg_name:string}>> hid => [аккаунты]
+     */
+    private function accountsByHousehold(): array
+    {
+        $rows = $this->db->query(
+            "SELECT hid, telegram_username AS tg_username, tg_name FROM (
+                SELECT h.id AS hid, f.id AS fid, f.telegram_username, f.name AS tg_name
+                FROM households h
+                JOIN families f ON f.id = h.family_id
+                WHERE f.status = 'active' AND f.telegram_id IS NOT NULL
+                  AND f.telegram_username IS NOT NULL AND f.telegram_username <> ''
+                UNION
+                SELECT o.household_id AS hid, f.id AS fid, f.telegram_username, f.name AS tg_name
+                FROM household_owners o
+                JOIN families f ON f.id = o.family_id
+                WHERE f.status = 'active' AND f.telegram_id IS NOT NULL
+                  AND f.telegram_username IS NOT NULL AND f.telegram_username <> ''
+            ) t
+            ORDER BY hid, fid"
+        )->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['hid']][] = [
+                'tg_username' => (string) $r['tg_username'],
+                'tg_name'     => (string) $r['tg_name'],
+            ];
+        }
+        return $out;
     }
 
     /**

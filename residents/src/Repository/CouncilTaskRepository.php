@@ -12,7 +12,7 @@ use PDO;
  */
 final class CouncilTaskRepository
 {
-    private const ALLOWED = ['title','description','author','assignee','priority','status','progress','spent','expense_category_id','expense_status','contacts','links','due_date'];
+    private const ALLOWED = ['title','description','author','assignee','priority','status','progress','spent','expense_category_id','expense_status','expense_msg_chat_id','expense_msg_id','contacts','links','due_date'];
     private const PRIORITY_RANK = ['высокая' => 0, 'средняя' => 1, 'низкая' => 2];
 
     private PDO $db;

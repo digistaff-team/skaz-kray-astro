@@ -39,6 +39,16 @@ final class CouncilExpenseApproval
     {
         $task = $this->tasks->find($taskId);
         if (!$task) { $this->ledger->deleteByTask($taskId); return; }
+
+        // Висящий запрос на одобрение больше не актуален (задачу вернули в работу
+        // или убрали расход) — переписать сообщение казначею и снять pending.
+        if ((string) ($task['expense_status'] ?? '') === 'pending'
+            && !($this->hasExpense($task) && (string) $task['status'] === 'выполнена')) {
+            $this->cancelPending($taskId, 'запрос отменён: условия задачи изменились');
+            $task = $this->tasks->find($taskId);
+            if (!$task) { $this->ledger->deleteByTask($taskId); return; }
+        }
+
         if ($this->hasExpense($task) && (string) ($task['expense_status'] ?? '') === 'approved') {
             $this->ledger->upsertFromTask(
                 $taskId,
@@ -76,7 +86,8 @@ final class CouncilExpenseApproval
     {
         $task = $this->tasks->find($taskId);
         if (!$task || !$this->hasExpense($task)) { return false; }
-        $this->tasks->updateFields($taskId, ['expense_status' => 'approved'], date('Y-m-d H:i:s'));
+        // Сообщение-запрос переписывает webhook по message_id из callback — сохранённый id больше не нужен.
+        $this->tasks->updateFields($taskId, ['expense_status' => 'approved', 'expense_msg_chat_id' => null, 'expense_msg_id' => null], date('Y-m-d H:i:s'));
         $this->sync($taskId);
         return true;
     }
@@ -86,7 +97,8 @@ final class CouncilExpenseApproval
     {
         $task = $this->tasks->find($taskId);
         if (!$task) { return false; }
-        $this->tasks->updateFields($taskId, ['expense_status' => 'rejected'], date('Y-m-d H:i:s'));
+        // Сообщение-запрос переписывает webhook по message_id из callback — сохранённый id больше не нужен.
+        $this->tasks->updateFields($taskId, ['expense_status' => 'rejected', 'expense_msg_chat_id' => null, 'expense_msg_id' => null], date('Y-m-d H:i:s'));
         $this->ledger->deleteByTask($taskId);
         $this->notifyAssigneeRejected($task);
         return true;
@@ -117,7 +129,47 @@ final class CouncilExpenseApproval
         ]]], JSON_UNESCAPED_UNICODE);
 
         $this->finishRequest();
-        return TelegramBot::sendMessage($token, $chatId, $text, 'HTML', $keyboard);
+        $msgId = TelegramBot::sendMessageId($token, $chatId, $text, 'HTML', $keyboard);
+        if ($msgId === null) { return false; }
+        // Запоминаем сообщение, чтобы позже (решение / отмена) переписать его и убрать кнопки.
+        $this->tasks->updateFields(
+            (int) $task['id'],
+            ['expense_msg_chat_id' => $chatId, 'expense_msg_id' => $msgId],
+            date('Y-m-d H:i:s')
+        );
+        return true;
+    }
+
+    /**
+     * Отменить висящий запрос на одобрение: снять pending и, если сообщение было
+     * сохранено (expense_msg_id), переписать его казначею с причиной и убрать кнопки.
+     * Идемпотентно и безопасно, когда сохранённого сообщения нет. Вызывать, когда
+     * запрос протух: задачу вернули в работу, убрали расход или удаляют её.
+     */
+    public function cancelPending(int $taskId, string $reason): void
+    {
+        $task = $this->tasks->find($taskId);
+        if (!$task) { return; }
+
+        $chatId = (string) ($task['expense_msg_chat_id'] ?? '');
+        $msgId  = (int) ($task['expense_msg_id'] ?? 0);
+
+        $patch = ['expense_msg_chat_id' => null, 'expense_msg_id' => null];
+        if ((string) ($task['expense_status'] ?? '') === 'pending') { $patch['expense_status'] = 'none'; }
+        $this->tasks->updateFields($taskId, $patch, date('Y-m-d H:i:s'));
+
+        if ($chatId === '' || !$msgId) { return; }
+        $token = $this->botToken();
+        if ($token === '') { return; }
+
+        $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $amount = number_format((float) ($task['spent'] ?? 0), 0, '.', ' ');
+        $text = 'Задача: ' . $e((string) ($task['title'] ?? '')) . "\n"
+              . 'Расходы: ' . $e($amount) . ' руб.' . "\n\n"
+              . '❌ ' . $e($reason);
+
+        $this->finishRequest();
+        TelegramBot::editMessageText($token, $chatId, $msgId, $text, 'HTML', null);
     }
 
     private function notifyAssigneeRejected(array $task): void

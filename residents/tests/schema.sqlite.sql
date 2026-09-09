@@ -77,6 +77,8 @@ CREATE TABLE council_tasks (
     spent REAL NOT NULL DEFAULT 0,
     expense_category_id INTEGER,
     expense_status TEXT NOT NULL DEFAULT 'none',
+    expense_msg_chat_id TEXT,
+    expense_msg_id INTEGER,
     contacts TEXT,
     links TEXT,
     due_date TEXT,

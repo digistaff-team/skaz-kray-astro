@@ -160,6 +160,7 @@ final class TaskController
     {
         $this->guard();
         $id = (int) ($params['id'] ?? 0);
+        $this->approval->cancelPending($id, 'запрос отменён: задача удалена');
         $this->ledger->deleteByTask($id);
         $this->tasks->delete($id);
         Flash::set('info', 'Задача удалена.');

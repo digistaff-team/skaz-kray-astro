@@ -47,6 +47,24 @@ final class CouncilExpenseApprovalTest extends TestCase
         return (string) (new CouncilTaskRepository())->find($id)['expense_status'];
     }
 
+    /** Проставить сохранённое сообщение-запрос (эмуляция ответа Telegram). */
+    private function setMsg(int $id, string $chatId, int $msgId): void
+    {
+        (new CouncilTaskRepository())->updateFields(
+            $id,
+            ['expense_msg_chat_id' => $chatId, 'expense_msg_id' => $msgId],
+            date('Y-m-d H:i:s')
+        );
+    }
+
+    /** @return array{0:?string,1:?int} [chat_id, message_id] сохранённого запроса */
+    private function msgOf(int $id): array
+    {
+        $t = (new CouncilTaskRepository())->find($id);
+        $mid = $t['expense_msg_id'] ?? null;
+        return [$t['expense_msg_chat_id'] ?? null, $mid === null ? null : (int) $mid];
+    }
+
     public function test_request_sets_pending_without_ledger(): void
     {
         $id = $this->task();
@@ -100,5 +118,74 @@ final class CouncilExpenseApprovalTest extends TestCase
         (new CouncilTaskRepository())->updateFields($id, ['expense_status' => 'approved'], date('Y-m-d H:i:s'));
         $this->svc->sync($id);
         $this->assertNotNull((new CouncilLedgerRepository())->findByTask($id), 'одобренный расход попадает в бюджет');
+    }
+
+    public function test_cancel_pending_resets_status_and_forgets_message(): void
+    {
+        $id = $this->task(['exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+
+        $this->svc->cancelPending($id, 'тест');
+
+        $this->assertSame('none', $this->statusOf($id), 'pending снят');
+        $this->assertSame([null, null], $this->msgOf($id), 'сохранённое сообщение забыто');
+    }
+
+    public function test_cancel_pending_keeps_approved_status(): void
+    {
+        $id = $this->task(['exp' => 'approved']);
+        $this->setMsg($id, '777', 42);
+
+        $this->svc->cancelPending($id, 'тест');
+
+        $this->assertSame('approved', $this->statusOf($id), 'одобренный статус не сбрасывается');
+        $this->assertSame([null, null], $this->msgOf($id), 'сохранённое сообщение всё равно забыто');
+    }
+
+    public function test_sync_cancels_pending_when_task_reopened(): void
+    {
+        $id = $this->task(['exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+        (new CouncilTaskRepository())->updateFields($id, ['status' => 'в работе'], date('Y-m-d H:i:s'));
+
+        $this->svc->sync($id);
+
+        $this->assertSame('none', $this->statusOf($id), 'возврат в работу снимает pending');
+        $this->assertSame([null, null], $this->msgOf($id));
+        $this->assertNull((new CouncilLedgerRepository())->findByTask($id));
+    }
+
+    public function test_sync_cancels_pending_when_expense_removed(): void
+    {
+        $id = $this->task(['exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+        (new CouncilTaskRepository())->updateFields($id, ['spent' => 0], date('Y-m-d H:i:s'));
+
+        $this->svc->sync($id);
+
+        $this->assertSame('none', $this->statusOf($id), 'убранный расход снимает pending');
+        $this->assertSame([null, null], $this->msgOf($id));
+    }
+
+    public function test_approve_forgets_stored_message(): void
+    {
+        $id = $this->task(['exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+
+        $this->svc->approve($id);
+
+        $this->assertSame('approved', $this->statusOf($id));
+        $this->assertSame([null, null], $this->msgOf($id), 'после одобрения message_id забыт (webhook уже переписал сообщение)');
+    }
+
+    public function test_reject_forgets_stored_message(): void
+    {
+        $id = $this->task(['exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+
+        $this->svc->reject($id);
+
+        $this->assertSame('rejected', $this->statusOf($id));
+        $this->assertSame([null, null], $this->msgOf($id), 'после отклонения message_id забыт');
     }
 }

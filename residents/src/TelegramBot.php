@@ -41,6 +41,41 @@ final class TelegramBot
         return false;
     }
 
+    /**
+     * Как sendMessage, но возвращает message_id отправленного сообщения (или null при
+     * ошибке). Нужен, чтобы позже переписать/убрать это сообщение через editMessageText:
+     * у ботов нет метода «удалить последнее», удаление/правка требуют точный message_id.
+     */
+    public static function sendMessageId(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): ?int
+    {
+        if ($botToken === '' || $chatId === '') { return null; }
+
+        $url = 'https://api.telegram.org/bot' . $botToken . '/sendMessage';
+        $params = [
+            'chat_id'                  => $chatId,
+            'text'                     => $text,
+            'disable_web_page_preview' => '1',
+        ];
+        if ($parseMode !== null)   { $params['parse_mode']   = $parseMode; }
+        if ($replyMarkup !== null) { $params['reply_markup'] = $replyMarkup; }
+        $payload = http_build_query($params);
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $raw = self::httpPost($url, $payload);
+            if ($raw !== null) {
+                $data = json_decode($raw, true);
+                if (is_array($data) && !empty($data['ok'])) {
+                    $id = (int) ($data['result']['message_id'] ?? 0);
+                    return $id ?: null;
+                }
+                error_log('TelegramBot::sendMessageId не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+                return null;   // ответ есть, но не ок — повтор не поможет
+            }
+            if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
+        }
+        return null;
+    }
+
     /** Ответить на нажатие inline-кнопки (обязательно, иначе у пользователя «часики»). */
     public static function answerCallback(string $botToken, string $callbackId, string $text = ''): void
     {

@@ -41,7 +41,52 @@ nginx -t && systemctl reload nginx
 дополнительных `--exclude` не требуется.
 
 ## 6. Обновление кода
-Локально: `bash residents/deploy/deploy.sh`
+Локально (Linux/macOS): `bash residents/deploy/deploy.sh`
+
+### 6a. Деплой с Windows (нет `rsync`/`composer` локально)
+`deploy.sh` требует `rsync` локально и `composer` в PATH **на сервере** — на
+машине с Git Bash под Windows нет первого, на сервере нет второго (там только
+`/root/composer.phar`). Обходной путь:
+
+- **Мелкая правка (без новых классов, без изменений `composer.json`, без миграций)** —
+  скопировать изменённые файлы точечно и вернуть владельца. `composer` при этом
+  не нужен (автозагрузчик пересобирать нечего), схему БД не трогаем:
+  ```bash
+  D=/var/www/skaz-residents
+  scp residents/src/.../Файл.php abconsult:$D/src/.../Файл.php
+  ssh abconsult "chown www-data:www-data $D/src/.../Файл.php"
+  ```
+  Файлы в бою должны остаться `www-data:www-data` (копирование от root делает их
+  root:root — поэтому `chown` обязателен).
+
+- **Крупная правка (новые классы/файлы, смена зависимостей)** — синхронизировать
+  всё дерево через `tar` (аналог rsync, но без `--delete`) и пересобрать
+  автозагрузчик phar-ом:
+  ```bash
+  tar -C residents -cf - \
+    --exclude=vendor --exclude=.phpunit.cache --exclude=public/uploads \
+    --exclude=tests --exclude=config/config.php --exclude=config/.env . \
+    | ssh abconsult 'tar -x -C /var/www/skaz-residents'
+  ssh abconsult 'cd /var/www/skaz-residents && php8.3 /root/composer.phar install --no-dev --optimize-autoloader'
+  ssh abconsult 'chown -R www-data:www-data /var/www/skaz-residents'
+  ```
+
+- **OPcache** перезагружать не нужно: на сервере `opcache.validate_timestamps=On`,
+  байткод перечитывается по mtime изменённых файлов (поэтому и штатный `deploy.sh`
+  не трогает PHP-FPM). Новые `.sql`-миграции, если они есть в правке, накатываются
+  вручную (см. разделы про соответствующие схемы) — деплой их не применяет.
+
+### 6b. Тесты (PHP только на сервере)
+Локально PHP нет — прогон в изолированной папке на сервере (рабочее дерево, а не
+только закоммиченное):
+```bash
+ssh abconsult 'rm -rf /root/res-test && mkdir -p /root/res-test'
+tar -C residents -cf - --exclude=vendor --exclude=.phpunit.cache \
+  --exclude=public/uploads --exclude=node_modules --exclude=config/config.php . \
+  | ssh abconsult 'tar -x -C /root/res-test'
+ssh abconsult 'cd /root/res-test && ([ -f vendor/bin/phpunit ] || php8.3 /root/composer.phar install --no-interaction -q) && php8.3 vendor/bin/phpunit'
+ssh abconsult 'rm -rf /root/res-test'
+```
 
 ## 7. Раздел «Попечительский совет» (/sovet/)
 Живёт в том же приложении и БД, но с отдельной таблицей аккаунтов

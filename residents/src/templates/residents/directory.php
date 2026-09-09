@@ -163,9 +163,40 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                 <?php endforeach; ?>
                 <?php if (!empty($h['cars'])): ?>
                     <li class="res-person res-cars">
-                        <div class="res-meta"><b>Автомобили поместья:</b>
-                            <?php foreach ($h['cars'] as $ci => $car): ?><?= $ci ? '; ' : ' ' ?><?= View::e($car['title']) ?><?php if ($car['plate'] !== ''): ?> (<?= View::e($car['plate']) ?>)<?php endif; ?><?php endforeach; ?>
-                        </div>
+                        <div class="res-meta"><b>Автомобили поместья:</b></div>
+                        <?php foreach ($h['cars'] as $car): ?>
+                            <div class="res-asset">
+                                <span class="res-asset-name"><?= View::e($car['title']) ?><?php if ($car['plate'] !== ''): ?> (<?= View::e($car['plate']) ?>)<?php endif; ?></span>
+                                <?php if (!empty($car['note'])): ?><span class="res-meta"><?= View::e($car['note']) ?></span><?php endif; ?>
+                                <?php if (!empty($car['images'])): ?>
+                                    <div class="photo-preview">
+                                        <?php foreach ($car['images'] as $img): ?>
+                                            <?php $u = entry_image_url($img['path']); ?>
+                                            <img class="photo-thumb js-photo-full" src="<?= View::e($u) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($car['title']) ?>" loading="lazy">
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </li>
+                <?php endif; ?>
+                <?php if (!empty($h['pets'])): ?>
+                    <li class="res-person res-pets">
+                        <div class="res-meta"><b>Питомцы поместья:</b></div>
+                        <?php foreach ($h['pets'] as $pet): ?>
+                            <div class="res-asset">
+                                <span class="res-asset-name"><?= View::e($pet['name']) ?><?php if ($pet['kind'] !== ''): ?> (<?= View::e($pet['kind']) ?>)<?php endif; ?></span>
+                                <?php if (!empty($pet['note'])): ?><span class="res-meta"><?= View::e($pet['note']) ?></span><?php endif; ?>
+                                <?php if (!empty($pet['images'])): ?>
+                                    <div class="photo-preview">
+                                        <?php foreach ($pet['images'] as $img): ?>
+                                            <?php $u = entry_image_url($img['path']); ?>
+                                            <img class="photo-thumb js-photo-full" src="<?= View::e($u) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($pet['name']) ?>" loading="lazy">
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </li>
                 <?php endif; ?>
             </ul>
@@ -174,6 +205,10 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
             </div>
         </section>
     <?php endforeach; ?>
+</div>
+
+<div id="photoLightbox" class="res-lightbox" hidden>
+    <img class="res-lightbox-img" src="" alt="">
 </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -189,6 +224,22 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
   }
   bind('.res-glade-head', '.res-glade', 'res-glade--open'); // поляна -> поместья
   bind('.res-hh-head', '.res-hh', 'res-hh--open');          // поместье -> жители
+
+  // Лайтбокс: миниатюра фото питомца раскрывается на полный размер поверх страницы.
+  // В Telegram Mini App обычная ссылка target=_blank не открывается — поэтому свой оверлей.
+  var lb = document.getElementById('photoLightbox');
+  var lbImg = lb && lb.querySelector('.res-lightbox-img');
+  if (lb && lbImg) {
+    function closeLb() { lb.hidden = true; lbImg.removeAttribute('src'); }
+    Array.prototype.forEach.call(document.querySelectorAll('.js-photo-full'), function (img) {
+      img.addEventListener('click', function () {
+        lbImg.src = img.getAttribute('data-full') || img.src;
+        lb.hidden = false;
+      });
+    });
+    lb.addEventListener('click', closeLb);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lb.hidden) { closeLb(); } });
+  }
 
   // Внутри Telegram Mini App ссылку t.me/username надо открывать через openTelegramLink
   // (обычная ссылка target=_blank в webview не открывается). Вне Telegram — обычный переход.

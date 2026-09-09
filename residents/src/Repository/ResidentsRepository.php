@@ -46,10 +46,24 @@ final class ResidentsRepository
             $byHousehold[(int) $p['household_id']][] = $p;
         }
 
-        // Автомобили поместья (таблица household_cars) — источник истины для показа авто.
+        // Автомобили и питомцы поместья. К каждому цепляем фото (полиморфная images)
+        // одним запросом на тип, чтобы в справочнике показать миниатюры с раскрытием
+        // на полный размер.
         $cars = $this->db->query('SELECT * FROM household_cars ORDER BY sort, id')->fetchAll();
+        $carImages = $this->imagesFor('car', array_map(static fn($c) => (int) $c['id'], $cars));
         $byCars = [];
-        foreach ($cars as $c) { $byCars[(int) $c['household_id']][] = $c; }
+        foreach ($cars as $c) {
+            $c['images'] = $carImages[(int) $c['id']] ?? [];
+            $byCars[(int) $c['household_id']][] = $c;
+        }
+
+        $pets = $this->db->query('SELECT * FROM household_pets ORDER BY sort, id')->fetchAll();
+        $petImages = $this->imagesFor('pet', array_map(static fn($p) => (int) $p['id'], $pets));
+        $byPets = [];
+        foreach ($pets as $p) {
+            $p['images'] = $petImages[(int) $p['id']] ?? [];
+            $byPets[(int) $p['household_id']][] = $p;
+        }
 
         $needle = $q !== null ? trim($q) : '';
         $result = [];
@@ -59,6 +73,7 @@ final class ResidentsRepository
             // раскрываем — карточка показывается серой статичной плашкой).
             $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];
             $h['cars']   = $h['claimed'] ? ($byCars[(int) $h['id']] ?? []) : [];
+            $h['pets']   = $h['claimed'] ? ($byPets[(int) $h['id']] ?? []) : [];
             // Имя главы (первый житель по sort) — для заголовка «Поместье {Фамилия}»;
             // берём независимо от привязки (в заголовок идёт только фамилия семьи).
             $h['head_name'] = $byHousehold[(int) $h['id']][0]['full_name'] ?? null;
@@ -66,6 +81,25 @@ final class ResidentsRepository
             $result[] = $h;
         }
         return $result;
+    }
+
+    /**
+     * Фото (полиморфная таблица images) для набора владельцев одного типа — одним
+     * запросом, чтобы не плодить N+1 при построении справочника.
+     * @param array<int,int> $ownerIds
+     * @return array<int,array<int,array<string,mixed>>> owner_id => [images]
+     */
+    private function imagesFor(string $ownerType, array $ownerIds): array
+    {
+        if (!$ownerIds) { return []; }
+        $in = implode(',', array_fill(0, count($ownerIds), '?'));
+        $st = $this->db->prepare(
+            "SELECT * FROM images WHERE owner_type = ? AND owner_id IN ($in) ORDER BY sort, id"
+        );
+        $st->execute([$ownerType, ...array_map('intval', $ownerIds)]);
+        $out = [];
+        foreach ($st->fetchAll() as $img) { $out[(int) $img['owner_id']][] = $img; }
+        return $out;
     }
 
     /** Совпадает ли поместье с поисковым запросом (по себе или любому жителю). */

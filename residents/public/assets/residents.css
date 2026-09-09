@@ -537,6 +537,18 @@ body.map-open { overflow: hidden; }
 /* Превью выбранных фото (в формах дневника и др.) */
 .photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
 .photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e4d8; }
+.js-photo-full { cursor: zoom-in; }
+
+/* Авто и питомцы поместья в справочнике «Наши соседи»: название, примечание, миниатюры */
+.res-asset { margin-top: .35rem; }
+.res-asset-name { font-weight: 700; }
+.res-asset .res-meta { display: block; }
+
+/* Лайтбокс: миниатюра фото раскрывается на полный размер поверх страницы */
+.res-lightbox { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center;
+                justify-content: center; padding: 1rem; background: rgba(0, 0, 0, .85); cursor: zoom-out; }
+.res-lightbox[hidden] { display: none; }
+.res-lightbox-img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
 .photo-uploaded { position: relative; display: inline-block; margin: 0; }
 .photo-del { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%;
              border: 0; background: #c0392b; color: #fff; font-size: 14px; line-height: 20px; text-align: center;

@@ -25,7 +25,40 @@ final class ResidentsRepositoryTest extends TestCase
             (1, 'Руденко Сергей', 'компьютерный дизайн', 'Краснодар', 0),
             (1, 'Руденко Анна', 'драматургия', 'Ростов-на-Дону', 1),
             (2, 'Вишняков Андрей', 'пчеловодство', 'Москва', 0)");
+        // Питомец с двумя фото и авто с одним фото — для показа миниатюр в справочнике.
+        $pdo->exec("INSERT INTO household_pets (id, household_id, name, kind, sort) VALUES
+            (1, 1, 'Барсик', 'кот', 0)");
+        $pdo->exec("INSERT INTO household_cars (id, household_id, title, plate, sort) VALUES
+            (1, 1, 'Нива', 'А123ВС', 0)");
+        $pdo->exec("INSERT INTO images (owner_type, owner_id, path, sort) VALUES
+            ('pet', 1, 'pets/barsik-1.jpg', 0),
+            ('pet', 1, 'pets/barsik-2.jpg', 1),
+            ('car', 1, 'cars/niva-1.jpg', 0)");
         $this->repo = new ResidentsRepository();
+    }
+
+    public function test_grouped_attaches_photos_to_pets(): void
+    {
+        $groups = $this->repo->grouped();
+        $this->assertCount(1, $groups[0]['pets']);
+        $pet = $groups[0]['pets'][0];
+        $this->assertSame('Барсик', $pet['name']);
+        $this->assertCount(2, $pet['images']);
+        $this->assertSame('pets/barsik-1.jpg', $pet['images'][0]['path']);
+        // У поместья без питомцев — пустой список.
+        $this->assertSame([], $groups[1]['pets']);
+    }
+
+    public function test_grouped_attaches_photos_to_cars(): void
+    {
+        $groups = $this->repo->grouped();
+        $this->assertCount(1, $groups[0]['cars']);
+        $car = $groups[0]['cars'][0];
+        $this->assertSame('Нива', $car['title']);
+        $this->assertCount(1, $car['images']);
+        $this->assertSame('cars/niva-1.jpg', $car['images'][0]['path']);
+        // У поместья без авто — пустой список.
+        $this->assertSame([], $groups[1]['cars']);
     }
 
     public function test_grouped_nests_people_under_households(): void

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config, Upload};
+use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, TelegramMedia, Config, Upload};
 use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilLedgerRepository, CouncilCategoryRepository, ImageRepository};
 use SkazResidents\Service\CouncilExpenseApproval;
 
@@ -250,10 +250,10 @@ final class TaskController
     }
 
     /**
-     * Загружает фото, приложенные к форме задачи (как в дневнике и новостях):
-     * валидация и пересохранение через Upload, запись в общую таблицу images.
-     * Храним локально (uploads_dir), а не в Telegram-канале: фото задачи —
-     * рабочий материал совета (что починить / что уже сделано), наружу не идёт.
+     * Загружает фото, приложенные к форме задачи: валидация и запись в общую
+     * таблицу images. Фото уходит в общий Telegram-канал (как дневник и новости)
+     * и отдаётся через /tg-media/<file_id>; при недоступности Telegram — фолбэк
+     * на локальное хранилище (uploads_dir).
      */
     private function handleUploads(int $taskId): void
     {
@@ -262,9 +262,17 @@ final class TaskController
         foreach ($this->normalizeFiles($_FILES['photos']) as $file) {
             if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) { continue; }
             if ($sort >= self::MAX_PHOTOS) {
-                Flash::set('error', 'На задачу не больше ' . self::MAX_PHOTOS . ' фото.');
+                Flash::set('error', 'На задачу не более ' . self::MAX_PHOTOS . ' фото.');
                 break;
             }
+            // Фото задачи уходит в общий Telegram-канал (как дневник и новости)
+            // и отдаётся через /tg-media/.
+            $fileId = TelegramMedia::upload($file);
+            if ($fileId !== null) {
+                $this->images->add(self::PHOTO_OWNER, $taskId, 'tg:' . $fileId, $sort++);
+                continue;
+            }
+            // Фолбэк на локальное хранилище, если Telegram недоступен.
             [$name, $err] = Upload::saveImage($file, $this->uploadsDir());
             if ($name !== null) { $this->images->add(self::PHOTO_OWNER, $taskId, $name, $sort++); }
             elseif ($err !== null) { Flash::set('error', $err); }
@@ -276,7 +284,9 @@ final class TaskController
     {
         $dir = $this->uploadsDir();
         foreach ($this->images->listFor(self::PHOTO_OWNER, $taskId) as $img) {
-            @unlink($dir . '/' . basename((string) $img['path']));
+            $path = (string) $img['path'];
+            if (str_starts_with($path, 'tg:')) { continue; } // фото в Telegram, файла на диске нет
+            @unlink($dir . '/' . basename($path));
         }
     }
 

@@ -59,7 +59,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </select>
         </label>
         <!-- Фото задачи: выбор + клиентское превью (как в дневнике и профиле). -->
-        <label class="file-btn">Фото задачи
+        <label class="sovet-addlink">+ Добавить фото
             <input type="file" name="photos[]" id="taskPhotos" accept="image/*" multiple hidden>
         </label>
         <div id="taskPhotoPreview" class="photo-preview"></div>

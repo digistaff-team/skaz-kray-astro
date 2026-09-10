@@ -242,6 +242,9 @@ body.map-open { overflow: hidden; }
 .sovet-arch-ico--del { color: #c0392b; }
 .sovet-arch-ico:hover { opacity: .6; }
 .sovet-arch-actions form { margin: 0; }
+/* Миниатюры фото выполненных задач — отдельным рядом, чтобы не залезать под кнопки справа. */
+.sovet-arch-photos { width: 100%; margin: 0; padding-right: 4.5rem; }
+.sovet-arch-photos .photo-thumb { width: 52px; height: 52px; }
 
 .sovet-members { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .sovet-members th, .sovet-members td { text-align: left; padding: .5rem .4rem; border-bottom: 1px solid #f0efe9; vertical-align: top; }

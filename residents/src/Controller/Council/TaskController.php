@@ -2,8 +2,8 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config};
-use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilLedgerRepository, CouncilCategoryRepository};
+use SkazResidents\{CouncilAuth, CouncilData, Csrf, Flash, View, TelegramBot, Config, Upload};
+use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilLedgerRepository, CouncilCategoryRepository, ImageRepository};
 use SkazResidents\Service\CouncilExpenseApproval;
 
 /**
@@ -17,12 +17,16 @@ final class TaskController
     private const PRIORITIES = ['низкая', 'средняя', 'высокая'];
     private const STATUSES   = ['новая', 'в работе', 'выполнена'];
     private const SORTS      = ['priority', 'created', 'progress', 'spent'];
+    /** Фото задач лежат в общей таблице images под этим owner_type. */
+    private const PHOTO_OWNER = 'task';
+    private const MAX_PHOTOS  = 10;
 
     public function __construct(
         private CouncilTaskRepository $tasks = new CouncilTaskRepository(),
         private CouncilLedgerRepository $ledger = new CouncilLedgerRepository(),
         private CouncilCategoryRepository $cats = new CouncilCategoryRepository(),
-        private CouncilExpenseApproval $approval = new CouncilExpenseApproval()
+        private CouncilExpenseApproval $approval = new CouncilExpenseApproval(),
+        private ImageRepository $images = new ImageRepository()
     ) {}
 
     public function index(): void
@@ -31,9 +35,20 @@ final class TaskController
         $sort = (string) ($_GET['sort'] ?? 'priority');
         if (!in_array($sort, self::SORTS, true)) { $sort = 'priority'; }
 
+        $active  = $this->tasks->listWithSubtasks(false, $sort);
+        $archive = $this->tasks->listWithSubtasks(true, $sort);
+        // Фото задач — одним запросом на весь список (без N+1).
+        $photos = $this->images->listForMany(self::PHOTO_OWNER, array_map(
+            static fn(array $t): int => (int) $t['id'], array_merge($active, $archive)
+        ));
+        foreach ($active as &$t)  { $t['photos'] = $photos[(int) $t['id']] ?? []; }
+        unset($t);
+        foreach ($archive as &$t) { $t['photos'] = $photos[(int) $t['id']] ?? []; }
+        unset($t);
+
         View::render('council/tasks', [
-            'active'      => $this->tasks->listWithSubtasks(false, $sort),
-            'archive'     => $this->tasks->listWithSubtasks(true, $sort),
+            'active'      => $active,
+            'archive'     => $archive,
             'sort'        => $sort,
             'me'          => CouncilAuth::name(),
             'members'     => CouncilData::members(),
@@ -70,6 +85,7 @@ final class TaskController
         $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id'] ?? null);
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
         $this->approval->sync($id);
+        $this->handleUploads($id);
         Flash::set('success', 'Задача добавлена.');
         $this->back();
         $this->notifyAssignee($id, $assignee, mb_substr($title, 0, 300), $priority, $this->pickDate($_POST['due_date'] ?? ''));
@@ -161,6 +177,8 @@ final class TaskController
         $this->guard();
         $id = (int) ($params['id'] ?? 0);
         $this->approval->cancelPending($id, 'запрос отменён: задача удалена');
+        $this->deletePhotoFiles($id);
+        $this->images->deleteFor(self::PHOTO_OWNER, $id);
         $this->ledger->deleteByTask($id);
         $this->tasks->delete($id);
         Flash::set('info', 'Задача удалена.');
@@ -209,6 +227,76 @@ final class TaskController
         $id = (int) ($params['id'] ?? 0);
         $this->tasks->deleteSubtask($id);
         $this->back();
+    }
+
+    // --- Фото задач ---
+
+    /** Удаляет одно фото задачи (кнопка × на миниатюре). */
+    public function deletePhoto(array $params = []): void
+    {
+        $this->guard();
+        $id    = (int) ($params['id'] ?? 0);
+        $imgId = (int) ($params['img'] ?? 0);
+        if ($this->tasks->find($id)) {
+            foreach ($this->images->listFor(self::PHOTO_OWNER, $id) as $img) {
+                if ((int) $img['id'] !== $imgId) { continue; }
+                @unlink($this->uploadsDir() . '/' . basename((string) $img['path']));
+                $this->images->deleteById($imgId);
+                Flash::set('info', 'Фото удалено.');
+                break;
+            }
+        }
+        $this->back();
+    }
+
+    /**
+     * Загружает фото, приложенные к форме задачи (как в дневнике и новостях):
+     * валидация и пересохранение через Upload, запись в общую таблицу images.
+     * Храним локально (uploads_dir), а не в Telegram-канале: фото задачи —
+     * рабочий материал совета (что починить / что уже сделано), наружу не идёт.
+     */
+    private function handleUploads(int $taskId): void
+    {
+        if (empty($_FILES['photos'])) { return; }
+        $sort = count($this->images->listFor(self::PHOTO_OWNER, $taskId));
+        foreach ($this->normalizeFiles($_FILES['photos']) as $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) { continue; }
+            if ($sort >= self::MAX_PHOTOS) {
+                Flash::set('error', 'На задачу не больше ' . self::MAX_PHOTOS . ' фото.');
+                break;
+            }
+            [$name, $err] = Upload::saveImage($file, $this->uploadsDir());
+            if ($name !== null) { $this->images->add(self::PHOTO_OWNER, $taskId, $name, $sort++); }
+            elseif ($err !== null) { Flash::set('error', $err); }
+        }
+    }
+
+    /** Физически удаляет файлы фото задачи (строки БД чистит images->deleteFor). */
+    private function deletePhotoFiles(int $taskId): void
+    {
+        $dir = $this->uploadsDir();
+        foreach ($this->images->listFor(self::PHOTO_OWNER, $taskId) as $img) {
+            @unlink($dir . '/' . basename((string) $img['path']));
+        }
+    }
+
+    private function uploadsDir(): string
+    {
+        return rtrim((string) Config::get('uploads_dir'), '/\\');
+    }
+
+    /** Приводит массив $_FILES[multiple] к списку одиночных записей. */
+    private function normalizeFiles(array $f): array
+    {
+        if (!is_array($f['name'])) { return [$f]; }
+        $out = [];
+        foreach ($f['name'] as $i => $_) {
+            $out[] = [
+                'name' => $f['name'][$i], 'type' => $f['type'][$i],
+                'tmp_name' => $f['tmp_name'][$i], 'error' => $f['error'][$i], 'size' => $f['size'][$i],
+            ];
+        }
+        return $out;
     }
 
     /**

@@ -21,7 +21,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 
 <details class="sovet-newtask">
     <summary class="sovet-addlink">+ Новая задача</summary>
-    <form class="res-form" method="post" action="/sovet/zadachi/novaya">
+    <form class="res-form" method="post" action="/sovet/zadachi/novaya" enctype="multipart/form-data">
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         <label>Что сделать<input type="text" name="title" maxlength="300" required></label>
@@ -58,6 +58,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
             </select>
         </label>
+        <!-- Фото задачи: выбор + клиентское превью (как в дневнике и профиле). -->
+        <label class="file-btn">Фото задачи
+            <input type="file" name="photos[]" id="taskPhotos" accept="image/*" multiple hidden>
+        </label>
+        <div id="taskPhotoPreview" class="photo-preview"></div>
         <label>Как сделать и что учесть<textarea name="description"></textarea></label>
         <div class="sovet-form-actions">
             <button class="res-btn" type="submit">Добавить</button>
@@ -99,6 +104,19 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         </p>
         <?php if (!empty($t['description'])): ?><p class="sovet-task-desc"><?= nl2br(View::e($t['description'])) ?></p><?php endif; ?>
 
+
+        <?php if (!empty($t['photos'])): ?>
+            <div class="res-meta">Фото (× — удалить):</div>
+            <div class="photo-preview">
+                <?php foreach ($t['photos'] as $img): ?>
+                    <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+                        <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
+                        <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" loading="lazy">
+                        <button type="submit" class="photo-del" title="Удалить фото">×</button>
+                    </form>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <form id="edit-<?= $id ?>" class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
@@ -202,6 +220,17 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     <button class="sovet-arch-ico sovet-arch-ico--del" type="submit" title="Удалить" aria-label="Удалить"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
                 </form>
             </span>
+            <?php if (!empty($t['photos'])): ?>
+                <div class="photo-preview sovet-arch-photos">
+                    <?php foreach ($t['photos'] as $img): ?>
+                        <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+                            <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
+                            <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" loading="lazy">
+                            <button type="submit" class="photo-del" title="Удалить фото">×</button>
+                        </form>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
     </details>
@@ -220,5 +249,30 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     sync(inp);
     inp.addEventListener('input', function () { sync(inp); });
   });
+})();
+</script>
+
+<script>
+// Накопительный выбор фото с превью — та же логика, что в дневнике и профиле.
+(function () {
+  var inp = document.getElementById('taskPhotos'), box = document.getElementById('taskPhotoPreview');
+  if (!inp || !box || typeof DataTransfer === 'undefined') { return; }
+  var dt = new DataTransfer();
+  inp.addEventListener('change', function () {
+    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type)) { dt.items.add(f); } });
+    inp.files = dt.files;
+    render();
+  });
+  function render() {
+    box.innerHTML = '';
+    Array.prototype.forEach.call(dt.files, function (f, idx) {
+      var wrap = document.createElement('span'); wrap.className = 'photo-uploaded';
+      var img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(f);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'photo-del'; btn.textContent = '×'; btn.title = 'Убрать';
+      btn.addEventListener('click', function () { dt.items.remove(idx); inp.files = dt.files; render(); });
+      wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
+    });
+  }
 })();
 </script>

@@ -244,6 +244,7 @@ $router->post('/sovet/zadachi/{id}/vzyat', [$cTasks, 'take']);
 $router->post('/sovet/zadachi/{id}/gotovo', [$cTasks, 'done']);
 $router->post('/sovet/zadachi/{id}/vernut', [$cTasks, 'reopen']);
 $router->post('/sovet/zadachi/{id}/udalit', [$cTasks, 'delete']);
+$router->post('/sovet/zadachi/{id}/foto/{img}/udalit', [$cTasks, 'deletePhoto']);
 $router->post('/sovet/zadachi/{id}/podzadacha', [$cTasks, 'addSubtask']);
 $router->post('/sovet/podzadacha/{id}/pereklyuchit', [$cTasks, 'toggleSubtask']);
 $router->post('/sovet/podzadacha/{id}/pereimenovat', [$cTasks, 'renameSubtask']);

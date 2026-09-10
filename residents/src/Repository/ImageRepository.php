@@ -33,6 +33,26 @@ final class ImageRepository
         return $st->fetchAll();
     }
 
+    /**
+     * Фото сразу для набора владельцев одного типа — одним запросом (доска задач
+     * совета показывает миниатюры у всех задач разом, без N+1).
+     *
+     * @param array<int,int> $ownerIds
+     * @return array<int,array<int,array<string,mixed>>> owner_id => список фото
+     */
+    public function listForMany(string $ownerType, array $ownerIds): array
+    {
+        if (!$ownerIds) { return []; }
+        $in = implode(',', array_fill(0, count($ownerIds), '?'));
+        $st = $this->db->prepare(
+            "SELECT * FROM images WHERE owner_type = ? AND owner_id IN ($in) ORDER BY sort ASC, id ASC"
+        );
+        $st->execute([$ownerType, ...array_map('intval', $ownerIds)]);
+        $out = [];
+        foreach ($st->fetchAll() as $row) { $out[(int) $row['owner_id']][] = $row; }
+        return $out;
+    }
+
     public function deleteFor(string $ownerType, int $ownerId): void
     {
         $st = $this->db->prepare('DELETE FROM images WHERE owner_type = ? AND owner_id = ?');

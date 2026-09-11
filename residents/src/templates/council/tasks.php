@@ -79,8 +79,8 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     <details class="res-card sovet-task">
         <summary class="sovet-task-head">
             <span class="sovet-pri-dot <?= $priorityClass($t['priority']) ?>" title="Приоритет: <?= View::e($t['priority']) ?>" aria-label="Приоритет: <?= View::e($t['priority']) ?>"></span>
+            <span class="sovet-st <?= $statusClass($t['status']) ?>" title="Статус: <?= View::e($statusLabel($t['status'])) ?>" aria-label="Статус: <?= View::e($statusLabel($t['status'])) ?>"><?= ['новая' => '○', 'в работе' => '◐', 'выполнена' => '✓'][$t['status']] ?? '○' ?></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
-            <span class="sovet-st <?= $statusClass($t['status']) ?>"><?= View::e($statusLabel($t['status'])) ?></span>
             <span class="sovet-task-assignee"><?= $t['assignee'] !== '' ? '👤 ' . View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span>
             <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>
             <button class="sovet-del-ico" type="submit" form="del-<?= $id ?>" title="Удалить задачу" aria-label="Удалить задачу" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>

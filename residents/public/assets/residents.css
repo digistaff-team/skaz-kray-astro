@@ -159,12 +159,8 @@ body.map-open { overflow: hidden; }
 .sovet-directions { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
 @media (max-width: 760px) { .sovet-directions { grid-template-columns: 1fr; } }
 .sovet-dir-tasks { list-style: none; padding: 0; margin: .6rem 0 0; }
-.sovet-dir-task { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-dir-task { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-dir-task:last-child { border-bottom: 0; }
-.sovet-dir-mark { font-size: 1rem; }
-.sovet-dir-task--done .sovet-dir-mark { color: var(--green); }
-.sovet-dir-task--progress .sovet-dir-mark { color: var(--ochre); }
-.sovet-dir-task--plan .sovet-dir-mark { color: #bbb; }
 .sovet-dir-owner { color: var(--muted); font-size: .8rem; white-space: nowrap; }
 
 .sovet-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem; margin: 1rem 0; }
@@ -203,10 +199,11 @@ body.map-open { overflow: hidden; }
 .sovet-pri-dot.sovet-pri--high { background: #d64531; }
 .sovet-pri-dot.sovet-pri--mid  { background: #e08a1e; }
 .sovet-pri-dot.sovet-pri--low  { background: #2e9e5b; }
-.sovet-st { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
-.sovet-st--new { background: #f2f2ee; color: var(--muted); }
-.sovet-st--progress { background: #fff6e5; color: var(--ochre); }
-.sovet-st--done { background: #e5f4ec; color: #0a5; }
+/* Статус задачи — глиф-индикатор сразу за кружком приоритета (текстовый бейдж убран) */
+.sovet-st { display: inline-block; flex: none; width: .85rem; font-size: .95rem; line-height: 1; text-align: center; }
+.sovet-st--new { color: #b3b3ad; }
+.sovet-st--progress { color: var(--ochre); }
+.sovet-st--done { color: var(--green); }
 .sovet-task-meta, .sovet-task-desc, .sovet-quick, .sovet-edit, .sovet-subs { padding: 0 1.2rem; }
 .sovet-task-meta { color: var(--ink); font-size: .88rem; margin: .8rem 0 .4rem; }
 .sovet-task-desc { margin: .4rem 0; font-size: .8rem; }

@@ -194,11 +194,11 @@ body.map-open { overflow: hidden; }
 .sovet-del-ico:hover { opacity: .6; }
 .sovet-task-assignee { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 .sovet-vacant { color: #c0392b; font-weight: 700; }
-/* Приоритет — цветной кружок: зелёный (низкий) · оранжевый (средний) · красный (высокий) */
+/* Приоритет — цветной кружок: зелёный (высокий) · оранжевый (средний) · красный (низкий) */
 .sovet-pri-dot { display: inline-block; width: .85rem; height: .85rem; border-radius: 50%; flex: none; }
-.sovet-pri-dot.sovet-pri--high { background: #d64531; }
+.sovet-pri-dot.sovet-pri--high { background: #2e9e5b; }
 .sovet-pri-dot.sovet-pri--mid  { background: #e08a1e; }
-.sovet-pri-dot.sovet-pri--low  { background: #2e9e5b; }
+.sovet-pri-dot.sovet-pri--low  { background: #d64531; }
 /* Статус задачи — глиф-индикатор сразу за кружком приоритета (текстовый бейдж убран) */
 .sovet-st { display: inline-block; flex: none; width: .85rem; height: .85rem; }
 .sovet-st svg { display: block; width: 100%; height: 100%; }

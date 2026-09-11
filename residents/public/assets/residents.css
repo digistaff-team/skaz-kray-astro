@@ -200,7 +200,8 @@ body.map-open { overflow: hidden; }
 .sovet-pri-dot.sovet-pri--mid  { background: #e08a1e; }
 .sovet-pri-dot.sovet-pri--low  { background: #2e9e5b; }
 /* Статус задачи — глиф-индикатор сразу за кружком приоритета (текстовый бейдж убран) */
-.sovet-st { display: inline-block; flex: none; width: 1.7rem; height: 1.7rem; font-size: 1.56rem; line-height: 1.7rem; text-align: center; }
+.sovet-st { display: inline-block; flex: none; width: .85rem; height: .85rem; }
+.sovet-st svg { display: block; width: 100%; height: 100%; }
 .sovet-st--new { color: #b3b3ad; }
 .sovet-st--progress { color: var(--ochre); }
 .sovet-st--done { color: var(--green); }

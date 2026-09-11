@@ -5,6 +5,11 @@ use SkazResidents\{Csrf, View};
 $priorityClass = fn(string $p) => 'sovet-pri--' . ($p === 'высокая' ? 'high' : ($p === 'низкая' ? 'low' : 'mid'));
 $statusClass   = fn(string $s) => 'sovet-st--' . ($s === 'выполнена' ? 'done' : ($s === 'в работе' ? 'progress' : 'new'));
 $statusLabel   = fn(string $s) => ['новая' => 'Поставлена', 'в работе' => 'В работе', 'выполнена' => 'Выполнена'][$s] ?? $s;
+$statusIcon    = [
+    'новая'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10.5"/></svg>',
+    'в работе'  => '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 1.5a10.5 10.5 0 0 1 0 21z" fill="currentColor"/></svg>',
+    'выполнена' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
+];
 $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу', 'spent' => 'по расходам'];
 ?>
 <h1>Текущие задачи</h1>
@@ -79,7 +84,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     <details class="res-card sovet-task">
         <summary class="sovet-task-head">
             <span class="sovet-pri-dot <?= $priorityClass($t['priority']) ?>" title="Приоритет: <?= View::e($t['priority']) ?>" aria-label="Приоритет: <?= View::e($t['priority']) ?>"></span>
-            <span class="sovet-st <?= $statusClass($t['status']) ?>" title="Статус: <?= View::e($statusLabel($t['status'])) ?>" aria-label="Статус: <?= View::e($statusLabel($t['status'])) ?>"><?= ['новая' => '○', 'в работе' => '◐', 'выполнена' => '✓'][$t['status']] ?? '○' ?></span>
+            <span class="sovet-st <?= $statusClass($t['status']) ?>" title="Статус: <?= View::e($statusLabel($t['status'])) ?>" aria-label="Статус: <?= View::e($statusLabel($t['status'])) ?>"><?= $statusIcon[$t['status']] ?? $statusIcon['новая'] ?></span>
             <span class="sovet-task-title"><?= View::e($t['title']) ?></span>
             <span class="sovet-task-assignee"><?= $t['assignee'] !== '' ? '👤 ' . View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span>
             <span class="sovet-progress"><span class="sovet-progress-fill" style="width:<?= (int) $t['progress'] ?>%"></span></span>

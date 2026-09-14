@@ -152,7 +152,6 @@ body.map-open { overflow: hidden; }
 .sovet-roster li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-roster li:last-child { border-bottom: 0; }
 .sovet-roster-name { font-weight: 600; font-size: .9rem; }
-.sovet-roster-role { color: var(--muted); font-size: .82rem; text-align: right; }
 /* Состав в две колонки по 6 строк (заполнение по колонкам) */
 .sovet-roster--cols { display: grid; grid-template-rows: repeat(6, auto); grid-auto-flow: column; column-gap: 1.5rem; }
 

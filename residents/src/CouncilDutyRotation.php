@@ -31,6 +31,7 @@ final class CouncilDutyRotation
         'Катерина Шульженко',    // 8
         'Елена Моисеенко',       // 9
         'Наталья Нецветова',     // 10
+        'Екатерина Шубина',      // 11
     ];
 
     public static function nameForIndex(int $i): string

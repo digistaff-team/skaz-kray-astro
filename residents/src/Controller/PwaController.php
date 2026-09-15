@@ -10,12 +10,13 @@ namespace SkazResidents\Controller;
  */
 final class PwaController
 {
-    private const CACHE_VERSION = 'skazapp-v3';
+    private const CACHE_VERSION = 'skazapp-v4';
 
     /** Общие поля манифеста; иконки берём текущие. */
     private function baseManifest(): array
     {
         return [
+            'id'               => '/poselenie/app',
             'name'             => 'Сказочный Край',
             'short_name'       => 'Сказочный Край',
             'lang'             => 'ru',
@@ -45,17 +46,20 @@ final class PwaController
     }
 
     /**
-     * Отдельный манифест для раздела «Совет»: своё имя и start_url=/sovet,
-     * чтобы ярлык на главном экране открывал именно портал Совета.
-     * Иконки — те же. scope оставляем '/', чтобы установка проходила надёжно
-     * (SW всё равно обслуживает и /poselenie, и /sovet).
+     * Отдельный манифест для раздела «Совет»: свой id, scope=/sovet и
+     * start_url=/sovet, чтобы это было отдельное установленное приложение,
+     * а ярлык открывал именно портал Совета (а не общий /poselenie/app).
+     * Свой id + узкий scope обязательны: иначе браузер объединяет оба
+     * манифеста (один scope '/') в одно приложение и запускает главное.
      */
     public function manifestSovet(): void
     {
         $this->emitManifest(array_merge($this->baseManifest(), [
+            'id'         => '/sovet',
             'name'       => 'Попечительский совет',
             'short_name' => 'Совет',
             'start_url'  => '/sovet',
+            'scope'      => '/sovet',
         ]));
     }
 

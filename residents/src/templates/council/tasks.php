@@ -15,6 +15,21 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <h1>Текущие задачи</h1>
 <p class="res-meta">Живой список задач по содержанию Терема.<br>Любой член совета может выбрать себе задачу, взять её в работу, отметить выполненной.</p>
 
+<div class="sovet-legend">
+    <div class="sovet-legend-group">
+        <span class="sovet-legend-label">Приоритет:</span>
+        <?php foreach (['высокая' => 'высокий', 'средняя' => 'средний', 'низкая' => 'низкий'] as $pv => $pl): ?>
+            <span class="sovet-legend-item"><span class="sovet-pri-dot <?= $priorityClass($pv) ?>"></span><?= $pl ?></span>
+        <?php endforeach; ?>
+    </div>
+    <div class="sovet-legend-group">
+        <span class="sovet-legend-label">Статус:</span>
+        <?php foreach (['новая', 'в работе', 'выполнена'] as $s): ?>
+            <span class="sovet-legend-item"><span class="sovet-st <?= $statusClass($s) ?>"><?= $statusIcon[$s] ?></span><?= $statusLabel($s) ?></span>
+        <?php endforeach; ?>
+    </div>
+</div>
+
 <div class="sovet-toolbar">
     <div class="sovet-sorts">
         Сортировка:
@@ -96,7 +111,8 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
         </form>
 
         <p class="sovet-task-meta">
-            Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
+            Статус: <strong><?= View::e($statusLabel($t['status'])) ?></strong>
+            · Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
             · Автор: <?= $t['author'] !== '' ? View::e($t['author']) : '—' ?>
             · Подзадачи: <?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?>
             <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php

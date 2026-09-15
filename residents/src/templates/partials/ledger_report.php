@@ -89,12 +89,15 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
                 <?php $isOut = $op['kind'] === 'expense'; $d = (string) $op['entry_date']; ?>
                 <li>
                     <div class="op-row">
-                        <span class="op-date"><?= View::e(substr($d, 8, 2) . '.' . substr($d, 5, 2)) ?></span>
-                        <span><span class="op-cat"><?= View::e($op['category']) ?></span><?= View::e($op['note']) ?></span>
-                        <span class="op-sum <?= $isOut ? 'op-sum--out' : 'op-sum--in' ?>">
+                        <div class="op-head">
+                            <span class="op-date"><?= View::e(substr($d, 8, 2) . '.' . substr($d, 5, 2) . '.' . substr($d, 0, 4)) ?></span>
+                            <span class="op-cat"><?= View::e($op['category']) ?></span>
+                        </div>
+                        <div class="op-note"><?= View::e($op['note']) ?></div>
+                        <div class="op-sum <?= $isOut ? 'op-sum--out' : 'op-sum--in' ?>">
                             <?= $isOut ? '−' : '+' ?><?= View::e($fmt($op['amount'])) ?>
                             <?php if ($op['hasReceipt']): ?><a class="op-doc" href="<?= View::e($uploadsUrl) ?>/<?= View::e($op['receiptPath'] ?? '') ?>" target="_blank" rel="noopener">чек</a><?php endif; ?>
-                        </span>
+                        </div>
                     </div>
                     <?php if ($editable && !empty($op['fromTask'])): ?>
                         <p class="ledger-op-src">🔗 Из задачи №<?= (int) $op['taskId'] ?> — сумма и статья правятся в разделе «Задачи».</p>

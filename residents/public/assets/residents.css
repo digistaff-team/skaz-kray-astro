@@ -140,11 +140,13 @@ body.map-open { overflow: hidden; }
 .sovet-agenda-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid #f0efe9; }
 .sovet-agenda-item.is-discussed .sovet-agenda-text { text-decoration: line-through; color: var(--muted); }
 .sovet-agenda-body { flex: 1; min-width: 12rem; }
-.sovet-agenda-text { font-weight: 600; font-size: .8rem; }
+.sovet-agenda-text { font-weight: 600; font-size: 1rem; }
 .sovet-agenda-badge { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #e5f4ec; color: #0a5; }
 .sovet-agenda-carried { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #fff6e5; color: var(--ochre); white-space: nowrap; }
-.sovet-agenda-actions { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
-.sovet-agenda-check { flex: none; margin: 0; display: flex; align-items: center; }
+.sovet-agenda-actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+/* Кнопки повестки (вверх/вниз/удалить) — тап-таргет 44px */
+.sovet-agenda-actions .res-link-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+.sovet-agenda-check { flex: none; margin: 0; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 .sovet-agenda-check input[type="checkbox"] { width: 1.25em; height: 1.25em; cursor: pointer; accent-color: var(--green); }
 .sovet-agenda-check input[type="checkbox"][disabled] { cursor: default; }
 .sovet-agenda-del { text-decoration: none; font-size: 1.15rem; line-height: 1; }
@@ -181,14 +183,20 @@ body.map-open { overflow: hidden; }
 .sovet-handoff { margin-top: .8rem; }
 .sovet-empty { padding: 1.5rem 0; }
 
+/* Легенда значков приоритета и статуса над списком задач */
+.sovet-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin: .2rem 0 1.2rem; padding: .7rem .9rem; background: #fff; border: 1px solid #eee; border-radius: 10px; font-size: .82rem; color: var(--ink); }
+.sovet-legend-group { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; }
+.sovet-legend-label { color: var(--muted); font-weight: 700; }
+.sovet-legend-item { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; }
+
 .sovet-task { padding: 0; }
 .sovet-task > summary { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; padding: 1rem 1.2rem; cursor: pointer; list-style: none; }
 .sovet-task > summary::-webkit-details-marker { display: none; }
 .sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
-.sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; font-size: .8rem; }
+.sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; font-size: 1rem; }
 .sovet-task { position: relative; }
 .sovet-task > summary { padding-right: 2.6rem; }
-.sovet-del-ico { position: absolute; top: 8px; right: 8px; z-index: 2; flex: none; background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: #c0392b; -webkit-tap-highlight-color: transparent; }
+.sovet-del-ico { position: absolute; top: 0; right: 0; z-index: 2; flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: #c0392b; -webkit-tap-highlight-color: transparent; }
 .sovet-del-ico svg { display: block; }
 .sovet-del-ico:hover { opacity: .6; }
 .sovet-task-assignee { font-size: .78rem; color: var(--muted); white-space: nowrap; }
@@ -219,28 +227,30 @@ body.map-open { overflow: hidden; }
 .sovet-sub { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; }
 .sovet-sub--done .sovet-sub-rename input { text-decoration: line-through; color: var(--muted); }
 .sovet-sub form { margin: 0; }
-.sovet-check { background: none; border: 0; font-size: 1.15rem; cursor: pointer; color: var(--green); padding: 0; }
+.sovet-check { background: none; border: 0; font-size: 1.3rem; cursor: pointer; color: var(--green); padding: 0; flex: none; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Иконочные кнопки строки подзадачи — комфортный тап-таргет 44px */
+.sovet-sub .res-link-btn { flex: none; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; }
 .sovet-sub-rename { display: flex; gap: .3rem; flex: 1; align-items: center; }
 .sovet-sub-rename input { flex: 1; padding: .3rem .5rem; font: inherit; border: 1px solid #e0e0da; border-radius: 5px; }
 .sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: stretch; }
-.sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
-/* Компактная кнопка «+» — по высоте не выше поля ввода (align-items:stretch). */
-.sovet-sub-add .res-btn { margin-top: 0; min-height: 0; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--green); border: 1px solid #ccc; }
+.sovet-sub-add input { flex: 1; min-height: 44px; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
+/* Кнопка «+» — тап-таргет 44px, по высоте совпадает с полем ввода (align-items:stretch). */
+.sovet-sub-add .res-btn { margin-top: 0; min-width: 44px; min-height: 44px; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--green); border: 1px solid #ccc; }
 .sovet-sub-add .res-btn:hover { background: #e7f2ec; }
 .sovet-task .sovet-save { display: block; width: fit-content; margin: 1rem auto 1.2rem; }
 
 .sovet-archive { margin-top: 2rem; }
 .sovet-archive-h { font-size: 1.2rem; }
-.sovet-arch { position: relative; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem 2.2rem; }
+.sovet-arch { position: relative; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem 3rem; }
 .sovet-arch-title { flex: 1; text-decoration: line-through; color: var(--muted); min-width: 10rem; font-size: .8rem; }
-.sovet-arch-actions { position: absolute; right: 12px; bottom: 8px; display: flex; gap: .6rem; }
-.sovet-arch-ico { background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: var(--green); -webkit-tap-highlight-color: transparent; }
+.sovet-arch-actions { position: absolute; right: 8px; bottom: 4px; display: flex; gap: .4rem; }
+.sovet-arch-ico { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; color: var(--green); -webkit-tap-highlight-color: transparent; }
 .sovet-arch-ico svg { display: block; }
 .sovet-arch-ico--del { color: #c0392b; }
 .sovet-arch-ico:hover { opacity: .6; }
 .sovet-arch-actions form { margin: 0; }
 /* Миниатюры фото выполненных задач — отдельным рядом, чтобы не залезать под кнопки справа. */
-.sovet-arch-photos { width: 100%; margin: 0; padding-right: 4.5rem; }
+.sovet-arch-photos { width: 100%; margin: 0; padding-right: 6.5rem; }
 .sovet-arch-photos .photo-thumb { width: 52px; height: 52px; }
 
 .sovet-members { width: 100%; border-collapse: collapse; font-size: .9rem; }
@@ -351,11 +361,14 @@ body.map-open { overflow: hidden; }
 .ledger-op-src { margin: .4rem 0 0; padding-top: .5rem; border-top: 1px dashed #e6e5df; font-size: .82rem; color: var(--muted); }
 
 .ops { list-style: none; margin: .4rem 0 0; padding: 0; }
-.op-row { display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: baseline; padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
+/* Операция — вертикально: дата+бейдж → название → сумма (внизу, в пределах карточки). */
+.op-row { display: flex; flex-direction: column; gap: .25rem; padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
 .op-row:last-child { border-bottom: 0; }
+.op-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .op-date { color: var(--muted); font-size: .85rem; white-space: nowrap; }
-.op-cat { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; margin-right: .4rem; }
-.op-sum { font-weight: 700; white-space: nowrap; }
+.op-note { font-size: .85rem; overflow-wrap: anywhere; }
+.op-cat { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; }
+.op-sum { font-weight: 700; overflow-wrap: anywhere; }
 .op-sum--out { color: var(--ochre); }
 .op-sum--in { color: var(--green); }
 .op-doc { font-size: .8rem; color: var(--green); margin-left: .4rem; }

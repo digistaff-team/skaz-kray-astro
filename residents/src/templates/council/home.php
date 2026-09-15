@@ -17,7 +17,7 @@
         <b>Установите иконку на экран</b>
         <span id="sovet-a2hs-hint">Быстрый доступ, лёгкий вход</span>
     </div>
-    <button type="button" id="sovet-a2hs-add" class="res-btn sovet-a2hs-add">Добавить</button>
+    <button type="button" id="sovet-a2hs-add" class="res-btn sovet-a2hs-add">Добавить иконку на экран</button>
     <button type="button" id="sovet-a2hs-close" class="sovet-a2hs-close" aria-label="Скрыть приглашение">×</button>
 </div>
 

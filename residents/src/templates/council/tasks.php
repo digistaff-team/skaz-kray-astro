@@ -15,34 +15,17 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <h1>Текущие задачи</h1>
 <p class="res-meta">Живой список задач по содержанию Терема.<br>Любой член совета может выбрать себе задачу, взять её в работу, отметить выполненной.</p>
 
-<div class="sovet-legend">
-    <div class="sovet-legend-group">
-        <span class="sovet-legend-label">Приоритет:</span>
-        <?php foreach (['высокая' => 'высокий', 'средняя' => 'средний', 'низкая' => 'низкий'] as $pv => $pl): ?>
-            <span class="sovet-legend-item"><span class="sovet-pri-dot <?= $priorityClass($pv) ?>"></span><?= $pl ?></span>
-        <?php endforeach; ?>
-    </div>
-    <div class="sovet-legend-group">
-        <span class="sovet-legend-label">Статус:</span>
-        <?php foreach (['новая', 'в работе', 'выполнена'] as $s): ?>
-            <span class="sovet-legend-item"><span class="sovet-st <?= $statusClass($s) ?>"><?= $statusIcon[$s] ?></span><?= $statusLabel($s) ?></span>
-        <?php endforeach; ?>
-    </div>
-</div>
-
 <div class="sovet-toolbar">
     <div class="sovet-sorts">
-        <span class="sovet-sorts-label">Сортировка</span>
-        <div class="sovet-seg" role="group" aria-label="Сортировка задач">
-            <?php foreach ($sorts as $key => $label): ?>
-                <a class="sovet-seg-btn<?= $sort === $key ? ' is-active' : '' ?>" href="/sovet/zadachi?sort=<?= $key ?>"<?= $sort === $key ? ' aria-current="true"' : '' ?>><?= $label ?></a>
-            <?php endforeach; ?>
-        </div>
+        Сортировка:
+        <?php foreach ($sorts as $key => $label): ?>
+            <a class="sovet-sort<?= $sort === $key ? ' sovet-sort--active' : '' ?>" href="/sovet/zadachi?sort=<?= $key ?>"><?= $label ?></a>
+        <?php endforeach; ?>
     </div>
 </div>
 
 <details class="sovet-newtask">
-    <summary class="res-btn sovet-addbtn">+ Новая задача</summary>
+    <summary class="sovet-addlink">+ Новая задача</summary>
     <form class="res-form" method="post" action="/sovet/zadachi/novaya" enctype="multipart/form-data">
         <?= Csrf::field() ?>
         <input type="hidden" name="sort" value="<?= View::e($sort) ?>">
@@ -98,7 +81,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <?php endif; ?>
 
 <?php foreach ($active as $t): $id = (int) $t['id']; ?>
-    <details class="res-card sovet-task" id="task-<?= $id ?>">
+    <details class="res-card sovet-task">
         <summary class="sovet-task-head">
             <span class="sovet-pri-dot <?= $priorityClass($t['priority']) ?>" title="Приоритет: <?= View::e($t['priority']) ?>" aria-label="Приоритет: <?= View::e($t['priority']) ?>"></span>
             <span class="sovet-st <?= $statusClass($t['status']) ?>" title="Статус: <?= View::e($statusLabel($t['status'])) ?>" aria-label="Статус: <?= View::e($statusLabel($t['status'])) ?>"><?= $statusIcon[$t['status']] ?? $statusIcon['новая'] ?></span>
@@ -112,26 +95,18 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         </form>
 
-        <?php
-            $spent = (float) $t['spent'];
-            // Статус одобрения расхода казначеём — только когда есть статья (иначе расход не учитывается).
-            $es = (string) ($t['expense_status'] ?? 'none');
-            $esMap = ['pending' => ['⏳ на одобрении', 'pending'], 'approved' => ['✅ одобрено', 'approved'], 'rejected' => ['🚫 отклонено', 'rejected']];
-            $showEs = isset($esMap[$es]) && (int) ($t['expense_category_id'] ?? 0) > 0;
-        ?>
-        <div class="sovet-meta">
-            <div class="sovet-meta-i"><span class="sovet-meta-k">Статус</span><span class="sovet-meta-v"><?= View::e($statusLabel($t['status'])) ?></span></div>
-            <div class="sovet-meta-i"><span class="sovet-meta-k">Исполнитель</span><span class="sovet-meta-v"><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></span></div>
-            <div class="sovet-meta-i"><span class="sovet-meta-k">Автор</span><span class="sovet-meta-v"><?= $t['author'] !== '' ? View::e($t['author']) : '—' ?></span></div>
-            <div class="sovet-meta-i"><span class="sovet-meta-k">Подзадачи</span><span class="sovet-meta-v"><?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?></span></div>
-            <div class="sovet-meta-i"><span class="sovet-meta-k">Прогресс</span><span class="sovet-meta-v"><?= (int) $t['progress'] ?>%</span></div>
-            <?php if (!empty($t['due_date'])): ?>
-                <div class="sovet-meta-i"><span class="sovet-meta-k">Срок</span><span class="sovet-meta-v"><?= View::e(ru_date((string) $t['due_date'])) ?></span></div>
+        <p class="sovet-task-meta">
+            Исполнитель: <strong><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '<span class="sovet-vacant">Вакантна</span>' ?></strong>
+            · Автор: <?= $t['author'] !== '' ? View::e($t['author']) : '—' ?>
+            · Подзадачи: <?= (int) $t['done_count'] ?>/<?= (int) $t['total_count'] ?>
+            <?php if ((float) $t['spent'] > 0): ?> · Расходы: <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php
+                // Статус одобрения расхода казначеём — только когда есть статья (иначе расход не учитывается).
+                $es = (string) ($t['expense_status'] ?? 'none');
+                $esLabel = ['pending' => '⏳ на одобрении', 'approved' => '✅ одобрено', 'rejected' => '🚫 отклонено'][$es] ?? '';
+                if ($esLabel !== '' && (int) ($t['expense_category_id'] ?? 0) > 0): ?> <span class="res-meta">(<?= $esLabel ?>)</span><?php endif; ?>
             <?php endif; ?>
-            <?php if ($spent > 0): ?>
-                <div class="sovet-meta-i"><span class="sovet-meta-k">Расходы</span><span class="sovet-meta-v"><?= number_format($spent, 0, '.', ' ') ?> ₽<?php if ($showEs): ?> <span class="sovet-exp-badge sovet-exp--<?= $esMap[$es][1] ?>"><?= $esMap[$es][0] ?></span><?php endif; ?></span></div>
-            <?php endif; ?>
-        </div>
+            · Прогресс: <?= (int) $t['progress'] ?>%<?php if (!empty($t['due_date'])): ?> · Срок: <?= View::e(ru_date((string) $t['due_date'])) ?><?php endif; ?>
+        </p>
         <?php if (!empty($t['description'])): ?><p class="sovet-task-desc"><?= nl2br(View::e($t['description'])) ?></p><?php endif; ?>
 
 
@@ -237,7 +212,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     <details class="sovet-acc sovet-archive">
     <summary><h2 class="sovet-archive-h">Выполненные задачи · <?= count($archive) ?></h2></summary>
     <?php foreach ($archive as $t): $id = (int) $t['id']; ?>
-        <div class="res-card sovet-arch" id="task-<?= $id ?>">
+        <div class="res-card sovet-arch">
             <span class="sovet-arch-title"><?= View::e($t['title']) ?></span>
             <span class="res-meta"><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '—' ?><?php if ((float) $t['spent'] > 0): ?> · <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php endif; ?></span>
             <span class="sovet-arch-actions">
@@ -304,23 +279,5 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
       wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
     });
   }
-})();
-</script>
-
-<script>
-// Переход по ссылке из «Бюджета» (#task-N): раскрыть нужную задачу
-// (и, если она в архиве, — блок «Выполненные задачи») и подвести к ней.
-(function () {
-  function openTarget() {
-    if (location.hash.indexOf('#task-') !== 0) { return; }
-    var el = document.getElementById(location.hash.slice(1));
-    if (!el) { return; }
-    for (var node = el; node; node = node.parentElement) {
-      if (node.tagName === 'DETAILS') { node.open = true; }
-    }
-    el.scrollIntoView({ block: 'start' });
-  }
-  window.addEventListener('load', openTarget);
-  window.addEventListener('hashchange', openTarget);
 })();
 </script>

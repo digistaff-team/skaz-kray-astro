@@ -14,8 +14,8 @@
 <div id="sovet-a2hs" class="sovet-a2hs" hidden>
     <span class="sovet-a2hs-ico" aria-hidden="true">📲</span>
     <div class="sovet-a2hs-body">
-        <b>Установите «Совет» на главный экран</b>
-        <span id="sovet-a2hs-hint">Быстрый доступ в один тап, как обычное приложение.</span>
+        <b>Установите иконку на экран</b>
+        <span id="sovet-a2hs-hint">Быстрый доступ, лёгкий вход</span>
     </div>
     <button type="button" id="sovet-a2hs-add" class="res-btn sovet-a2hs-add">Добавить</button>
     <button type="button" id="sovet-a2hs-close" class="sovet-a2hs-close" aria-label="Скрыть приглашение">×</button>

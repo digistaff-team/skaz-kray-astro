@@ -81,7 +81,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <?php endif; ?>
 
 <?php foreach ($active as $t): $id = (int) $t['id']; ?>
-    <details class="res-card sovet-task">
+    <details class="res-card sovet-task" id="task-<?= $id ?>">
         <summary class="sovet-task-head">
             <span class="sovet-pri-dot <?= $priorityClass($t['priority']) ?>" title="Приоритет: <?= View::e($t['priority']) ?>" aria-label="Приоритет: <?= View::e($t['priority']) ?>"></span>
             <span class="sovet-st <?= $statusClass($t['status']) ?>" title="Статус: <?= View::e($statusLabel($t['status'])) ?>" aria-label="Статус: <?= View::e($statusLabel($t['status'])) ?>"><?= $statusIcon[$t['status']] ?? $statusIcon['новая'] ?></span>
@@ -212,7 +212,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     <details class="sovet-acc sovet-archive">
     <summary><h2 class="sovet-archive-h">Выполненные задачи · <?= count($archive) ?></h2></summary>
     <?php foreach ($archive as $t): $id = (int) $t['id']; ?>
-        <div class="res-card sovet-arch">
+        <div class="res-card sovet-arch" id="task-<?= $id ?>">
             <span class="sovet-arch-title"><?= View::e($t['title']) ?></span>
             <span class="res-meta"><?= $t['assignee'] !== '' ? View::e($t['assignee']) : '—' ?><?php if ((float) $t['spent'] > 0): ?> · <?= number_format((float) $t['spent'], 0, '.', ' ') ?> ₽<?php endif; ?></span>
             <span class="sovet-arch-actions">
@@ -279,5 +279,23 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
       wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
     });
   }
+})();
+</script>
+
+<script>
+// Переход по ссылке из «Бюджета» (#task-N): раскрыть нужную задачу
+// (и, если она в архиве, — блок «Выполненные задачи») и подвести к ней.
+(function () {
+  function openTarget() {
+    if (location.hash.indexOf('#task-') !== 0) { return; }
+    var el = document.getElementById(location.hash.slice(1));
+    if (!el) { return; }
+    for (var node = el; node; node = node.parentElement) {
+      if (node.tagName === 'DETAILS') { node.open = true; }
+    }
+    el.scrollIntoView({ block: 'start' });
+  }
+  window.addEventListener('load', openTarget);
+  window.addEventListener('hashchange', openTarget);
 })();
 </script>

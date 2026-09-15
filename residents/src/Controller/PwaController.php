@@ -21,7 +21,9 @@ final class PwaController
             'short_name'       => 'Сказочный Край',
             'lang'             => 'ru',
             'start_url'        => '/poselenie/app',
-            'scope'            => '/',
+            // scope жителей ограничен /poselenie, чтобы НЕ перекрывать /sovet
+            // (иначе установленное приложение жителей перехватывает ярлык Совета).
+            'scope'            => '/poselenie',
             'display'          => 'standalone',
             'orientation'      => 'portrait',
             'background_color' => '#fbfaf6',

@@ -100,7 +100,7 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
                         </div>
                     </div>
                     <?php if ($editable && !empty($op['fromTask'])): ?>
-                        <p class="ledger-op-src">🔗 Из задачи №<?= (int) $op['taskId'] ?> — сумма и статья правятся в разделе «Задачи».</p>
+                        <p class="ledger-op-src">🔗 Из задачи <a href="/sovet/zadachi#task-<?= (int) $op['taskId'] ?>">№<?= (int) $op['taskId'] ?></a> — сумму и статью расхода правьте в самой задаче.</p>
                     <?php elseif ($editable): ?>
                         <details class="ledger-op-edit">
                             <summary>Изменить / удалить</summary>

@@ -193,6 +193,8 @@ body.map-open { overflow: hidden; }
 .sovet-task > summary { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; padding: 1rem 1.2rem; cursor: pointer; list-style: none; }
 .sovet-task > summary::-webkit-details-marker { display: none; }
 .sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
+/* Подсветка задачи, на которую пришли по ссылке из «Бюджета» (#task-N) */
+.sovet-task:target, .sovet-arch:target { outline: 2px solid var(--ochre); outline-offset: 2px; }
 .sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; font-size: 1rem; }
 .sovet-task { position: relative; }
 .sovet-task > summary { padding-right: 2.6rem; }
@@ -358,12 +360,14 @@ body.map-open { overflow: hidden; }
 .lg-name { flex: 1; font-weight: 600; font-size: .9rem; }
 .lg-sum { white-space: nowrap; color: var(--muted); font-size: .85rem; }
 @media (max-width: 640px) { .ledger-pie-wrap { justify-content: center; } }
-.ledger-op-src { margin: .4rem 0 0; padding-top: .5rem; border-top: 1px dashed #e6e5df; font-size: .82rem; color: var(--muted); }
+.ledger-op-src { margin: .4rem 0 0; font-size: .82rem; color: var(--muted); }
 
 .ops { list-style: none; margin: .4rem 0 0; padding: 0; }
+/* Единственный разделитель — между операциями (на <li>), а не внутри них. */
+.ops > li { padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
+.ops > li:last-child { border-bottom: 0; }
 /* Операция — вертикально: дата+бейдж → название → сумма (внизу, в пределах карточки). */
-.op-row { display: flex; flex-direction: column; gap: .25rem; padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
-.op-row:last-child { border-bottom: 0; }
+.op-row { display: flex; flex-direction: column; gap: .25rem; }
 .op-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .op-date { color: var(--muted); font-size: .85rem; white-space: nowrap; }
 .op-note { font-size: .85rem; overflow-wrap: anywhere; }
@@ -376,7 +380,7 @@ body.map-open { overflow: hidden; }
 .ledger-empty { padding: 1.5rem 0; color: var(--muted); }
 .ledger-forms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.4rem 0; }
 @media (max-width: 640px) { .ledger-forms { grid-template-columns: 1fr; } }
-.ledger-op-edit { border-top: 1px dashed #e6e5df; margin-top: .4rem; padding-top: .5rem; }
+.ledger-op-edit { margin-top: .4rem; }
 .ledger-op-edit summary { cursor: pointer; font-size: .82rem; color: var(--muted); list-style: none; }
 .ledger-op-edit summary::-webkit-details-marker { display: none; }
 

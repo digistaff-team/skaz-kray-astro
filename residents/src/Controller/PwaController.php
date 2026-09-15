@@ -12,10 +12,10 @@ final class PwaController
 {
     private const CACHE_VERSION = 'skazapp-v3';
 
-    public function manifest(): void
+    /** Общие поля манифеста; иконки берём текущие. */
+    private function baseManifest(): array
     {
-        header('Content-Type: application/manifest+json; charset=utf-8');
-        echo json_encode([
+        return [
             'name'             => 'Сказочный Край',
             'short_name'       => 'Сказочный Край',
             'lang'             => 'ru',
@@ -30,7 +30,33 @@ final class PwaController
                 ['src' => '/poselenie/assets/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
                 ['src' => '/poselenie/assets/icons/icon-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
             ],
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        ];
+    }
+
+    private function emitManifest(array $data): void
+    {
+        header('Content-Type: application/manifest+json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+
+    public function manifest(): void
+    {
+        $this->emitManifest($this->baseManifest());
+    }
+
+    /**
+     * Отдельный манифест для раздела «Совет»: своё имя и start_url=/sovet,
+     * чтобы ярлык на главном экране открывал именно портал Совета.
+     * Иконки — те же. scope оставляем '/', чтобы установка проходила надёжно
+     * (SW всё равно обслуживает и /poselenie, и /sovet).
+     */
+    public function manifestSovet(): void
+    {
+        $this->emitManifest(array_merge($this->baseManifest(), [
+            'name'       => 'Попечительский совет',
+            'short_name' => 'Совет',
+            'start_url'  => '/sovet',
+        ]));
     }
 
     public function serviceWorker(): void

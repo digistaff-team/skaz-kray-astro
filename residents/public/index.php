@@ -188,6 +188,7 @@ $router->get('/poselenie/app', [$app, 'home']);
 $router->get('/poselenie/offline', [$app, 'offline']);
 $pwa = new PwaController();
 $router->get('/poselenie/manifest.webmanifest', [$pwa, 'manifest']);
+$router->get('/poselenie/manifest-sovet.webmanifest', [$pwa, 'manifestSovet']);
 $router->get('/poselenie/sw.js', [$pwa, 'serviceWorker']);
 
 $public = new PublicController();

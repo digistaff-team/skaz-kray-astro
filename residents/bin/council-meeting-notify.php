@@ -3,12 +3,14 @@ declare(strict_types=1);
 
 /**
  * Рассылка уведомления о встрече Попечительского совета членам совета через
- * @SkazKray_bot. Запускается cron'ом ежедневно в 06:00 UTC (= 09:00 МСК).
+ * @SkazKray_bot (в Telegram и в MAX). Запускается cron'ом ежедневно в 06:00 UTC
+ * (= 09:00 МСК).
  *
  * Логика: если дата встречи (council_meeting.starts_at) == сегодня (МСК) и за
  * этот день ещё не рассылали (notified_for) — шлём всем членам совета с
- * привязанным Telegram: дата/время, место, дежурные, ссылка на повестку в
- * приложении. Идемпотентно (notified_for = дата встречи).
+ * привязанным Telegram (через Telegram Bot API) и/или MAX (через Bot API MAX):
+ * дата/время, место, дежурные, ссылка на повестку в приложении (диплинк — свой
+ * для каждой платформы). Идемпотентно (notified_for = дата встречи).
  *
  * Флаги: --dry-run (показать, не отправлять), --force (игнорировать проверку
  * даты/повтора — для ручного теста).
@@ -18,7 +20,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use SkazResidents\{Config, Database, TelegramBot, Env};
+use SkazResidents\{Config, Database, TelegramBot, MaxBot, Env};
 
 $dryRun = in_array('--dry-run', $argv, true);
 $force  = in_array('--force', $argv, true);
@@ -32,6 +34,14 @@ $pdo = Database::pdo();
 
 $botToken = (string) (Config::get('telegram')['bot_token'] ?? '');
 $appLink  = (string) (Config::get('council_app_link', 'https://t.me/SkazKray_bot/sovet') ?: 'https://t.me/SkazKray_bot/sovet');
+
+// MAX: токен и диплинк. Токен — из config.php ('max'), а если блок ещё не заведён
+// в боевом config.php — напрямую из окружения (config/.env: SKAZKRAY_MAX_BOT_TOKEN).
+$maxCfg     = Config::get('max');
+$maxToken   = is_array($maxCfg) ? (string) ($maxCfg['bot_token'] ?? '') : '';
+if ($maxToken === '') { $maxToken = (string) (getenv('SKAZKRAY_MAX_BOT_TOKEN') ?: ''); }
+$maxAppLink = is_array($maxCfg) ? (string) ($maxCfg['app_link'] ?? '') : '';
+if ($maxAppLink === '') { $maxAppLink = 'https://max.ru/SkazKray_bot?startapp'; }
 
 $log = static function (string $m): void { echo '[' . gmdate('Y-m-d H:i:s') . " UTC] {$m}\n"; };
 
@@ -57,42 +67,62 @@ if (!$force) {
     }
 }
 
-// Текст уведомления.
-$lines = [
-    '🗓 Сегодня встреча Попечительского совета',
-    '',
-    (string) $meeting['meeting_date'],
-    (string) $meeting['place'],
-    '',
-    'Дежурный председатель: ' . (string) $meeting['duty_chair'],
-    'Дежурный секретарь: ' . (string) $meeting['duty_secretary'],
-    '',
-    'Повестка встречи в приложении:',
-    $appLink,
-];
-$text = implode("\n", $lines);
+// Текст уведомления. Ссылка на приложение своя для каждой платформы (Telegram
+// Mini App / мини-приложение MAX), остальное совпадает.
+$makeText = static function (string $appLink) use ($meeting): string {
+    return implode("\n", [
+        '🗓 Сегодня встреча Попечительского совета',
+        '',
+        (string) $meeting['meeting_date'],
+        (string) $meeting['place'],
+        '',
+        'Дежурный председатель: ' . (string) $meeting['duty_chair'],
+        'Дежурный секретарь: ' . (string) $meeting['duty_secretary'],
+        '',
+        'Повестка встречи в приложении:',
+        $appLink,
+    ]);
+};
+$textTg  = $makeText($appLink);
+$textMax = $makeText($maxAppLink);
 
-// Получатели — активные члены совета с привязанным Telegram.
-$recipients = $pdo->query(
+// Получатели: активные члены совета с привязанным Telegram и/или MAX. Каналы
+// независимы — привязавший обе платформы получит уведомление в обеих.
+$tgRecipients = $pdo->query(
     "SELECT id, name, telegram_id FROM council_members
      WHERE telegram_id IS NOT NULL AND status = 'active' ORDER BY id"
 )->fetchAll(\PDO::FETCH_ASSOC);
+$maxRecipients = $pdo->query(
+    "SELECT id, name, max_user_id FROM council_members
+     WHERE max_user_id IS NOT NULL AND status = 'active' ORDER BY id"
+)->fetchAll(\PDO::FETCH_ASSOC);
 
-$log(($dryRun ? '[DRY-RUN] ' : '') . 'встреча ' . $meetingDay . ', получателей: ' . count($recipients));
+$log(($dryRun ? '[DRY-RUN] ' : '') . 'встреча ' . $meetingDay
+    . ', получателей: Telegram ' . count($tgRecipients) . ', MAX ' . count($maxRecipients));
 
 if ($dryRun) {
-    echo "---- текст ----\n{$text}\n---------------\n";
-    foreach ($recipients as $r) { echo "  → {$r['name']} (tg {$r['telegram_id']})\n"; }
+    echo "---- текст (Telegram) ----\n{$textTg}\n---------------\n";
+    foreach ($tgRecipients as $r) { echo "  → {$r['name']} (tg {$r['telegram_id']})\n"; }
+    echo "---- текст (MAX) ----\n{$textMax}\n---------------\n";
+    foreach ($maxRecipients as $r) { echo "  → {$r['name']} (max {$r['max_user_id']})\n"; }
     exit(0);
 }
 
 $sent = 0; $failed = 0;
-foreach ($recipients as $r) {
-    if (TelegramBot::sendMessage($botToken, (string) $r['telegram_id'], $text)) {
+foreach ($tgRecipients as $r) {
+    if (TelegramBot::sendMessage($botToken, (string) $r['telegram_id'], $textTg)) {
         $sent++;
     } else {
         $failed++;
-        $log("не доставлено: {$r['name']} (tg {$r['telegram_id']})");
+        $log("Telegram не доставлено: {$r['name']} (tg {$r['telegram_id']})");
+    }
+}
+foreach ($maxRecipients as $r) {
+    if (MaxBot::sendMessage($maxToken, (string) $r['max_user_id'], $textMax)) {
+        $sent++;
+    } else {
+        $failed++;
+        $log("MAX не доставлено: {$r['name']} (max {$r['max_user_id']})");
     }
 }
 

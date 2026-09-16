@@ -13,7 +13,7 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
     <?php if (isset($errors['title'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['title']) ?></div><?php endif; ?>
     <label>Автор        <input type="text" name="author" maxlength="200" value="<?= View::e($book['author'] ?? '') ?>">
     </label>
-    <label>Жанр        <input type="text" name="genre" maxlength="80" list="book-genres" value="<?= View::e($book['genre'] ?? '') ?>" placeholder="напр. Фантастика, Детская книга, Психология">
+    <label>Жанр        <input type="text" name="genre" maxlength="80" list="book-genres" value="<?= View::e($book['genre'] ?? '') ?>">
         <?php
             // Популярные жанры-подсказки + уже встречающиеся в каталоге (без дублей).
             $popularGenres = ['Фантастика', 'Детектив', 'Роман', 'Психология', 'Классика', 'Детская книга'];
@@ -25,8 +25,20 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
         </datalist>
     </label>
     <?php if (isset($errors['genre'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['genre']) ?></div><?php endif; ?>
-    <label>Состояние
-        <input type="text" name="condition_note" maxlength="200" value="<?= View::e($book['condition_note'] ?? '') ?>" placeholder="напр. хорошее; потрёпанная обложка">
+    <label>Состояние книги
+        <?php
+            $condOptions = ['Новая', 'Хорошее', 'Потрёпанная'];
+            $curCond = (string) ($book['condition_note'] ?? '');
+        ?>
+        <select name="condition_note">
+            <option value="">— выберите —</option>
+            <?php if ($curCond !== '' && !in_array($curCond, $condOptions, true)): ?>
+                <option value="<?= View::e($curCond) ?>" selected><?= View::e($curCond) ?></option>
+            <?php endif; ?>
+            <?php foreach ($condOptions as $c): ?>
+                <option value="<?= View::e($c) ?>"<?= $curCond === $c ? ' selected' : '' ?>><?= View::e($c) ?></option>
+            <?php endforeach; ?>
+        </select>
     </label>
     <label>Статус книги
         <?php $curStatus = (($book['status'] ?? 'available') === 'on_loan') ? 'on_loan' : 'available'; ?>

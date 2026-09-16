@@ -13,7 +13,7 @@ $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === '
 </div>
 
 <form class="tool-filters" method="get" action="/poselenie/knigi">
-    <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Поиск по названию, автору или жанру">
+    <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Название, автор или герой">
     <select name="genre">
         <option value="">Все жанры</option>
         <?php foreach ($genres as $g): ?>

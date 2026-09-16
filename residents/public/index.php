@@ -28,6 +28,7 @@ use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController
 use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
 use SkazResidents\Controller\Council\AgendaController as CouncilAgendaController;
 use SkazResidents\Controller\Council\TgAuthController as CouncilTgAuthController;
+use SkazResidents\Controller\Council\MaxAuthController as CouncilMaxAuthController;
 use SkazResidents\Controller\Council\BotWebhookController as CouncilBotWebhookController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
@@ -206,6 +207,15 @@ $router->get('/sovet/tg/familiya', [$cTg, 'showClaim']);
 $router->post('/sovet/tg/claim', [$cTg, 'claim']);
 // Webhook бота — нажатия кнопок под уведомлением о задаче (проверка секрет-заголовком).
 $router->post('/sovet/tg/webhook', [new CouncilBotWebhookController(), 'handle']);
+
+// Вход членов совета через мини-приложение MAX (@SkazKray_bot в MAX). URL мини-
+// приложения — https://skaz-kray.ru/max (nginx: location ^~ /max → этот index.php).
+$cMax = new CouncilMaxAuthController();
+$router->get('/max', [$cMax, 'entry']);
+$router->get('/max/', [$cMax, 'entry']);
+$router->post('/max/login', [$cMax, 'login']);
+$router->get('/max/familiya', [$cMax, 'showClaim']);
+$router->post('/max/claim', [$cMax, 'claim']);
 
 $cAuth = new CouncilAuthController();
 $router->get('/sovet/vhod', [$cAuth, 'showLogin']);

@@ -26,6 +26,17 @@ return [
         // уведомлениями о задачах. Задаётся при setWebhook (bin/council-set-webhook.php).
         'webhook_secret' => getenv('SKAZKRAY_WEBHOOK_SECRET') ?: '',
     ],
+    // Вход членов совета через мини-приложение MAX (@SkazKray_bot в MAX).
+    // Токен бота MAX — из окружения (config/.env: SKAZKRAY_MAX_BOT_TOKEN), им
+    // проверяется подпись initData (MaxWebApp::verify). Имя бота и диплинк — не
+    // секреты. URL мини-приложения, зарегистрированный в MAX: https://skaz-kray.ru/max
+    'max' => [
+        'bot_token'    => getenv('SKAZKRAY_MAX_BOT_TOKEN') ?: '',
+        'bot_username' => 'SkazKray_bot',
+        // Диплинк, открывающий раздел Совета как мини-приложение MAX (startapp —
+        // base64url пути внутри /sovet, символы A-Za-z0-9_-, без padding «=»).
+        'app_link'     => 'https://max.ru/SkazKray_bot?startapp',
+    ],
     // Фото дневника уходят в приватный Telegram-канал «Skaz-Kray Media» (тот же,
     // что у новостей блога) и отдаются через /tg-media/<file_id>.jpg. Чтобы не
     // дублировать секрет, на проде подключаем общий конфиг того же канала:

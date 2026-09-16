@@ -57,6 +57,27 @@ final class CouncilMemberRepository
         return $st->fetch() ?: null;
     }
 
+    public function findByMaxId(int $maxId): ?array
+    {
+        $st = $this->db->prepare('SELECT * FROM council_members WHERE max_user_id = ?');
+        $st->execute([$maxId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Записи ростера с такой фамилией, ещё не привязанные к MAX (max_user_id
+     * независим от telegram_id — член может входить и из Telegram, и из MAX).
+     * @return array<int,array<string,mixed>>
+     */
+    public function findUnclaimedBySurnameForMax(string $surname): array
+    {
+        $st = $this->db->prepare(
+            'SELECT * FROM council_members WHERE max_user_id IS NULL AND surname = ? ORDER BY name'
+        );
+        $st->execute([$surname]);
+        return $st->fetchAll();
+    }
+
     /**
      * Ещё не привязанные к Telegram записи ростера с такой фамилией.
      * Обычно 0 или 1; больше одной — когда фамилия неуникальна (напр. «Моисеенко»),
@@ -91,6 +112,20 @@ final class CouncilMemberRepository
     public function unbindTelegram(int $id): void
     {
         $st = $this->db->prepare('UPDATE council_members SET telegram_id = NULL WHERE id = ?');
+        $st->execute([$id]);
+    }
+
+    /** Привязать MAX-аккаунт к записи члена совета (клейм ростера). */
+    public function bindMax(int $id, int $maxId): void
+    {
+        $st = $this->db->prepare('UPDATE council_members SET max_user_id = ? WHERE id = ?');
+        $st->execute([$maxId, $id]);
+    }
+
+    /** Снять привязку MAX (админ — на случай ошибочного клейма). */
+    public function unbindMax(int $id): void
+    {
+        $st = $this->db->prepare('UPDATE council_members SET max_user_id = NULL WHERE id = ?');
         $st->execute([$id]);
     }
 

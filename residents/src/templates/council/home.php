@@ -101,8 +101,10 @@
 </details>
 
 <!-- SDK Telegram нужен, чтобы внутри мини-приложения работали
-     checkHomeScreenStatus/addToHomeScreen. В обычном браузере он безвреден. -->
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+     checkHomeScreenStatus/addToHomeScreen. Грузится асинхронно и с таймаутом
+     (assets/tg-webapp.js): синхронный тег блокировал отрисовку страницы, если
+     telegram.org недоступен. -->
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 /**
  * Баннер «Добавить на главный экран».
@@ -129,17 +131,24 @@
   closeBtn.addEventListener('click', dismissForever);
   if (dismissed()) { return; }
 
-  var wa = window.Telegram && window.Telegram.WebApp;
-  var inTelegram = !!(wa && wa.initData && wa.initData.length);
+  // «Внутри Telegram» определяем по параметрам запуска, не дожидаясь SDK:
+  // браузерную ветку ниже откладывать нельзя — beforeinstallprompt может
+  // выстрелить раньше, чем доедет telegram.org, и слушатель его пропустит.
+  var inTelegram = !!SkazTg.initData(null);
 
   if (inTelegram) {
-    var supported = wa.isVersionAtLeast && wa.isVersionAtLeast('8.0') && typeof wa.checkHomeScreenStatus === 'function';
-    if (!supported) { return; } // старый клиент Telegram — используйте меню «⋮»
-    addBtn.addEventListener('click', function () { try { wa.addToHomeScreen(); } catch (e) {} });
-    try { wa.onEvent('homeScreenAdded', hide); } catch (e) {}
-    wa.checkHomeScreenStatus(function (status) {
-      if (status === 'added' || status === 'unsupported') { hide(); return; }
-      show(); // missed / unknown
+    SkazTg.ensure(function (wa) {
+      // SDK не доехал — баннер просто не показываем (добавление на главный
+      // экран без него всё равно невозможно).
+      if (!wa) { return; }
+      var supported = wa.isVersionAtLeast && wa.isVersionAtLeast('8.0') && typeof wa.checkHomeScreenStatus === 'function';
+      if (!supported) { return; } // старый клиент Telegram — используйте меню «⋮»
+      addBtn.addEventListener('click', function () { try { wa.addToHomeScreen(); } catch (e) {} });
+      try { wa.onEvent('homeScreenAdded', hide); } catch (e) {}
+      wa.checkHomeScreenStatus(function (status) {
+        if (status === 'added' || status === 'unsupported') { hide(); return; }
+        show(); // missed / unknown
+      });
     });
     return;
   }

@@ -218,7 +218,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
     <img class="res-lightbox-img" src="" alt="">
 </div>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
   function bind(headSel, boxSel, openCls) {
@@ -250,11 +250,13 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
 
   // Внутри Telegram Mini App ссылку t.me/username надо открывать через openTelegramLink
   // (обычная ссылка target=_blank в webview не открывается). Вне Telegram — обычный переход.
-  var wa = window.Telegram && window.Telegram.WebApp;
-  if (wa && wa.initData && wa.openTelegramLink) {
+  // SDK ждём асинхронно: аккордеоны и лайтбокс выше работают сразу, не дожидаясь
+  // telegram.org, а если он недоступен — ссылки остаются обычными.
+  SkazTg.ensure(function (wa) {
+    if (!wa || !wa.initData || !wa.openTelegramLink) { return; }
     Array.prototype.forEach.call(document.querySelectorAll('.js-tg-link'), function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); wa.openTelegramLink(a.href); });
     });
-  }
+  });
 })();
 </script>

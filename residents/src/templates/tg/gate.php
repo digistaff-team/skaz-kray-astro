@@ -12,18 +12,20 @@
 <?php endif; ?>
 <p><a class="res-btn res-btn--ghost" href="/poselenie/tg">Я вступил(а) — проверить снова</a></p>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 // Внутри Telegram ссылку на группу открываем нативно, а не новой вкладкой браузера.
+// SDK грузится асинхронно: пока он едет — и если telegram.org недоступен —
+// ссылка остаётся рабочей как обычная (target="_blank" в разметке выше).
 (function () {
-  var wa = window.Telegram && window.Telegram.WebApp;
-  var link = document.getElementById('tg-group-link');
-  if (wa && link) {
+  SkazTg.ensure(function (wa) {
+    var link = document.getElementById('tg-group-link');
+    if (!wa || !link) { return; }
     link.addEventListener('click', function (e) {
       var url = link.getAttribute('href');
       if (wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
       else if (wa.openLink) { e.preventDefault(); wa.openLink(url); }
     });
-  }
+  });
 })();
 </script>

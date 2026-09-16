@@ -2,18 +2,12 @@
 <p id="tg-status" class="res-meta">Проверяем доступ через Telegram…</p>
 <noscript><p class="res-flash res-flash--error">Нужен включённый JavaScript.</p></noscript>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
   var statusEl = document.getElementById('tg-status');
   function show(msg) { if (statusEl) statusEl.textContent = msg; }
 
-  var wa = window.Telegram && window.Telegram.WebApp;
-
-  // Deep-link: startapp=base64url(путь внутри /sovet) — из initDataUnsafe или query.
-  var qs = new URLSearchParams(window.location.search);
-  var startParam = (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param)
-    || qs.get('startapp') || qs.get('tgWebAppStartParam') || '';
   function decodeStart(sp, fallback) {
     if (!sp) { return fallback; }
     try {
@@ -25,28 +19,38 @@
   }
 
   <?php if ($alreadyLoggedIn): ?>
-  window.location.assign(decodeStart(startParam, '/sovet'));
+  // Уже авторизованы — SDK ждать незачем: deep-link читается из самой ссылки.
+  window.location.assign(decodeStart(SkazTg.startParam(null), '/sovet'));
   return;
   <?php endif; ?>
 
-  if (!wa || !wa.initData) {
-    show('Откройте раздел Совета через бота @SkazKray_bot в Telegram.');
-    return;
-  }
-  try { wa.ready(); } catch (e) {}
-  try { wa.expand(); } catch (e) {}
+  // SDK грузится асинхронно и с таймаутом: страница рисуется сразу, а вход не
+  // зависит от доступности telegram.org (см. assets/tg-webapp.js).
+  SkazTg.ensure(function (wa) {
+    var startParam = SkazTg.startParam(wa);
+    var initData = SkazTg.initData(wa);
 
-  fetch('/sovet/tg/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'initData=' + encodeURIComponent(wa.initData) + '&startapp=' + encodeURIComponent(startParam)
-  }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
-    .then(function (data) {
-      if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }
-      if (data.reason === 'need_surname') { window.location.assign('/sovet/tg/familiya'); return; }
-      if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору совета.'); return; }
-      show('Не удалось войти. Проверьте, что вы открыли раздел через бота @SkazKray_bot.');
-    })
-    .catch(function () { show('Ошибка связи. Попробуйте ещё раз.'); });
+    if (!initData) {
+      show('Откройте раздел Совета через бота @SkazKray_bot в Telegram.');
+      return;
+    }
+    if (wa) {
+      try { wa.ready(); } catch (e) {}
+      try { wa.expand(); } catch (e) {}
+    }
+
+    fetch('/sovet/tg/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'initData=' + encodeURIComponent(initData) + '&startapp=' + encodeURIComponent(startParam)
+    }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
+      .then(function (data) {
+        if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }
+        if (data.reason === 'need_surname') { window.location.assign('/sovet/tg/familiya'); return; }
+        if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору совета.'); return; }
+        show('Не удалось войти. Проверьте, что вы открыли раздел через бота @SkazKray_bot.');
+      })
+      .catch(function () { show('Ошибка связи. Попробуйте ещё раз.'); });
+  });
 })();
 </script>

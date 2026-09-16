@@ -20,6 +20,7 @@ use SkazResidents\Controller\BookLoanController;
 use SkazResidents\Controller\TripController;
 use SkazResidents\Controller\TripBookingController;
 use SkazResidents\Controller\TgAuthController;
+use SkazResidents\Controller\MaxAuthController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
 use SkazResidents\Controller\Council\PagesController as CouncilPagesController;
 use SkazResidents\Controller\Council\TaskController as CouncilTaskController;
@@ -52,6 +53,14 @@ $tg = new TgAuthController();
 $router->get('/poselenie/tg', [$tg, 'entry']);
 $router->post('/poselenie/tg/login', [$tg, 'login']);
 $router->get('/poselenie/tg/gate', [$tg, 'gate']);
+
+// То же, но через мини-приложение MAX. URL мини-приложения жителей в MAX —
+// https://skaz-kray.ru/poselenie/max (nginx уже отдаёт /poselenie/* в PHP).
+// Гейт — членство в группе жителей MAX (config max.group_chat_id).
+$maxAuth = new MaxAuthController();
+$router->get('/poselenie/max', [$maxAuth, 'entry']);
+$router->post('/poselenie/max/login', [$maxAuth, 'login']);
+$router->get('/poselenie/max/gate', [$maxAuth, 'gate']);
 
 $cabinet = new CabinetController();
 $router->get('/poselenie', [$cabinet, 'index']);

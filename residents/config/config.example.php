@@ -38,6 +38,11 @@ return [
         // Диплинк, открывающий раздел Совета как мини-приложение MAX (startapp —
         // base64url пути внутри /sovet, символы A-Za-z0-9_-, без padding «=»).
         'app_link'     => 'https://max.ru/id643900558807_2_bot?startapp',
+        // Раздел жителей (/poselenie/max): гейт — членство в группе жителей MAX.
+        // chat_id узнаётся после добавления бота в группу: GET botapi.max.ru/chats.
+        // Бот должен быть в группе (лучше админом), иначе проверка членства не пройдёт.
+        'group_chat_id' => getenv('SKAZKRAY_MAX_GROUP_CHAT_ID') ?: '',
+        'group_link'    => 'https://max.ru/join/CHANGE_ME',  // ссылка-приглашение в группу (экран гейта)
     ],
     // Фото дневника уходят в приватный Telegram-канал «Skaz-Kray Media» (тот же,
     // что у новостей блога) и отдаются через /tg-media/<file_id>.jpg. Чтобы не

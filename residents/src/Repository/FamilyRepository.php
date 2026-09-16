@@ -56,6 +56,32 @@ final class FamilyRepository
         return (int) $this->db->lastInsertId();
     }
 
+    public function findByMaxId(int $maxUserId): ?array
+    {
+        $st = $this->db->prepare('SELECT * FROM families WHERE max_user_id = ?');
+        $st->execute([$maxUserId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Создаёт аккаунт жителя, привязанный к MAX: сразу active (членство в группе
+     * жителей MAX — гейт вместо одобрения редактором). Email синтетический
+     * (max<id>@max.local), пароль случайный неиспользуемый (вход только через MAX).
+     * Аналог createTelegramFamily; отдельной «ссылки MAX» в справочнике нет,
+     * поэтому username не храним.
+     */
+    public function createMaxFamily(int $maxUserId, string $name): int
+    {
+        $email = 'max' . $maxUserId . '@max.local';
+        $passwordHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
+        $st = $this->db->prepare(
+            'INSERT INTO families (email, max_user_id, password_hash, name, status, role, approved_at)
+             VALUES (?, ?, ?, ?, \'active\', \'resident\', ?)'
+        );
+        $st->execute([$email, $maxUserId, $passwordHash, $name, date('Y-m-d H:i:s')]);
+        return (int) $this->db->lastInsertId();
+    }
+
     /** Обновляет сохранённый @username аккаунта (держим свежим при каждом входе). */
     public function setTelegramUsername(int $id, ?string $username): void
     {

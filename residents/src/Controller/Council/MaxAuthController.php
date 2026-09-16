@@ -146,7 +146,11 @@ final class MaxAuthController
     /** @return array{id:string,first_name:?string,last_name:?string,username:?string}|null */
     private function verify(): ?array
     {
-        $token = (string) (Config::get('max')['bot_token'] ?? '');
+        // Токен из config.php ('max'), а если блок ещё не добавлен в боевой
+        // config.php — напрямую из окружения (config/.env: SKAZKRAY_MAX_BOT_TOKEN).
+        $max = Config::get('max');
+        $token = is_array($max) ? (string) ($max['bot_token'] ?? '') : '';
+        if ($token === '') { $token = (string) (getenv('SKAZKRAY_MAX_BOT_TOKEN') ?: ''); }
         return MaxWebApp::verify((string) ($_POST['initData'] ?? ''), $token);
     }
 

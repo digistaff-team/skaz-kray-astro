@@ -13,16 +13,23 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
     <?php if (isset($errors['title'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['title']) ?></div><?php endif; ?>
     <label>Автор        <input type="text" name="author" maxlength="200" value="<?= View::e($book['author'] ?? '') ?>">
     </label>
-    <label>Жанр        <input type="text" name="genre" maxlength="80" list="book-genres" value="<?= View::e($book['genre'] ?? '') ?>">
+    <label>Жанр
         <?php
-            // Популярные жанры-подсказки + уже встречающиеся в каталоге (без дублей).
+            // Популярные жанры + уже встречающиеся в каталоге (без дублей).
             $popularGenres = ['Фантастика', 'Детектив', 'Роман', 'Психология', 'Классика', 'Детская книга'];
             $genreOptions = $popularGenres;
             foreach ($genres as $g) { if (!in_array($g, $genreOptions, true)) { $genreOptions[] = $g; } }
+            $curGenre = (string) ($book['genre'] ?? '');
         ?>
-        <datalist id="book-genres">
-            <?php foreach ($genreOptions as $g): ?><option value="<?= View::e($g) ?>"><?php endforeach; ?>
-        </datalist>
+        <select name="genre">
+            <option value="">— выберите —</option>
+            <?php if ($curGenre !== '' && !in_array($curGenre, $genreOptions, true)): ?>
+                <option value="<?= View::e($curGenre) ?>" selected><?= View::e($curGenre) ?></option>
+            <?php endif; ?>
+            <?php foreach ($genreOptions as $g): ?>
+                <option value="<?= View::e($g) ?>"<?= $curGenre === $g ? ' selected' : '' ?>><?= View::e($g) ?></option>
+            <?php endforeach; ?>
+        </select>
     </label>
     <?php if (isset($errors['genre'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['genre']) ?></div><?php endif; ?>
     <label>Состояние книги

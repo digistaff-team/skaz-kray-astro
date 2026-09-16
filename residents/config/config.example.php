@@ -32,10 +32,12 @@ return [
     // секреты. URL мини-приложения, зарегистрированный в MAX: https://skaz-kray.ru/max
     'max' => [
         'bot_token'    => getenv('SKAZKRAY_MAX_BOT_TOKEN') ?: '',
-        'bot_username' => 'SkazKray_bot',
+        // username бота в MAX (отображаемое имя — «SkazKray_bot», но публичная
+        // ссылка строится по username с id-префиксом).
+        'bot_username' => 'id643900558807_2_bot',
         // Диплинк, открывающий раздел Совета как мини-приложение MAX (startapp —
         // base64url пути внутри /sovet, символы A-Za-z0-9_-, без padding «=»).
-        'app_link'     => 'https://max.ru/SkazKray_bot?startapp',
+        'app_link'     => 'https://max.ru/id643900558807_2_bot?startapp',
     ],
     // Фото дневника уходят в приватный Telegram-канал «Skaz-Kray Media» (тот же,
     // что у новостей блога) и отдаются через /tg-media/<file_id>.jpg. Чтобы не

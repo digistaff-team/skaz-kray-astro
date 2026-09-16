@@ -41,7 +41,7 @@ $maxCfg     = Config::get('max');
 $maxToken   = is_array($maxCfg) ? (string) ($maxCfg['bot_token'] ?? '') : '';
 if ($maxToken === '') { $maxToken = (string) (getenv('SKAZKRAY_MAX_BOT_TOKEN') ?: ''); }
 $maxAppLink = is_array($maxCfg) ? (string) ($maxCfg['app_link'] ?? '') : '';
-if ($maxAppLink === '') { $maxAppLink = 'https://max.ru/SkazKray_bot?startapp'; }
+if ($maxAppLink === '') { $maxAppLink = 'https://max.ru/id643900558807_2_bot?startapp'; }
 
 $log = static function (string $m): void { echo '[' . gmdate('Y-m-d H:i:s') . " UTC] {$m}\n"; };
 

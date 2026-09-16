@@ -256,6 +256,8 @@ body.map-open { overflow: hidden; }
 .tool-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
 .tool-head-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 .tool-head-actions .res-btn { margin-top: 0; }
+/* Кнопки действий под описанием (напр. каталог книг) — отступ сверху/снизу. */
+.book-actions { margin: .6rem 0 1.4rem; }
 .tool-filters { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0; align-items: center; }
 .tool-filters input, .tool-filters select { padding: .5rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
 .tool-filters input[type="search"] { flex: 1; min-width: 12rem; }

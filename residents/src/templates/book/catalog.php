@@ -5,14 +5,12 @@ $u = PublicController::uploadsUrl();
 $label = fn(string $s) => ['available' => 'свободна', 'on_loan' => 'на руках', 'maintenance' => 'недоступна', 'hidden' => 'скрыта'][$s] ?? $s;
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 ?>
-<div class="tool-head">
-    <h1>Книги поселения</h1>
-    <div class="tool-head-actions">
-        <a class="res-btn" href="/poselenie/knigi/novaya">+ Поделиться книгой</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/knigi/moi">Мои книги</a>
-    </div>
-</div>
+<h1>Книги поселения</h1>
 <p class="res-meta">Общая книжная полка жителей: возьмите книгу почитать у соседа или поделитесь своей. Бронь подтверждает владелец, после прочтения книга возвращается ему.</p>
+<div class="tool-head-actions book-actions">
+    <a class="res-btn" href="/poselenie/knigi/novaya">+ Поделиться книгой</a>
+    <a class="res-btn res-btn--ghost" href="/poselenie/knigi/moi">Мои книги</a>
+</div>
 
 <form class="tool-filters" method="get" action="/poselenie/knigi">
     <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Поиск по названию, автору или жанру">
@@ -32,7 +30,7 @@ $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === '
 </form>
 
 <?php if (!$books): ?>
-    <p class="res-meta tool-empty">Ничего не найдено. Будьте первым — <a href="/poselenie/knigi/novaya">поделитесь книгой</a>.</p>
+    <p class="res-meta tool-empty">Каталог пуст. Будьте первым — <a href="/poselenie/knigi/novaya">поделитесь книгой</a>.</p>
 <?php endif; ?>
 
 <div class="tool-grid">

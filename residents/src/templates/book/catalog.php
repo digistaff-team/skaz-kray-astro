@@ -26,7 +26,7 @@ $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === '
         <option value="on_loan"<?= $status === 'on_loan' ? ' selected' : '' ?>>на руках</option>
         <option value="maintenance"<?= $status === 'maintenance' ? ' selected' : '' ?>>недоступна</option>
     </select>
-    <button class="res-btn" type="submit">Найти</button>
+    <button class="res-btn" type="submit">Найти книгу</button>
 </form>
 
 <?php if (!$books): ?>

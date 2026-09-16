@@ -99,12 +99,23 @@ final class BookRepository
     }
 
     /** Уникальные жанры для фильтра/подсказок (без скрытых). @return array<int,string> */
+    /** Популярные жанры-варианты для формы и фильтра каталога. */
+    public const POPULAR_GENRES = ['Фантастика', 'Детектив', 'Роман', 'Психология', 'Классика', 'Детская книга'];
+
     public function genres(): array
     {
         $rows = $this->db->query(
             'SELECT DISTINCT genre FROM books WHERE status <> \'hidden\' AND genre <> \'\' ORDER BY genre'
         )->fetchAll(PDO::FETCH_COLUMN);
         return array_map('strval', $rows);
+    }
+
+    /** Полный список жанров: популярные + уже встречающиеся в каталоге (без дублей). */
+    public function genresForForm(): array
+    {
+        $out = self::POPULAR_GENRES;
+        foreach ($this->genres() as $g) { if (!in_array($g, $out, true)) { $out[] = $g; } }
+        return $out;
     }
 
     public function delete(int $id): void

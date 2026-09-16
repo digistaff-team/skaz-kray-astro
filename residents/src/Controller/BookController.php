@@ -31,7 +31,7 @@ final class BookController
         unset($b);
         View::render('book/catalog', [
             'books'  => $books,
-            'genres' => $this->books->genres(),
+            'genres' => $this->books->genresForForm(),
             'q'      => $search,
             'genre'  => $genre,
             'status' => $status,
@@ -64,7 +64,7 @@ final class BookController
     public function showCreate(): void
     {
         Auth::requireLogin();
-        View::render('book/form', ['book' => null, 'images' => [], 'genres' => $this->books->genres(), 'errors' => []], 'Новая книга');
+        View::render('book/form', ['book' => null, 'images' => [], 'genres' => $this->books->genresForForm(), 'errors' => []], 'Новая книга');
     }
 
     public function create(): void
@@ -73,7 +73,7 @@ final class BookController
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
-            View::render('book/form', ['book' => $data, 'images' => [], 'genres' => $this->books->genres(), 'errors' => $errors], 'Новая книга');
+            View::render('book/form', ['book' => $data, 'images' => [], 'genres' => $this->books->genresForForm(), 'errors' => $errors], 'Новая книга');
             return;
         }
         $id = $this->books->create(Auth::id(), $data['title'], $data['author'], $data['genre'], $data['description'], $data['condition_note'], date('Y-m-d H:i:s'));
@@ -90,7 +90,7 @@ final class BookController
         View::render('book/form', [
             'book'   => $book,
             'images' => $this->images->listFor('book', (int) $book['id']),
-            'genres' => $this->books->genres(),
+            'genres' => $this->books->genresForForm(),
             'errors' => [],
         ], 'Редактирование книги');
     }
@@ -103,7 +103,7 @@ final class BookController
         [$data, $errors] = $this->validate();
         if ($errors) {
             $data['id'] = $book['id'];
-            View::render('book/form', ['book' => $data, 'images' => $this->images->listFor('book', (int) $book['id']), 'genres' => $this->books->genres(), 'errors' => $errors], 'Редактирование книги');
+            View::render('book/form', ['book' => $data, 'images' => $this->images->listFor('book', (int) $book['id']), 'genres' => $this->books->genresForForm(), 'errors' => $errors], 'Редактирование книги');
             return;
         }
         $this->books->update((int) $book['id'], $data['title'], $data['author'], $data['genre'], $data['description'], $data['condition_note'], date('Y-m-d H:i:s'));

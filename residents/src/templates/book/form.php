@@ -57,9 +57,10 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
     <label>Аннотация / о чём книга
         <textarea name="description"><?= View::e($book['description'] ?? '') ?></textarea>
     </label>
-    <label>Фото обложки</label>
-    <p class="res-meta">JPEG/PNG/WebP, до 5 МБ.</p>
-    <?php require __DIR__ . '/../profile/_photo_input.php'; ?>
+    <label class="file-btn">Добавить фото обложки
+        <input type="file" name="photos[]" id="profilePhotos" accept="image/*" multiple hidden>
+    </label>
+    <div id="profilePhotoPreview" class="photo-preview"></div>
     <?php if (!empty($images)): ?>
         <div class="res-meta" style="margin-top:1rem">Уже загружено:</div>
         <div class="tool-gallery">

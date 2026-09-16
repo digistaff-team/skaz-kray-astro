@@ -28,17 +28,25 @@
     <p id="sovet-claim-note" class="res-meta" style="margin-top:.8rem;"></p>
 </div>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
-  var wa = window.Telegram && window.Telegram.WebApp;
   var field = document.getElementById('sovet-initdata');
   var note = document.getElementById('sovet-claim-note');
-  if (wa && wa.initData) {
-    try { wa.ready(); } catch (e) {}
-    field.value = wa.initData;
-  } else if (note) {
-    note.textContent = 'Откройте раздел Совета через бота @SkazKray_bot в Telegram, иначе вход не сработает.';
-  }
+
+  // Подписанный initData берём из SDK, а если telegram.org недоступен — прямо
+  // из ссылки запуска: форма должна отправляться и без SDK.
+  var early = SkazTg.initData(null);
+  if (early && field) { field.value = early; }
+
+  SkazTg.ensure(function (wa) {
+    var initData = SkazTg.initData(wa);
+    if (initData && field) {
+      if (wa) { try { wa.ready(); } catch (e) {} }
+      field.value = initData;
+    } else if (note) {
+      note.textContent = 'Откройте раздел Совета через бота @SkazKray_bot в Telegram, иначе вход не сработает.';
+    }
+  });
 })();
 </script>

@@ -35,20 +35,39 @@
 
     if (!isTelegramMiniApp()) return; // вне Telegram — не грузим SDK
 
-    // Идемпотентная загрузка telegram-web-app.js.
+    // Идемпотентная загрузка telegram-web-app.js — с собственным таймаутом.
+    // Без него промис мог не разрешиться никогда: если telegram.org не
+    // отказывает в соединении, а молчит (пакеты отбрасываются — так выглядит
+    // блокировка у части операторов), тег <script> не получает НИ onload,
+    // НИ onerror. Тогда не отрабатывал весь блок ниже, включая deep-link:
+    // переход по ссылке из канала молча оставлял человека на главной.
+    var SDK_TIMEOUT_MS = 8000;
+
     function ensureWebApp() {
       return new Promise(function (resolve) {
         if (window.Telegram && window.Telegram.WebApp) return resolve(window.Telegram.WebApp);
-        var done = function () { resolve((window.Telegram && window.Telegram.WebApp) || null); };
+
+        var settled = false;
+        var timer = null;
+        var finish = function () {
+          if (settled) return;
+          settled = true;
+          if (timer) clearTimeout(timer);
+          resolve((window.Telegram && window.Telegram.WebApp) || null);
+        };
+        timer = setTimeout(finish, SDK_TIMEOUT_MS);
+
         var existing = document.querySelector('script[src="' + SCRIPT_SRC + '"]');
         if (existing) {
-          if (window.Telegram && window.Telegram.WebApp) return resolve(window.Telegram.WebApp);
-          existing.addEventListener("load", done, { once: true });
+          if (window.Telegram && window.Telegram.WebApp) return finish();
+          existing.addEventListener("load", finish, { once: true });
+          // И error: иначе неудачная вставка оставляла бы ждать вечно.
+          existing.addEventListener("error", finish, { once: true });
           return;
         }
         var sc = document.createElement("script");
         sc.src = SCRIPT_SRC; sc.async = true;
-        sc.onload = done; sc.onerror = function () { resolve(null); };
+        sc.onload = finish; sc.onerror = finish;
         document.head.appendChild(sc);
       });
     }
@@ -59,6 +78,11 @@
       if (!raw) {
         var qs = new URLSearchParams(window.location.search);
         raw = qs.get("startapp") || qs.get("tgWebAppStartParam");
+      }
+      if (!raw) {
+        // Без SDK параметр может прийти только в hash-параметрах запуска.
+        var hs = new URLSearchParams(String(window.location.hash).replace(/^#/, ""));
+        raw = hs.get("tgWebAppStartParam");
       }
       if (!raw) return null;
       try {
@@ -72,6 +96,15 @@
     }
 
     ensureWebApp().then(function (wa) {
+      // Deep-link обрабатываем ДО проверки SDK: он читается из самой ссылки
+      // запуска (?startapp / ?tgWebAppStartParam), поэтому переход в нужный
+      // раздел должен работать, даже если telegram.org недоступен.
+      var early = startParamPath(wa);
+      if (early && early !== window.location.pathname) {
+        window.location.replace(early);
+        return;
+      }
+
       if (!wa) return;
       document.documentElement.dataset.tgMiniapp = "1";
       try { wa.ready(); } catch (e) {}
@@ -80,13 +113,6 @@
         wa.setHeaderColor && wa.setHeaderColor(GROUND);
         wa.setBackgroundColor && wa.setBackgroundColor(GROUND);
       } catch (e) {}
-
-      // Deep-link: если открыли корень со startapp — перейти на нужную страницу.
-      var target = startParamPath(wa);
-      if (target && target !== window.location.pathname) {
-        window.location.replace(target);
-        return;
-      }
 
       // Нативная «Назад» на всех не-корневых страницах (MPA: скрипт отрабатывает
       // на каждой загрузке, состояние кнопки считаем по текущему пути).

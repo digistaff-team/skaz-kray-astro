@@ -69,7 +69,7 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
-    <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Добавить в каталог' ?></button>
+    <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Добавить книгу в каталог' ?></button>
 </form>
 
 <script>

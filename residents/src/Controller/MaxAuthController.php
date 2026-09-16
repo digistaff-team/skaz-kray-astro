@@ -10,11 +10,14 @@ use SkazResidents\Repository\FamilyRepository;
  * {@see TgAuthController} для платформы MAX: тот же поток, но подпись/секрет/гейт
  * и идентификатор пользователя — MAX.
  *
- * Поток: бот открывает мини-приложение на /poselenie/max → страница отдаёт
- * initData на /poselenie/max/login → сервер проверяет подпись (MaxWebApp) и
- * членство в группе жителей MAX (MaxSubscription) → апсертит аккаунт по
- * max_user_id и логинит. Не в группе или ошибка → /poselenie/max/gate
- * (fail-closed). Deep-link — параметр startapp (base64url путь внутри /poselenie/).
+ * URL мини-приложения в MAX — https://skaz-kray.ru/max (единственное мини-
+ * приложение бота в MAX открывает раздел жителей).
+ *
+ * Поток: бот открывает мини-приложение на /max → страница отдаёт initData на
+ * /max/login → сервер проверяет подпись (MaxWebApp) и членство в группе жителей
+ * MAX (MaxSubscription) → апсертит аккаунт по max_user_id и логинит. Не в группе
+ * или ошибка → /max/gate (fail-closed). Deep-link — параметр startapp (base64url
+ * путь внутри /poselenie/).
  */
 final class MaxAuthController
 {

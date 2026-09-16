@@ -35,19 +35,19 @@
       return;
     }
 
-    fetch('/poselenie/max/login', {
+    fetch('/max/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'initData=' + encodeURIComponent(initData) + '&startapp=' + encodeURIComponent(startParam)
     }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
       .then(function (data) {
         if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }
-        if (data.reason === 'not_subscribed') { window.location.assign('/poselenie/max/gate'); return; }
-        if (data.reason === 'error') { window.location.assign('/poselenie/max/gate?reason=error'); return; }
+        if (data.reason === 'not_subscribed') { window.location.assign('/max/gate'); return; }
+        if (data.reason === 'error') { window.location.assign('/max/gate?reason=error'); return; }
         if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору поселения.'); return; }
         show('Не удалось войти. Проверьте, что вы открыли портал через мини-приложение бота @SkazKray_bot в MAX.');
       })
-      .catch(function () { window.location.assign('/poselenie/max/gate?reason=error'); });
+      .catch(function () { window.location.assign('/max/gate?reason=error'); });
   });
 })();
 </script>

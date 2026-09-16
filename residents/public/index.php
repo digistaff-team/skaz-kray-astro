@@ -29,7 +29,6 @@ use SkazResidents\Controller\Council\LedgerController as CouncilLedgerController
 use SkazResidents\Controller\Council\MeetingController as CouncilMeetingController;
 use SkazResidents\Controller\Council\AgendaController as CouncilAgendaController;
 use SkazResidents\Controller\Council\TgAuthController as CouncilTgAuthController;
-use SkazResidents\Controller\Council\MaxAuthController as CouncilMaxAuthController;
 use SkazResidents\Controller\Council\BotWebhookController as CouncilBotWebhookController;
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
@@ -54,13 +53,15 @@ $router->get('/poselenie/tg', [$tg, 'entry']);
 $router->post('/poselenie/tg/login', [$tg, 'login']);
 $router->get('/poselenie/tg/gate', [$tg, 'gate']);
 
-// То же, но через мини-приложение MAX. URL мини-приложения жителей в MAX —
-// https://skaz-kray.ru/poselenie/max (nginx уже отдаёт /poselenie/* в PHP).
+// То же, но через мини-приложение MAX. URL мини-приложения в MAX —
+// https://skaz-kray.ru/max (nginx: location ^~ /max → этот index.php). Это
+// единственное мини-приложение бота в MAX — оно открывает раздел жителей.
 // Гейт — членство в группе жителей MAX (config max.group_chat_id).
 $maxAuth = new MaxAuthController();
-$router->get('/poselenie/max', [$maxAuth, 'entry']);
-$router->post('/poselenie/max/login', [$maxAuth, 'login']);
-$router->get('/poselenie/max/gate', [$maxAuth, 'gate']);
+$router->get('/max', [$maxAuth, 'entry']);
+$router->get('/max/', [$maxAuth, 'entry']);
+$router->post('/max/login', [$maxAuth, 'login']);
+$router->get('/max/gate', [$maxAuth, 'gate']);
 
 $cabinet = new CabinetController();
 $router->get('/poselenie', [$cabinet, 'index']);
@@ -216,15 +217,6 @@ $router->get('/sovet/tg/familiya', [$cTg, 'showClaim']);
 $router->post('/sovet/tg/claim', [$cTg, 'claim']);
 // Webhook бота — нажатия кнопок под уведомлением о задаче (проверка секрет-заголовком).
 $router->post('/sovet/tg/webhook', [new CouncilBotWebhookController(), 'handle']);
-
-// Вход членов совета через мини-приложение MAX (@SkazKray_bot в MAX). URL мини-
-// приложения — https://skaz-kray.ru/max (nginx: location ^~ /max → этот index.php).
-$cMax = new CouncilMaxAuthController();
-$router->get('/max', [$cMax, 'entry']);
-$router->get('/max/', [$cMax, 'entry']);
-$router->post('/max/login', [$cMax, 'login']);
-$router->get('/max/familiya', [$cMax, 'showClaim']);
-$router->post('/max/claim', [$cMax, 'claim']);
 
 $cAuth = new CouncilAuthController();
 $router->get('/sovet/vhod', [$cAuth, 'showLogin']);

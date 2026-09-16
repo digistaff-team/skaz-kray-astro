@@ -35,8 +35,8 @@ return [
         // username бота в MAX (отображаемое имя — «SkazKray_bot», но публичная
         // ссылка строится по username с id-префиксом).
         'bot_username' => 'id643900558807_2_bot',
-        // Диплинк, открывающий раздел Совета как мини-приложение MAX (startapp —
-        // base64url пути внутри /sovet, символы A-Za-z0-9_-, без padding «=»).
+        // Диплинк, открывающий мини-приложение MAX (= раздел жителей, /max).
+        // startapp — base64url пути внутри /poselenie/, символы A-Za-z0-9_-, без «=».
         'app_link'     => 'https://max.ru/id643900558807_2_bot?startapp',
         // Раздел жителей (/poselenie/max): гейт — членство в группе жителей MAX.
         // chat_id узнаётся после добавления бота в группу: GET botapi.max.ru/chats.

@@ -10,4 +10,4 @@
 <?php if (!empty($groupLink) && strpos($groupLink, 'CHANGE_ME') === false): ?>
     <p><a class="res-btn" href="<?= View::e($groupLink) ?>" target="_blank" rel="noopener">Вступить в группу жителей</a></p>
 <?php endif; ?>
-<p><a class="res-btn res-btn--ghost" href="/poselenie/max">Я вступил(а) — проверить снова</a></p>
+<p><a class="res-btn res-btn--ghost" href="/max">Я вступил(а) — проверить снова</a></p>

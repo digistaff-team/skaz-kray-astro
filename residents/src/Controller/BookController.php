@@ -78,6 +78,7 @@ final class BookController
         }
         $id = $this->books->create(Auth::id(), $data['title'], $data['author'], $data['genre'], $data['description'], $data['condition_note'], date('Y-m-d H:i:s'));
         $this->handleUploads($id);
+        if ($data['status'] === 'on_loan') { $this->books->setStatus($id, 'on_loan'); }
         Flash::set('success', 'Книга добавлена в каталог.');
         header('Location: /poselenie/knigi/' . $id);
     }
@@ -107,6 +108,11 @@ final class BookController
         }
         $this->books->update((int) $book['id'], $data['title'], $data['author'], $data['genre'], $data['description'], $data['condition_note'], date('Y-m-d H:i:s'));
         $this->handleUploads((int) $book['id']);
+        // Статус меняем только при отсутствии активной брони — чтобы не рассинхронить
+        // с системой выдачи (реальный on_loan управляется бронями).
+        if ($this->loans->activeForBook((int) $book['id']) === null) {
+            $this->books->setStatus((int) $book['id'], $data['status']);
+        }
         Flash::set('success', 'Изменения сохранены.');
         header('Location: /poselenie/knigi/' . $book['id']);
     }
@@ -180,6 +186,8 @@ final class BookController
         $genre  = trim($_POST['genre'] ?? '');
         $desc   = trim($_POST['description'] ?? '');
         $cond   = trim($_POST['condition_note'] ?? '');
+        // Статус из формы: только «свободна»/«на руках», по умолчанию свободна.
+        $status = (($_POST['status'] ?? '') === 'on_loan') ? 'on_loan' : 'available';
         $errors = [];
         if (!Validator::length($title, 2, 250)) { $errors['title'] = 'Название: 2–250 символов.'; }
         if ($genre !== '' && !Validator::length($genre, 1, 80)) { $errors['genre'] = 'Жанр до 80 символов.'; }
@@ -189,6 +197,7 @@ final class BookController
             'genre'  => mb_substr($genre, 0, 80),
             'description'    => $desc !== '' ? $desc : null,
             'condition_note' => $cond !== '' ? mb_substr($cond, 0, 200) : null,
+            'status' => $status,
         ], $errors];
     }
 

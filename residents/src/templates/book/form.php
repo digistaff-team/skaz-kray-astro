@@ -25,15 +25,24 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
         </datalist>
     </label>
     <?php if (isset($errors['genre'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['genre']) ?></div><?php endif; ?>
-    <label>Состояние        <input type="text" name="condition_note" maxlength="200" value="<?= View::e($book['condition_note'] ?? '') ?>" placeholder="напр. хорошее; потрёпанная обложка">
+    <label>Состояние
+        <input type="text" name="condition_note" maxlength="200" value="<?= View::e($book['condition_note'] ?? '') ?>" placeholder="напр. хорошее; потрёпанная обложка">
     </label>
-    <label>Аннотация / о чём книга        <textarea name="description"><?= View::e($book['description'] ?? '') ?></textarea>
+    <label>Статус книги
+        <?php $curStatus = (($book['status'] ?? 'available') === 'on_loan') ? 'on_loan' : 'available'; ?>
+        <select name="status">
+            <option value="available"<?= $curStatus === 'available' ? ' selected' : '' ?>>Книга свободна</option>
+            <option value="on_loan"<?= $curStatus === 'on_loan' ? ' selected' : '' ?>>Книга на руках</option>
+        </select>
     </label>
-    <label>Фото обложки (JPEG/PNG/WebP, до 5 МБ)
-        <input type="file" name="photos[]" accept="image/*" multiple>
+    <label>Аннотация / о чём книга
+        <textarea name="description"><?= View::e($book['description'] ?? '') ?></textarea>
     </label>
+    <label>Фото обложки</label>
+    <p class="res-meta">JPEG/PNG/WebP, до 5 МБ.</p>
+    <?php require __DIR__ . '/../profile/_photo_input.php'; ?>
     <?php if (!empty($images)): ?>
-        <div class="res-meta">Уже загружено:</div>
+        <div class="res-meta" style="margin-top:1rem">Уже загружено:</div>
         <div class="tool-gallery">
             <?php foreach ($images as $img): ?>
                 <img src="<?= View::e($uploadsUrl) ?>/<?= View::e($img['path']) ?>" alt="" style="max-width:120px">
@@ -42,3 +51,28 @@ $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
     <?php endif; ?>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Добавить в каталог' ?></button>
 </form>
+
+<script>
+// Клиентское превью выбранных фото (как в профиле/дневнике): накопительный выбор.
+(function () {
+  var inp = document.getElementById('profilePhotos'), box = document.getElementById('profilePhotoPreview');
+  if (!inp || !box || typeof DataTransfer === 'undefined') { return; }
+  var dt = new DataTransfer();
+  inp.addEventListener('change', function () {
+    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type)) { dt.items.add(f); } });
+    inp.files = dt.files;
+    render();
+  });
+  function render() {
+    box.innerHTML = '';
+    Array.prototype.forEach.call(dt.files, function (f, idx) {
+      var wrap = document.createElement('span'); wrap.className = 'photo-uploaded';
+      var img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(f);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'photo-del'; btn.textContent = '×'; btn.title = 'Убрать';
+      btn.addEventListener('click', function () { dt.items.remove(idx); inp.files = dt.files; render(); });
+      wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
+    });
+  }
+})();
+</script>

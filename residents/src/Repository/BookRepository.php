@@ -71,10 +71,13 @@ final class BookRepository
                 WHERE b.status <> \'hidden\'';
         $args = [];
         if ($search !== '') {
-            $sql .= ' AND (b.title LIKE ? OR b.author LIKE ? OR b.genre LIKE ?)';
-            $args[] = '%' . $search . '%';
-            $args[] = '%' . $search . '%';
-            $args[] = '%' . $search . '%';
+            // Поиск по названию/автору/жанру + неявно по аннотации (там упоминают героев).
+            $sql .= ' AND (b.title LIKE ? OR b.author LIKE ? OR b.genre LIKE ? OR b.description LIKE ?)';
+            $like = '%' . $search . '%';
+            $args[] = $like;
+            $args[] = $like;
+            $args[] = $like;
+            $args[] = $like;
         }
         if ($genre !== '') {
             $sql .= ' AND b.genre = ?';

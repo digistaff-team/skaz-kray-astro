@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
-use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepository};
+use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepository, HouseholdProfileRepository};
 
 /**
  * Сервис обмена книгами (раздел жителей). Каталог виден только вошедшим жителям;
@@ -14,12 +14,13 @@ final class BookController
     public function __construct(
         private BookRepository $books = new BookRepository(),
         private BookLoanRepository $loans = new BookLoanRepository(),
-        private ImageRepository $images = new ImageRepository()
+        private ImageRepository $images = new ImageRepository(),
+        private HouseholdProfileRepository $households = new HouseholdProfileRepository()
     ) {}
 
     public function catalog(): void
     {
-        Auth::requireLogin();
+        $this->guard();
         $search = trim($_GET['q'] ?? '');
         $genre  = trim($_GET['genre'] ?? '');
         $status = trim($_GET['status'] ?? '');
@@ -40,7 +41,7 @@ final class BookController
 
     public function show(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         $book = $this->books->findWithOwner((int) $params['id']);
         if (!$book) {
             http_response_code(404);
@@ -63,13 +64,13 @@ final class BookController
 
     public function showCreate(): void
     {
-        Auth::requireLogin();
+        $this->guard();
         View::render('book/form', ['book' => null, 'images' => [], 'genres' => $this->books->genresForForm(), 'errors' => []], 'Новая книга');
     }
 
     public function create(): void
     {
-        Auth::requireLogin();
+        $this->guard();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -85,7 +86,7 @@ final class BookController
 
     public function showEdit(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         $book = $this->ownedOr404((int) $params['id']);
         View::render('book/form', [
             'book'   => $book,
@@ -97,7 +98,7 @@ final class BookController
 
     public function update(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $book = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
@@ -119,7 +120,7 @@ final class BookController
 
     public function delete(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $book = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $book['id']);
@@ -132,7 +133,7 @@ final class BookController
     /** Скрыть/показать книгу (только когда она не на руках). */
     public function toggleHidden(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $book = $this->ownedOr404((int) $params['id']);
         if ($book['status'] === 'on_loan') {
@@ -147,7 +148,7 @@ final class BookController
     /** Переключить «недоступна/повреждена» ⇄ «готова к выдаче» (только когда не на руках). */
     public function toggleMaintenance(array $params): void
     {
-        Auth::requireLogin();
+        $this->guard();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $book = $this->ownedOr404((int) $params['id']);
         if ($book['status'] === 'on_loan') {
@@ -161,7 +162,7 @@ final class BookController
 
     public function mine(): void
     {
-        Auth::requireLogin();
+        $this->guard();
         $me = Auth::id();
         $myBooks = $this->books->listByFamily($me);
         foreach ($myBooks as &$b) {
@@ -177,6 +178,21 @@ final class BookController
     }
 
     // --- helpers ---
+
+    /**
+     * Доступ в раздел «Книги» — только жителям с привязанным поместьем; иначе
+     * ведём на выбор поместья (как первый вход). Раздел завязан на поместье
+     * (владелец книги = семья), поэтому без привязки в него не пускаем.
+     */
+    private function guard(): void
+    {
+        Auth::requireLogin();
+        if (!$this->households->householdByFamily(Auth::id())) {
+            Flash::set('info', 'Сначала выберите ваше поместье — после этого откроется раздел «Книги».');
+            header('Location: /poselenie/moye-pomestie/vybor');
+            exit;
+        }
+    }
 
     /** @return array{0:array<string,?string>,1:array<string,string>} */
     private function validate(): array

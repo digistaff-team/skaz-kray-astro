@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer};
-use SkazResidents\Repository\{BookRepository, BookLoanRepository};
+use SkazResidents\Repository\{BookRepository, BookLoanRepository, HouseholdProfileRepository};
 
 /**
  * Жизненный цикл брони книги (P2P):
@@ -17,7 +17,8 @@ final class BookLoanController
 {
     public function __construct(
         private BookRepository $books = new BookRepository(),
-        private BookLoanRepository $loans = new BookLoanRepository()
+        private BookLoanRepository $loans = new BookLoanRepository(),
+        private HouseholdProfileRepository $households = new HouseholdProfileRepository()
     ) {}
 
     public function request(array $params): void
@@ -124,6 +125,12 @@ final class BookLoanController
     private function guard(): void
     {
         Auth::requireLogin();
+        // Раздел «Книги» доступен только жителям с привязанным поместьем.
+        if (!$this->households->householdByFamily(Auth::id())) {
+            Flash::set('info', 'Сначала выберите ваше поместье — после этого откроется раздел «Книги».');
+            header('Location: /poselenie/moye-pomestie/vybor');
+            exit;
+        }
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

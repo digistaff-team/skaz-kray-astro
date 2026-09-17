@@ -541,6 +541,14 @@ body.map-open { overflow: hidden; }
 .res-form input, .res-form select, .res-form textarea { font-size: 16px; }
 .res-form select { width: 100%; padding: .55rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
 
+/* Залог в форме инструмента: при денежном залоге сумма встаёт справа в ту же
+   строку, а список сужается. Без залога список занимает всю ширину. */
+.res-form label[hidden] { display: none; }   /* иначе .res-form label{display:block} перебивает [hidden] */
+.res-form .tool-terms-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .tool-terms-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .tool-terms-row.has-deposit > .tool-terms-kind { flex: 1 1 11rem; }
+.res-form .tool-terms-row.has-deposit > .tool-terms-amount { flex: 1 1 8rem; }
+
 /* Кнопка выбора фото (скрывает нативный input и его «Файл не выбран») */
 .res-form .file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
     padding: .6rem 1.4rem; margin-top: 1rem; border-radius: 999px; border: 1.5px solid var(--green);

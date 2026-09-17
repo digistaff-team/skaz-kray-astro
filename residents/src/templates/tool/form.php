@@ -68,22 +68,24 @@ $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselen
             else { $termsKind = 'custom'; }
         }
     ?>
-    <label>Условия и залог
-        <select name="terms_kind" id="toolTermsKind">
-            <option value="">— выберите —</option>
-            <option value="none"<?= $termsKind === 'none' ? ' selected' : '' ?>>Без залога</option>
-            <option value="deposit"<?= $termsKind === 'deposit' ? ' selected' : '' ?>>Денежный залог</option>
-            <?php if ($termsKind === 'custom'): ?>
-                <option value="custom" selected><?= View::e($curTerms) ?></option>
-            <?php endif; ?>
-        </select>
-    </label>
+    <div class="tool-terms-row<?= $termsKind === 'deposit' ? ' has-deposit' : '' ?>" id="toolTermsRow">
+        <label class="tool-terms-kind">Залог
+            <select name="terms_kind" id="toolTermsKind">
+                <option value="">— выберите —</option>
+                <option value="none"<?= $termsKind === 'none' ? ' selected' : '' ?>>Без залога</option>
+                <option value="deposit"<?= $termsKind === 'deposit' ? ' selected' : '' ?>>Денежный залог</option>
+                <?php if ($termsKind === 'custom'): ?>
+                    <option value="custom" selected><?= View::e($curTerms) ?></option>
+                <?php endif; ?>
+            </select>
+        </label>
+        <label class="tool-terms-amount" id="toolDepositRow"<?= $termsKind === 'deposit' ? '' : ' hidden' ?>>Сумма залога, ₽
+            <input type="number" name="deposit_amount" id="toolDepositAmount" min="1" max="1000000" step="100" inputmode="numeric" value="<?= View::e($depositAmount) ?>">
+        </label>
+    </div>
     <?php if ($termsKind === 'custom'): ?>
         <input type="hidden" name="terms_custom" value="<?= View::e($curTerms) ?>">
     <?php endif; ?>
-    <label id="toolDepositRow"<?= $termsKind === 'deposit' ? '' : ' hidden' ?>>Сумма залога, ₽
-        <input type="number" name="deposit_amount" id="toolDepositAmount" min="1" max="1000000" step="100" inputmode="numeric" value="<?= View::e($depositAmount) ?>">
-    </label>
     <?php if (isset($errors['terms'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['terms']) ?></div><?php endif; ?>
     <label>Описание / для чего инструмент
         <textarea name="description"><?= View::e($tool['description'] ?? '') ?></textarea>
@@ -107,11 +109,14 @@ $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselen
 <script>
 // Поле «Сумма залога» показывается только для варианта «Денежный залог».
 (function () {
-  var sel = document.getElementById('toolTermsKind'), row = document.getElementById('toolDepositRow');
-  if (!sel || !row) { return; }
+  var sel = document.getElementById('toolTermsKind'),
+      row = document.getElementById('toolDepositRow'),
+      wrap = document.getElementById('toolTermsRow');
+  if (!sel || !row || !wrap) { return; }
   sel.addEventListener('change', function () {
     var on = sel.value === 'deposit';
     row.hidden = !on;
+    wrap.classList.toggle('has-deposit', on);
     if (on) { document.getElementById('toolDepositAmount').focus(); }
   });
 })();

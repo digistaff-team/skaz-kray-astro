@@ -31,7 +31,11 @@ $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === '
 </form>
 
 <?php if (!$books): ?>
-    <p class="res-meta tool-empty">Каталог пуст. Будьте первым — <a href="/poselenie/knigi/novaya">поделитесь книгой</a>.</p>
+    <?php if ($q !== '' || $genre !== '' || $status !== ''): ?>
+        <p class="res-meta tool-empty">Ничего не нашлось. Попробуйте изменить параметры поиска.</p>
+    <?php else: ?>
+        <p class="res-meta tool-empty">Каталог пуст. Будьте первым — <a href="/poselenie/knigi/novaya">поделитесь книгой</a>.</p>
+    <?php endif; ?>
 <?php endif; ?>
 
 <div class="tool-grid">

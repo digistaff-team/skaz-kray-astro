@@ -74,8 +74,10 @@ final class MaxAuthController
     public function gate(): void
     {
         $max = Config::get('max');
+        $groupLink = is_array($max) ? (string) ($max['group_link'] ?? '') : '';
+        if ($groupLink === '') { $groupLink = (string) (getenv('SKAZKRAY_MAX_GROUP_LINK') ?: ''); }
         View::render('max/gate', [
-            'groupLink' => is_array($max) ? (string) ($max['group_link'] ?? '') : '',
+            'groupLink' => $groupLink,
             'reason'    => ($_GET['reason'] ?? '') === 'error' ? 'error' : 'not_subscribed',
         ], 'Доступ жителей');
     }

@@ -23,7 +23,7 @@ final class ToolController
 
     public function catalog(): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         $search   = trim($_GET['q'] ?? '');
         $category = trim($_GET['category'] ?? '');
         $status   = trim($_GET['status'] ?? '');
@@ -44,7 +44,7 @@ final class ToolController
 
     public function show(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         $tool = $this->tools->findWithOwner((int) $params['id']);
         if (!$tool) {
             http_response_code(404);
@@ -68,13 +68,13 @@ final class ToolController
 
     public function showCreate(): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         View::render('tool/form', ['tool' => null, 'images' => [], 'categories' => $this->tools->categoriesForForm(), 'errors' => []], 'Новый инструмент');
     }
 
     public function create(): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -90,7 +90,7 @@ final class ToolController
 
     public function showEdit(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         $tool = $this->ownedOr404((int) $params['id']);
         View::render('tool/form', [
             'tool'       => $tool,
@@ -102,7 +102,7 @@ final class ToolController
 
     public function update(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $tool = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
@@ -129,7 +129,7 @@ final class ToolController
 
     public function delete(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $tool = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $tool['id']);
@@ -142,7 +142,7 @@ final class ToolController
     /** Скрыть/показать инструмент (только когда он не на руках). */
     public function toggleHidden(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $tool = $this->ownedOr404((int) $params['id']);
         if ($tool['status'] === 'on_loan') {
@@ -157,7 +157,7 @@ final class ToolController
     /** Переключить обслуживание/готовность (только когда не на руках). */
     public function toggleMaintenance(array $params): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $tool = $this->ownedOr404((int) $params['id']);
         if ($tool['status'] === 'on_loan') {
@@ -171,7 +171,7 @@ final class ToolController
 
     public function mine(): void
     {
-        $this->requireHousehold('Инструменты');
+        $this->requireHousehold('instrumenty');
         $me = Auth::id();
         $myTools = $this->tools->listByFamily($me);
         foreach ($myTools as &$t) {

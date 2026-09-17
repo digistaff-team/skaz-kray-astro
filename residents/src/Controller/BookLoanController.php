@@ -136,7 +136,7 @@ final class BookLoanController
 
     private function guard(): void
     {
-        $this->requireHousehold('Книги'); // вход + привязанное поместье (RequiresHousehold)
+        $this->requireHousehold('knigi'); // вход + привязанное поместье (RequiresHousehold)
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

@@ -11,12 +11,15 @@ use SkazResidents\Repository\ResidentsRepository;
  */
 final class ResidentsController
 {
+    use RequiresSection;   // выключённый админом раздел закрыт и по прямой ссылке
+
     public function __construct(
         private ResidentsRepository $repo = new ResidentsRepository()
     ) {}
 
     public function index(): void
     {
+        $this->requireSection('sosedi');
         Auth::requireLogin();
         $q = trim((string) ($_GET['q'] ?? ''));
         View::render('residents/directory', [

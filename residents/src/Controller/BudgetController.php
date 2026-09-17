@@ -12,12 +12,15 @@ use SkazResidents\Service\LedgerReport;
  */
 final class BudgetController
 {
+    use RequiresSection;   // выключённый админом раздел закрыт и по прямой ссылке
+
     public function __construct(
         private LedgerReport $report = new LedgerReport()
     ) {}
 
     public function index(): void
     {
+        $this->requireSection('byudzhet');
         Auth::requireLogin();
         $ym = isset($_GET['mesyac']) ? (string) $_GET['mesyac'] : null;
         View::render('budget/report', [

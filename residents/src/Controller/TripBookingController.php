@@ -121,7 +121,7 @@ final class TripBookingController
 
     private function guard(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

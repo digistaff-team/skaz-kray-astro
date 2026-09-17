@@ -185,7 +185,7 @@ final class BookController
     /** Вход + требование привязанного поместья (см. RequiresHousehold). */
     private function guard(): void
     {
-        $this->requireHousehold('Книги');
+        $this->requireHousehold('knigi');
     }
 
     /** @return array{0:array<string,?string>,1:array<string,string>} */

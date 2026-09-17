@@ -18,7 +18,7 @@ final class ProductController
     /** Лента «Товары соседей» — внутрипоселенческий рынок (все опубликованные товары). */
     public function index(): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         $products = $this->products->listAvailable(60, 0);
         foreach ($products as &$p) {
             $imgs = $this->images->listFor('product', (int) $p['id']);
@@ -31,7 +31,7 @@ final class ProductController
     /** «Моя витрина» — свои товары/услуги (любой статус), управление. */
     public function mine(): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         $products = $this->products->listByFamily(Auth::id());
         foreach ($products as &$p) {
             $imgs = $this->images->listFor('product', (int) $p['id']);
@@ -43,13 +43,13 @@ final class ProductController
 
     public function showCreate(): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         View::render('product/form', ['product' => null, 'images' => [], 'errors' => []], 'Новый товар/услуга');
     }
 
     public function create(): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -72,7 +72,7 @@ final class ProductController
 
     public function showEdit(array $params): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         $product = $this->ownedOr404((int) $params['id']);
         View::render('product/form', [
             'product' => $product,
@@ -83,7 +83,7 @@ final class ProductController
 
     public function update(array $params): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $product = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
@@ -102,7 +102,7 @@ final class ProductController
 
     public function delete(array $params): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $product = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $product['id']);
@@ -115,7 +115,7 @@ final class ProductController
     /** Удаление одного уже загруженного фото товара (в режиме редактирования). */
     public function deletePhoto(array $params): void
     {
-        $this->requireHousehold('Ярмарка');
+        $this->requireHousehold('yarmarka');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $product = $this->ownedOr404((int) $params['id']);
         $imgId = (int) ($params['img'] ?? 0);

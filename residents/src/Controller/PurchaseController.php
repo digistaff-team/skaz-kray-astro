@@ -201,7 +201,7 @@ final class PurchaseController
 
     private function guard(): void
     {
-        $this->requireHousehold('Закупки');
+        $this->requireHousehold('zakupki');
     }
 
     private function csrfOrDie(): void

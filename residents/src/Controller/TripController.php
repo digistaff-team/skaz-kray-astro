@@ -23,7 +23,7 @@ final class TripController
 
     public function board(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         $search = trim($_GET['q'] ?? '');
         $date   = trim($_GET['date'] ?? '');
         $date   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : '';
@@ -37,7 +37,7 @@ final class TripController
 
     public function show(array $params): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         $trip = $this->trips->findWithDriver((int) $params['id']);
         if (!$trip) {
             http_response_code(404);
@@ -64,13 +64,13 @@ final class TripController
 
     public function showCreate(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         View::render('trip/form', ['trip' => null, 'errors' => []], 'Новая поездка');
     }
 
     public function create(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -90,7 +90,7 @@ final class TripController
 
     public function mine(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         $me = Auth::id();
         $myTrips = $this->trips->listByDriver($me);
         View::render('trip/mine', [
@@ -158,7 +158,7 @@ final class TripController
 
     private function guard(): void
     {
-        $this->requireHousehold('Поездки');
+        $this->requireHousehold('poezdki');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

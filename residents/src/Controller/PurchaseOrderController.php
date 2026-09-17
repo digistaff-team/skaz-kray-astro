@@ -107,7 +107,7 @@ final class PurchaseOrderController
 
     private function guard(): void
     {
-        $this->requireHousehold('Закупки');
+        $this->requireHousehold('zakupki');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

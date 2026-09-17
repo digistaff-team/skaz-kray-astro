@@ -8,6 +8,8 @@ use SkazResidents\Service\CatalogAnnounce;
 
 final class DiaryController
 {
+    use RequiresSection;   // выключённый админом раздел закрыт и по прямой ссылке
+
     private const PER_PAGE = 10;
 
     public function __construct(
@@ -23,6 +25,7 @@ final class DiaryController
      */
     public function feed(): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $offset = ($page - 1) * self::PER_PAGE;
@@ -43,6 +46,7 @@ final class DiaryController
 
     public function feedShow(array $params): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         $id = (int) $params['id'];
         // Опубликованная для жителей запись — либо СВОЯ запись любой видимости,
@@ -56,12 +60,14 @@ final class DiaryController
 
     public function showCreate(): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         View::render('diary/form', ['entry' => null, 'images' => [], 'errors' => []], 'Новая запись');
     }
 
     public function create(): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
 
@@ -89,6 +95,7 @@ final class DiaryController
 
     public function showEdit(array $params): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         $entry = $this->ownedOr404((int) $params['id']);
         View::render('diary/form', [
@@ -100,6 +107,7 @@ final class DiaryController
 
     public function update(array $params): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $entry = $this->ownedOr404((int) $params['id']);
@@ -122,6 +130,7 @@ final class DiaryController
 
     public function delete(array $params): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $entry = $this->ownedOr404((int) $params['id']);
@@ -135,6 +144,7 @@ final class DiaryController
     /** Удаление одного уже загруженного фото записи (в режиме редактирования). */
     public function deletePhoto(array $params): void
     {
+        $this->requireSection('dnevniki');
         Auth::requireLogin();
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         $entry = $this->ownedOr404((int) $params['id']);

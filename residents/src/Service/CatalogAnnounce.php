@@ -28,6 +28,17 @@ final class CatalogAnnounce
         self::announce($head, $line, '/poselenie/instrumenty/' . $id);
     }
 
+    /** Анонс новой совместной закупки — пул набирают всем поселением. */
+    public static function purchase(int $id, string $title, ?string $pricePerUnit, string $unit): void
+    {
+        $head = '🛒 Новая совместная закупка';
+        $line = '«' . $title . '»';
+        if (($pricePerUnit ?? '') !== '') {
+            $line .= ' · ' . rtrim(rtrim(number_format((float) $pricePerUnit, 2, '.', ' '), '0'), '.') . ' ₽ за ' . $unit;
+        }
+        self::announce($head, $line, '/poselenie/zakupki/' . $id);
+    }
+
     /** Анонс новой записи в дневниках поместий. */
     public static function diary(int $id, string $title, ?string $author): void
     {

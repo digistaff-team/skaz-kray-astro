@@ -17,6 +17,8 @@ use SkazResidents\Controller\ToolController;
 use SkazResidents\Controller\ToolLoanController;
 use SkazResidents\Controller\BookController;
 use SkazResidents\Controller\BookLoanController;
+use SkazResidents\Controller\PurchaseController;
+use SkazResidents\Controller\PurchaseOrderController;
 use SkazResidents\Controller\TripController;
 use SkazResidents\Controller\TripBookingController;
 use SkazResidents\Controller\TgAuthController;
@@ -188,6 +190,22 @@ $router->get('/poselenie/poezdki/{id}', [$trip, 'show']);
 $router->post('/poselenie/bron/{id}/podtverdit', [$tbook, 'confirm']);
 $router->post('/poselenie/bron/{id}/otklonit', [$tbook, 'decline']);
 $router->post('/poselenie/bron/{id}/otmenit', [$tbook, 'cancel']);
+
+// ==== Совместные закупки (раздел жителей) ====
+$buy = new PurchaseController();
+$border = new PurchaseOrderController();
+$router->get('/poselenie/zakupki', [$buy, 'board']);
+$router->get('/poselenie/zakupki/novaya', [$buy, 'showCreate']);
+$router->post('/poselenie/zakupki/novaya', [$buy, 'create']);
+$router->get('/poselenie/zakupki/moi', [$buy, 'mine']);
+$router->get('/poselenie/zakupki/{id}/redaktirovat', [$buy, 'showEdit']);
+$router->post('/poselenie/zakupki/{id}/redaktirovat', [$buy, 'update']);
+$router->post('/poselenie/zakupki/{id}/stadiya', [$buy, 'setStatus']);
+$router->post('/poselenie/zakupki/{id}/udalit', [$buy, 'delete']);
+$router->post('/poselenie/zakupki/{id}/uchastvovat', [$border, 'place']);
+$router->post('/poselenie/zakupki/{id}/otkazatsya', [$border, 'withdraw']);
+$router->post('/poselenie/zakupki/{id}/oplata/{order}', [$border, 'togglePaid']);
+$router->get('/poselenie/zakupki/{id}', [$buy, 'show']);
 
 // Бюджет Общего дома — read-only отчёт для всех авторизованных жителей.
 $budget = new BudgetController();

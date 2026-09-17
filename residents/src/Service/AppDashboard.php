@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Service;
 
-use SkazResidents\Repository\{ToolRepository, BookRepository, TripRepository, DiaryRepository};
+use SkazResidents\Repository\{ToolRepository, BookRepository, TripRepository, DiaryRepository, PurchaseRepository};
 
 /**
  * Данные мобильного лаунчера /poselenie/app: статус дневника семьи и счётчики
@@ -16,8 +16,23 @@ final class AppDashboard
         private ToolRepository $tools = new ToolRepository(),
         private BookRepository $books = new BookRepository(),
         private TripRepository $trips = new TripRepository(),
-        private DiaryRepository $diary = new DiaryRepository()
+        private DiaryRepository $diary = new DiaryRepository(),
+        private PurchaseRepository $purchases = new PurchaseRepository()
     ) {}
+
+    /**
+     * Счётчик закупок. Главный экран не должен падать из-за одного раздела:
+     * пока таблицы нет (схема накатывается вручную), показываем ноль.
+     */
+    private function collectingPurchases(): int
+    {
+        try {
+            return $this->purchases->countCollecting();
+        } catch (\Throwable $e) {
+            error_log('AppDashboard: счётчик закупок недоступен — ' . $e->getMessage());
+            return 0;
+        }
+    }
 
     /** @return array<string,mixed> */
     public function build(int $familyId, string $today): array
@@ -45,6 +60,7 @@ final class AppDashboard
                 'toolsFree' => count($this->tools->listCatalog('', '', 'available')),
                 'books'     => count($this->books->listCatalog('', '', '')),
                 'trips'     => count($this->trips->listUpcoming($today)),
+                'purchases' => $this->collectingPurchases(),
             ],
         ];
     }

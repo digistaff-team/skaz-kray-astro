@@ -37,6 +37,7 @@
         <?php if (Sections::isEnabled('instrumenty')): ?><a href="/poselenie/instrumenty">Инструменты</a><?php endif; ?>
         <?php if (Sections::isEnabled('knigi')): ?><a href="/poselenie/knigi">Книги</a><?php endif; ?>
         <?php if (Sections::isEnabled('poezdki')): ?><a href="/poselenie/poezdki">Поездки</a><?php endif; ?>
+        <?php if (Sections::isEnabled('zakupki')): ?><a href="/poselenie/zakupki">Закупки</a><?php endif; ?>
         <?php if (Auth::id() !== null): ?>
             <?php if (Sections::isEnabled('sosedi')): ?><a href="/poselenie/sosedi">Соседи</a><?php endif; ?>
             <a href="/poselenie/moye-pomestie">Наше поместье</a>

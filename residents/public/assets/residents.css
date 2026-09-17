@@ -553,6 +553,28 @@ body.map-open { overflow: hidden; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-kind { flex: 1 1 11rem; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-amount { flex: 1 1 8rem; }
 
+/* ==== Закупки: доска, прогресс пула, состав участников ==== */
+.buy-list { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
+.buy-card { display: block; text-decoration: none; color: inherit; }
+.buy-card:hover { border-color: var(--green); }
+.buy-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
+.buy-title { font-size: 1.05rem; }
+
+/* Полоса «собрано столько-то из цели»; при 100% заливка зеленее — видно, что набрали. */
+.buy-bar { display: block; height: 8px; margin: .5rem 0 .3rem; border-radius: 999px; background: #eceade; overflow: hidden; }
+.buy-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--green); transition: width .3s; }
+.buy-progress-text { font-size: .85rem; color: #6b6b60; }
+.buy-percent { font-weight: 700; color: var(--green); margin-left: .3rem; }
+.buy-price { font-size: 1.1rem; margin: 0 0 .3rem; }
+.buy-price b { font-size: 1.35rem; color: var(--green); }
+
+.buy-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.buy-row-actions { display: flex; align-items: center; gap: .6rem; }
+.buy-inline-form { display: inline-block; margin: 0; }
+.buy-inline-form .res-btn { margin-top: 0; }
+.buy-stage-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.buy-join { margin-bottom: .6rem; }
+
 /* Кнопка выбора фото (скрывает нативный input и его «Файл не выбран») */
 .res-form .file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
     padding: .6rem 1.4rem; margin-top: 1rem; border-radius: 999px; border: 1.5px solid var(--green);

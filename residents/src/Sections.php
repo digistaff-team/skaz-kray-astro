@@ -23,6 +23,7 @@ final class Sections
         'poezdki'     => 'Поездки',
         'byudzhet'    => 'Бюджет Общего дома',
         'yarmarka'    => 'Ярмарка',
+        'zakupki'     => 'Закупки',
         'sosedi'      => 'Наши соседи',
     ];
 

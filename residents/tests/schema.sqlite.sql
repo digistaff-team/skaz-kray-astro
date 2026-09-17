@@ -253,3 +253,33 @@ CREATE TABLE household_owners (
     family_id INTEGER NOT NULL UNIQUE,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Закупки (совместные оптовые) — зеркало config/purchases-schema.sql
+CREATE TABLE purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organizer_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    category TEXT,
+    unit TEXT NOT NULL DEFAULT 'шт',
+    price_per_unit REAL,
+    target_qty REAL,
+    deadline TEXT,
+    supplier TEXT,
+    pickup TEXT,
+    note TEXT,
+    status TEXT NOT NULL DEFAULT 'collecting',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE purchase_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    purchase_id INTEGER NOT NULL,
+    family_id INTEGER NOT NULL,
+    qty REAL NOT NULL,
+    note TEXT,
+    paid_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (purchase_id, family_id)
+);

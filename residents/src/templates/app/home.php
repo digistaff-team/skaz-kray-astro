@@ -41,6 +41,7 @@
     <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
     <?php if (Sections::isEnabled('byudzhet')): ?><a class="app-tile" href="/poselenie/byudzhet"><b>Бюджет<br>Общего дома</b><span>отчёт о расходах</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('yarmarka')): ?><a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('zakupki')): ?><?php $bc = (int) ($dash['counts']['purchases'] ?? 0); ?><a class="app-tile" href="/poselenie/zakupki"><b>Закупки</b><span><?= $bc > 0 ? $bc . ' ' . View::e(plural_ru($bc, 'сбор идёт', 'сбора идёт', 'сборов идёт')) : 'оптом вскладчину' ?></span></a><?php endif; ?>
   </div>
 
   <div class="app-offline-banner" id="appOffline">

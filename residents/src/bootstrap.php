@@ -45,6 +45,42 @@ function ru_date(?string $s): string
     return ((int) $m[3]) . ' ' . $months[((int) $m[2]) - 1] . ' ' . $m[1];
 }
 
+/** Подпись стадии закупки для интерфейса. */
+function buy_status_label(string $status): string
+{
+    return match ($status) {
+        'collecting' => 'идёт сбор',
+        'ordered'    => 'заказано',
+        'arrived'    => 'привезли',
+        'done'       => 'завершена',
+        'cancelled'  => 'отменена',
+        default      => $status,
+    };
+}
+
+/** Класс-цвет стадии закупки (переиспользуем палитру статусов инструментов). */
+function buy_status_class(string $status): string
+{
+    return 'tool-st--' . match ($status) {
+        'collecting' => 'free',
+        'ordered'    => 'loan',
+        'arrived'    => 'maint',
+        default      => 'hidden',
+    };
+}
+
+/** «450.00» → «450», «2.50» → «2.5»: хвост нулей в объёмах и ценах только мешает. */
+function buy_qty(string $value): string
+{
+    return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+}
+
+/** Цена с разделителем тысяч и без лишних нулей: «12 500», «450.5». */
+function buy_money(string $value): string
+{
+    return rtrim(rtrim(number_format((float) $value, 2, '.', ' '), '0'), '.');
+}
+
 /** Русское склонение: plural_ru(2, 'задача', 'задачи', 'задач'). */
 function plural_ru(int $n, string $one, string $few, string $many): string
 {

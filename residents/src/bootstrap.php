@@ -94,4 +94,18 @@ function entry_image_url(string $path): string
     return rtrim((string) \SkazResidents\Config::get('uploads_url'), '/') . '/' . $path;
 }
 
+/**
+ * Уменьшенная копия фото для миниатюр: /tg-media/w<W>/<file_id>.jpg.
+ * Оригиналы из Telegram весят 300–500 КБ, и тянуть их ради иконки 84×84 — это
+ * мегабайты трафика на страницу (так тормозил справочник «Наши соседи»).
+ * Ширина — только из белого списка serve.php; локальные файлы отдаём как есть.
+ */
+function entry_image_thumb(string $path, int $width = 240): string
+{
+    if (str_starts_with($path, 'tg:') && in_array($width, [120, 240, 480], true)) {
+        return '/tg-media/w' . $width . '/' . substr($path, 3) . '.jpg';
+    }
+    return entry_image_url($path);
+}
+
 Database::connect(Config::get('db'));

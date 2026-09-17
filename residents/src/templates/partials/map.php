@@ -2,7 +2,9 @@
 <div class="map-overlay" id="mapOverlay" hidden>
     <button type="button" class="map-close" id="mapClose" aria-label="Закрыть карту" title="Закрыть">&times;</button>
     <div class="map-scroll" id="mapScroll">
-        <img src="/poselenie/assets/karta-sk.png?v=<?= asset_ver('assets/karta-sk.png') ?>" alt="Карта поселения «Сказочный Край»" class="map-img" id="mapImg">
+        <!-- src подставляется при первом открытии: картинка весит ~1 МБ, а скрытый
+             контейнер загрузку не отменяет — иначе её тянула бы каждая страница портала. -->
+        <img data-src="/poselenie/assets/karta-sk.png?v=<?= asset_ver('assets/karta-sk.png') ?>" alt="Карта поселения «Сказочный Край»" class="map-img" id="mapImg">
     </div>
 </div>
 <script>
@@ -31,7 +33,10 @@
     apply();
   }
 
-  function show() { overlay.hidden = false; document.body.classList.add('map-open'); reset(); }
+  function show() {
+    if (!img.getAttribute('src')) { img.src = img.getAttribute('data-src') || ''; }
+    overlay.hidden = false; document.body.classList.add('map-open'); reset();
+  }
   function hide() { overlay.hidden = true; document.body.classList.remove('map-open'); reset(); }
   Array.prototype.forEach.call(openers, function (b) { b.addEventListener('click', show); });
   closeBtn.addEventListener('click', hide);

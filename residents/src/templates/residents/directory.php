@@ -179,7 +179,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                                     <div class="photo-preview">
                                         <?php foreach ($car['images'] as $img): ?>
                                             <?php $u = entry_image_url($img['path']); ?>
-                                            <img class="photo-thumb js-photo-full" src="<?= View::e($u) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($car['title']) ?>" loading="lazy">
+                                            <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($car['title']) ?>" loading="lazy">
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
@@ -198,7 +198,7 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                                     <div class="photo-preview">
                                         <?php foreach ($pet['images'] as $img): ?>
                                             <?php $u = entry_image_url($img['path']); ?>
-                                            <img class="photo-thumb js-photo-full" src="<?= View::e($u) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($pet['name']) ?>" loading="lazy">
+                                            <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($pet['name']) ?>" loading="lazy">
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>

@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer, Sections};
+use SkazResidents\Service\CatalogAnnounce;
 use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository, SectionSettingsRepository};
 
 final class ModerationController
@@ -120,12 +121,16 @@ final class ModerationController
         $this->guard();
         $id = (int) ($_POST['id'] ?? 0);
         $p = $this->products->findById($id);
+        $firstPublish = $p && ($p['published_at'] ?? null) === null;   // правку уже опубликованного не анонсируем
         if ($p) {
             $this->products->approve($id, date('Y-m-d H:i:s'));
             $this->notifyOwnerProduct($p, 'опубликован', null);
             Flash::set('success', 'Товар опубликован.');
         }
         header('Location: /poselenie/moderation');
+        if ($firstPublish) {
+            CatalogAnnounce::product((int) $p['id'], (string) $p['title'], $p['price'] ?? null);
+        }
     }
 
     public function rejectProduct(): void

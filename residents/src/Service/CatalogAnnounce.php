@@ -29,6 +29,14 @@ final class CatalogAnnounce
         self::announce($head, $line, '/poselenie/instrumenty/' . $id);
     }
 
+    /** Анонс нового товара/услуги на Ярмарке (карточки внутри портала нет — ведём в ленту). */
+    public static function product(int $id, string $title, ?string $price): void
+    {
+        $head = '🛒 Новое на Ярмарке';
+        $line = '«' . $title . '»' . (($price ?? '') !== '' ? ' · ' . $price : '');
+        self::announce($head, $line, '/poselenie/yarmarka');
+    }
+
     /** Анонс новой книги. */
     public static function book(int $id, string $title, ?string $author): void
     {

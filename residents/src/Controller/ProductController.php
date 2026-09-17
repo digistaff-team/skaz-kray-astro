@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{ProductRepository, ImageRepository};
+use SkazResidents\Service\CatalogAnnounce;
 
 final class ProductController
 {
@@ -61,6 +62,12 @@ final class ProductController
             ? 'Товар отправлен на проверку — после неё появится в разделе Ярмарка на сайте.'
             : 'Товар опубликован на внутрипоселенческом рынке (виден соседям).');
         header('Location: /poselenie/yarmarka/moya');
+        // Товар «только соседям» публикуется сразу — анонсируем. Товар «на сайте»
+        // уходит на проверку и ещё не виден жителям: его анонсирует модерация,
+        // когда одобрит (ModerationController::approveProduct).
+        if ($data['visibility'] !== 'public') {
+            CatalogAnnounce::product($id, $data['title'], $data['price']);
+        }
     }
 
     public function showEdit(array $params): void

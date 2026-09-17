@@ -26,6 +26,14 @@ final class CatalogAnnounceTest extends TestCase
         $this->assertStringNotContainsString('startapp=?', $link);
     }
 
+    public function test_deep_link_for_market_feed(): void
+    {
+        // У товара нет своей страницы внутри портала — анонс ведёт в ленту Ярмарки.
+        $link = CatalogAnnounce::deepLink('https://t.me/SkazKray_bot/app', '/poselenie/yarmarka');
+        $code = substr($link, strlen('https://t.me/SkazKray_bot/app?startapp='));
+        $this->assertSame('/poselenie/yarmarka', base64_decode(strtr($code, '-_', '+/')));
+    }
+
     public function test_text_has_head_card_and_link(): void
     {
         $text = CatalogAnnounce::text('🔧 Новый инструмент в общей копилке', '«Перфоратор» · Электроинструмент', 'https://example.test/x');

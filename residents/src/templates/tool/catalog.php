@@ -33,7 +33,7 @@ $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === '
 </form>
 
 <?php if (!$tools): ?>
-    <p class="res-meta tool-empty">Ничего не найдено. Будьте первым — <a href="/poselenie/instrumenty/novyy">поделитесь инструментом</a>.</p>
+    <p class="res-meta tool-empty">Каталог пуст. Будьте первым — <a href="/poselenie/instrumenty/novyy">поделитесь инструментом</a>.</p>
 <?php endif; ?>
 
 <div class="tool-grid">

@@ -21,10 +21,15 @@ final class AppController
     public function home(): void
     {
         Auth::requireLogin();
-        // Под «Сказочный Край» показываем название привязанного поместья; пока
-        // поместье не привязано — имя жителя (как было).
         $household = $this->households->householdByFamily(Auth::id());
-        $estate = $household ? trim((string) $household['estate_name']) : '';
+        // Первый вход (поместье ещё не привязано) — ведём на выбор поместья;
+        // после привязки вход в приложение открывает главную (этот лаунчер).
+        if (!$household) {
+            header('Location: /poselenie/moye-pomestie/vybor');
+            return;
+        }
+        // Под «Сказочный Край» показываем название привязанного поместья.
+        $estate = trim((string) $household['estate_name']);
         $me = $estate !== '' ? ('Поместье «' . $estate . '»') : Auth::name();
         View::render('app/home', [
             'dash'    => $this->dashboard->build(Auth::id(), date('Y-m-d')),

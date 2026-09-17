@@ -27,11 +27,13 @@ final class ResidentsRepository
      */
     public function grouped(?string $q = null): array
     {
-        // Признак привязки к Telegram-аккаунту (tg_id) берём из families: ПДн жителей
-        // раскрываем ТОЛЬКО для поместий, которые семья сама привязала при входе через
-        // Telegram. Непривязанные — серые статичные плашки без жителей.
+        // Признак привязки: ПДн жителей раскрываем ТОЛЬКО для поместий, которые
+        // семья сама привязала к своему аккаунту (при привязке подтверждают фамилией).
+        // Способ входа значения не имеет — Telegram, MAX или email/пароль; важно,
+        // что есть активный аккаунт-владелец. Непривязанные — серые статичные
+        // плашки без жителей.
         $households = $this->db->query(
-            "SELECT h.*, f.telegram_id AS tg_id
+            "SELECT h.*, f.id AS fam_id
              FROM households h
              LEFT JOIN families f ON f.id = h.family_id AND f.status = 'active'
              ORDER BY h.sort, h.id"
@@ -71,7 +73,7 @@ final class ResidentsRepository
         $needle = $q !== null ? trim($q) : '';
         $result = [];
         foreach ($households as $h) {
-            $h['claimed'] = $h['tg_id'] !== null;   // привязан к Telegram-аккаунту
+            $h['claimed'] = $h['fam_id'] !== null;   // привязан к активному аккаунту (любой способ входа)
             // Жителей и авто отдаём только для привязанных поместий (иначе ПДн не
             // раскрываем — карточка показывается серой статичной плашкой).
             $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];

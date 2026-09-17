@@ -113,4 +113,45 @@ final class ResidentsRepositoryTest extends TestCase
         $this->assertSame(2, $stats['households']);
         $this->assertSame(3, $stats['people']);
     }
+
+    /** Поместье, привязанное аккаунтом по email/паролю (без Telegram и MAX),
+     *  раскрывает жителей — способ входа не важен, важна привязка. */
+    public function test_email_claimed_household_reveals_people(): void
+    {
+        $pdo = Database::pdo();
+        $pdo->exec("INSERT INTO families (id, email, password_hash, name, status) VALUES
+            (4, 'melnikov@example.com', 'x', 'Мельников Андрей', 'active')");
+        $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort) VALUES
+            (3, '(2) Родная', '5', 'Мельниковых', 4, 2)");
+        $pdo->exec("INSERT INTO household_owners (household_id, family_id) VALUES (3, 4)");
+        $pdo->exec("INSERT INTO residents (household_id, full_name, sort) VALUES
+            (3, 'Мельников Андрей', 0), (3, 'Мельникова Мария', 1)");
+
+        $mel = $this->householdByName($this->repo->grouped(), 'Мельниковых');
+        $this->assertNotNull($mel, 'email-привязанное поместье должно быть в справочнике');
+        $this->assertTrue((bool) $mel['claimed']);
+        $this->assertCount(2, $mel['people']);   // ПДн раскрыты → карточка раскрывается
+        $this->assertSame([], $mel['accounts']); // Tg-ссылок нет (аккаунт без Telegram)
+    }
+
+    /** Непривязанное поместье (нет активного аккаунта-владельца) жителей скрывает. */
+    public function test_unclaimed_household_hides_people(): void
+    {
+        $pdo = Database::pdo();
+        $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort) VALUES
+            (3, '(2) Родная', '6', 'Свободное', NULL, 2)");
+        $pdo->exec("INSERT INTO residents (household_id, full_name, sort) VALUES (3, 'Кто-то Тамже', 0)");
+
+        $free = $this->householdByName($this->repo->grouped(), 'Свободное');
+        $this->assertNotNull($free);
+        $this->assertFalse((bool) $free['claimed']);
+        $this->assertSame([], $free['people']);
+    }
+
+    /** @param array<int,array<string,mixed>> $groups */
+    private function householdByName(array $groups, string $name): ?array
+    {
+        foreach ($groups as $g) { if ($g['estate_name'] === $name) { return $g; } }
+        return null;
+    }
 }

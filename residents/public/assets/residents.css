@@ -543,6 +543,10 @@ body.map-open { overflow: hidden; }
 
 /* Залог в форме инструмента: при денежном залоге сумма встаёт справа в ту же
    строку, а список сужается. Без залога список занимает всю ширину. */
+/* «Назад» и «На главную» в одной строке над формой инструмента */
+.tool-back-row { display: flex; align-items: baseline; gap: 1rem; }
+.tool-back-row .res-back { margin-bottom: 0; }
+
 .res-form label[hidden] { display: none; }   /* иначе .res-form label{display:block} перебивает [hidden] */
 .res-form .tool-terms-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
 .res-form .tool-terms-row > label { flex: 1 1 100%; margin-top: .8rem; }

@@ -5,7 +5,10 @@ $action = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] . '/redaktirov
 $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
 $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselenie/instrumenty';
 ?>
-<a class="res-back" href="/poselenie/app">← На главную</a>
+<div class="tool-back-row">
+    <?php $backFallback = $cancelUrl; require __DIR__ . '/_back.php'; ?>
+    <a class="res-back" href="/poselenie/app">На главную</a>
+</div>
 <h1><?= $isEdit ? 'Редактирование инструмента' : 'Поделиться инструментом' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>

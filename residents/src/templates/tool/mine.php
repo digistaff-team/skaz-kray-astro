@@ -4,6 +4,7 @@ $label = fn(string $s) => ['available' => 'свободен', 'on_loan' => 'на
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 $loanLabel = fn(string $s) => ['requested' => 'ожидает решения', 'on_loan' => 'на руках', 'returned' => 'возвращён', 'declined' => 'отклонён', 'cancelled' => 'отменён'][$s] ?? $s;
 ?>
+<?php $backFallback = '/poselenie/instrumenty'; require __DIR__ . '/_back.php'; ?>
 <h1>Мои инструменты</h1>
 <p class="res-meta"><a class="res-btn" href="/poselenie/instrumenty/novyy">+ Поделиться инструментом</a> <a class="res-btn res-btn--ghost" href="/poselenie/instrumenty">В каталог</a></p>
 

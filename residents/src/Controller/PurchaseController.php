@@ -4,7 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{PurchaseRepository, PurchaseOrderRepository, ImageRepository};
-use SkazResidents\Service\{CatalogAnnounce, PurchaseNotify};
+use SkazResidents\Service\PurchaseNotify;   // CatalogAnnounce вернётся вместе с анонсом (см. create)
 
 /**
  * Совместные оптовые закупки (раздел жителей). Организатор-семья публикует
@@ -101,7 +101,10 @@ final class PurchaseController
         $this->handleUploads($id);
         Flash::set('success', 'Закупка открыта — соседи могут записываться.');
         header('Location: /poselenie/zakupki/' . $id);
-        CatalogAnnounce::purchase($id, $data['title'], $data['price_per_unit'], $data['unit']);
+        // ВРЕМЕННО ОТКЛЮЧЕНО на время обкатки раздела: пробные закупки не должны
+        // шуметь в группе жителей. Включить обратно, когда раздел обжит, —
+        // достаточно снять комментарий (остальные анонсы разделов работают).
+        // CatalogAnnounce::purchase($id, $data['title'], $data['price_per_unit'], $data['unit']);
     }
 
     public function showEdit(array $params): void

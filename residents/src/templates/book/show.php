@@ -6,7 +6,7 @@ $label = fn(string $s) => ['available' => 'свободна', 'on_loan' => 'на
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 $loanLabel = fn(string $s) => ['requested' => 'ожидает решения', 'on_loan' => 'на руках', 'returned' => 'возвращена', 'declined' => 'отклонена', 'cancelled' => 'отменена'][$s] ?? $s;
 ?>
-<p class="res-meta"><a href="/poselenie/knigi">← В каталог</a></p>
+<?php $backFallback = '/poselenie/knigi'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-show-head">
     <h1><?= View::e($book['title']) ?></h1>
     <span class="tool-st <?= $cls($book['status']) ?>"><?= $label($book['status']) ?></span>

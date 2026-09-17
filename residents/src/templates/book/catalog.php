@@ -5,6 +5,7 @@ $u = PublicController::uploadsUrl();
 $label = fn(string $s) => ['available' => 'свободна', 'on_loan' => 'на руках', 'maintenance' => 'недоступна', 'hidden' => 'скрыта'][$s] ?? $s;
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 ?>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Книги поселения</h1>
 <p class="res-meta">Общая книжная полка жителей: возьмите книгу почитать у соседа или поделитесь своей. Бронь подтверждает владелец, после прочтения книга возвращается ему.</p>
 <div class="tool-head-actions book-actions">

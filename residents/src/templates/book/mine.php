@@ -4,6 +4,7 @@ $label = fn(string $s) => ['available' => 'свободна', 'on_loan' => 'на
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 $loanLabel = fn(string $s) => ['requested' => 'ожидает решения', 'on_loan' => 'на руках', 'returned' => 'возвращена', 'declined' => 'отклонена', 'cancelled' => 'отменена'][$s] ?? $s;
 ?>
+<?php $backFallback = '/poselenie/knigi'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Мои книги</h1>
 <p class="res-meta"><a class="res-btn" href="/poselenie/knigi/novaya">+ Поделиться книгой</a> <a class="res-btn res-btn--ghost" href="/poselenie/knigi">В каталог</a></p>
 

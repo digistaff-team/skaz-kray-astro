@@ -5,7 +5,7 @@ $u = PublicController::uploadsUrl();
 $label = fn(string $s) => ['available' => 'свободен', 'on_loan' => 'на руках', 'maintenance' => 'на обслуживании', 'hidden' => 'скрыт'][$s] ?? $s;
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 ?>
-<?php $backFallback = '/poselenie/app'; require __DIR__ . '/_back.php'; ?>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-head">
     <h1>Инструменты поселения</h1>
     <div class="tool-head-actions">

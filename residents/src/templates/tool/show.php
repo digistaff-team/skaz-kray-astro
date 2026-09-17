@@ -6,7 +6,7 @@ $label = fn(string $s) => ['available' => 'свободен', 'on_loan' => 'на
 $cls   = fn(string $s) => 'tool-st--' . ($s === 'available' ? 'free' : ($s === 'on_loan' ? 'loan' : ($s === 'maintenance' ? 'maint' : 'hidden')));
 $loanLabel = fn(string $s) => ['requested' => 'ожидает решения', 'on_loan' => 'на руках', 'returned' => 'возвращён', 'declined' => 'отклонён', 'cancelled' => 'отменён'][$s] ?? $s;
 ?>
-<?php $backFallback = '/poselenie/instrumenty'; require __DIR__ . '/_back.php'; ?>
+<?php $backFallback = '/poselenie/instrumenty'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-show-head">
     <h1><?= View::e($tool['name']) ?></h1>
     <span class="tool-st <?= $cls($tool['status']) ?>"><?= $label($tool['status']) ?></span>

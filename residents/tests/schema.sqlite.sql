@@ -3,6 +3,7 @@ CREATE TABLE families (
     email TEXT NOT NULL UNIQUE,
     telegram_id INTEGER UNIQUE,
     telegram_username TEXT,
+    max_user_id INTEGER UNIQUE,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',

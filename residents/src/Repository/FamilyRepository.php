@@ -89,6 +89,31 @@ final class FamilyRepository
         $st->execute([$username, $id]);
     }
 
+    /**
+     * Переносит привязку MAX с только что созданного одноразового аккаунта
+     * ($throwawayId, вход через MAX) на существующий аккаунт поместья ($targetId,
+     * обычно Telegram/email) и удаляет одноразовый. Итог: одна личность — один
+     * аккаунт с двумя входами (Telegram + MAX). Транзакция; сначала освобождаем
+     * UNIQUE(max_user_id) на одноразовом, затем ставим на целевой.
+     *
+     * Вызывать только когда одноразовый аккаунт свежий (без поместья/контента) —
+     * проверки на стороне вызова (ProfileController::tryLinkMax). Если у аккаунта
+     * всё же есть ссылки (FK) — DELETE бросит исключение, транзакция откатится.
+     */
+    public function mergeMaxInto(int $throwawayId, int $targetId, int $maxUserId): void
+    {
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare('UPDATE families SET max_user_id = NULL WHERE id = ?')->execute([$throwawayId]);
+            $this->db->prepare('UPDATE families SET max_user_id = ? WHERE id = ?')->execute([$maxUserId, $targetId]);
+            $this->db->prepare('DELETE FROM families WHERE id = ?')->execute([$throwawayId]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function findById(int $id): ?array
     {
         $st = $this->db->prepare('SELECT * FROM families WHERE id = ?');

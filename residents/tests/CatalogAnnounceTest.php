@@ -34,6 +34,21 @@ final class CatalogAnnounceTest extends TestCase
         $this->assertSame('/poselenie/yarmarka', base64_decode(strtr($code, '-_', '+/')));
     }
 
+    public function test_trip_line_has_route_when_and_seats(): void
+    {
+        $line = CatalogAnnounce::tripLine('Сказочный Край', 'Владимир', '2026-10-12', '09:00', 3);
+        $this->assertStringContainsString('Сказочный Край → Владимир', $line);
+        $this->assertStringContainsString('09:00', $line);
+        $this->assertStringContainsString('мест: 3', $line);
+    }
+
+    public function test_trip_line_without_time(): void
+    {
+        $line = CatalogAnnounce::tripLine('Сказочный Край', 'Владимир', '2026-10-12', '', 1);
+        $this->assertStringNotContainsString(', ,', $line);
+        $this->assertStringEndsWith('мест: 1', $line);
+    }
+
     public function test_text_has_head_card_and_link(): void
     {
         $text = CatalogAnnounce::text('🔧 Новый инструмент в общей копилке', '«Перфоратор» · Электроинструмент', 'https://example.test/x');

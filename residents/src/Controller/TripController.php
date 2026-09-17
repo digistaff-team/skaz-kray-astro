@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View};
 use SkazResidents\Repository\{TripRepository, TripBookingRepository};
+use SkazResidents\Service\CatalogAnnounce;
 
 /**
  * Совместные поездки (попутки) — раздел жителей. Доска предстоящих поездок
@@ -82,6 +83,9 @@ final class TripController
         );
         Flash::set('success', 'Поездка опубликована.');
         header('Location: /poselenie/poezdki/' . $id);
+        CatalogAnnounce::trip(                                  // уходит после ответа
+            $id, $data['origin'], $data['destination'], $data['trip_date'], $data['trip_time'], $data['seats_total']
+        );
     }
 
     public function mine(): void

@@ -29,6 +29,23 @@ final class CatalogAnnounce
         self::announce($head, $line, '/poselenie/instrumenty/' . $id);
     }
 
+    /** Анонс новой поездки (попутки), опубликованной водителем. */
+    public static function trip(int $id, string $origin, string $destination, string $date, string $time, int $seats): void
+    {
+        self::announce('🚗 Новая поездка', self::tripLine($origin, $destination, $date, $time, $seats), '/poselenie/poezdki/' . $id);
+    }
+
+    /**
+     * Строка поездки: маршрут, когда и сколько мест. Дату показываем по-русски
+     * (ru_date из bootstrap; в CLI/тестах её может не быть — тогда как в БД).
+     */
+    public static function tripLine(string $origin, string $destination, string $date, string $time, int $seats): string
+    {
+        $when = function_exists('ru_date') ? ru_date($date) : $date;
+        if ($time !== '') { $when .= ', ' . $time; }
+        return $origin . ' → ' . $destination . ' · ' . $when . ' · мест: ' . $seats;
+    }
+
     /** Анонс нового товара/услуги на Ярмарке (карточки внутри портала нет — ведём в ленту). */
     public static function product(int $id, string $title, ?string $price): void
     {

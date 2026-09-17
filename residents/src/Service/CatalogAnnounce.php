@@ -2,7 +2,6 @@
 declare(strict_types=1);
 namespace SkazResidents\Service;
 
-use SkazResidents\{Config, TelegramBot, MaxBot};
 
 /**
  * Анонс новинок каталогов (инструменты, книги) в группы жителей от @SkazKray_bot:
@@ -82,51 +81,14 @@ final class CatalogAnnounce
      */
     public static function deepLink(string $base, string $path): string
     {
-        $code = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
-        return str_ends_with($base, '?startapp')
-            ? $base . '=' . $code                 // MAX: параметр уже в ссылке
-            : rtrim($base, '/') . '?startapp=' . $code;
+        return BotNotify::deepLink($base, $path);
     }
 
     private static function announce(string $head, string $line, string $path): void
     {
-        $tg     = Config::get('telegram');
-        $max    = Config::get('max');
-        $token  = is_array($tg) ? (string) ($tg['bot_token'] ?? '') : '';
-        $chat   = is_array($tg) ? (string) ($tg['group_chat_id'] ?? '') : '';
-        $mToken = is_array($max) ? (string) ($max['bot_token'] ?? '') : '';
-        $mChat  = is_array($max) ? (string) ($max['group_chat_id'] ?? '') : '';
-        $tgBase = (string) (Config::get('residents_app_link', 'https://t.me/SkazKray_bot/app') ?: 'https://t.me/SkazKray_bot/app');
-        $mBase  = is_array($max) ? (string) ($max['app_link'] ?? '') : '';
-
-        self::afterResponse(static function () use ($head, $line, $path, $token, $chat, $mToken, $mChat, $tgBase, $mBase): void {
-            if ($token !== '' && $chat !== '') {
-                if (!TelegramBot::sendMessage($token, $chat, self::text($head, $line, self::deepLink($tgBase, $path)))) {
-                    error_log('CatalogAnnounce: анонс не ушёл в Telegram-группу ' . $chat);
-                }
-            }
-            if ($mToken !== '' && $mChat !== '' && $mBase !== '') {
-                if (!MaxBot::sendToChat($mToken, $mChat, self::text($head, $line, self::deepLink($mBase, $path)))) {
-                    error_log('CatalogAnnounce: анонс не ушёл в группу MAX ' . $mChat);
-                }
-            }
+        BotNotify::afterResponse(static function () use ($head, $line, $path): void {
+            BotNotify::toGroup(static fn(string $base): string => self::text($head, $line, BotNotify::deepLink($base, $path)));
         });
     }
 
-    /**
-     * Выполнить работу после того, как ответ ушёл пользователю. Сессию закрываем
-     * первой: иначе следующий запрос жителя (редирект на карточку) ждал бы снятия
-     * блокировки файла сессии всё время рассылки.
-     */
-    private static function afterResponse(callable $fn): void
-    {
-        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
-        if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
-        ignore_user_abort(true);
-        try {
-            $fn();
-        } catch (\Throwable $e) {
-            error_log('CatalogAnnounce: ' . $e->getMessage());
-        }
-    }
 }

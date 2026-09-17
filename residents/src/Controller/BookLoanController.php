@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer};
 use SkazResidents\Repository\{BookRepository, BookLoanRepository};
+use SkazResidents\Service\LoanNotify;
 
 /**
  * Жизненный цикл брони книги (P2P):
@@ -11,7 +12,8 @@ use SkazResidents\Repository\{BookRepository, BookLoanRepository};
  *  - владелец выдаёт (give: бронь→на руках, книга→on_loan) или отклоняет (decline);
  *  - владелец принимает возврат (returnLoan) с проверкой состояния (ok/broken):
  *    ok → книга available, broken → maintenance.
- * Уведомления по email — fail-open.
+ * Уведомления: письмо на email (как раньше) + личное сообщение от бота второй
+ * стороне сделки (LoanNotify) — оба канала fail-open.
  */
 final class BookLoanController
 {
@@ -54,17 +56,23 @@ final class BookLoanController
         );
         Flash::set('success', 'Бронь отправлена владельцу. Он получит уведомление.');
         header('Location: /poselenie/knigi/' . $bookId);
+        LoanNotify::bookRequested((int) $book['family_id'], (string) $book['title'], Auth::name(), $due);
     }
 
     public function cancel(array $params): void
     {
         $this->guard();
         $loan = $this->loans->findById((int) $params['id']);
+        $cancelled = null;
         if ($loan && (int) $loan['borrower_id'] === Auth::id() && $loan['status'] === 'requested') {
             $this->loans->cancel((int) $loan['id']);
+            $cancelled = $this->loans->findDetailed((int) $loan['id']);
             Flash::set('info', 'Бронь отменена.');
         }
         header('Location: /poselenie/knigi/moi');
+        if ($cancelled) {
+            LoanNotify::bookCancelled((int) $cancelled['owner_id'], (string) $cancelled['book_title'], Auth::name());
+        }
     }
 
     public function give(array $params): void
@@ -84,6 +92,7 @@ final class BookLoanController
         );
         Flash::set('success', 'Книга отмечена выданной.');
         header('Location: /poselenie/knigi/moi');
+        LoanNotify::bookGiven((int) $loan['borrower_id'], (string) $loan['book_title'], (string) $loan['owner_name']);
     }
 
     public function decline(array $params): void
@@ -101,6 +110,7 @@ final class BookLoanController
         );
         Flash::set('info', 'Бронь отклонена.');
         header('Location: /poselenie/knigi/moi');
+        LoanNotify::bookDeclined((int) $loan['borrower_id'], (string) $loan['book_title']);
     }
 
     public function returnLoan(array $params): void
@@ -119,6 +129,7 @@ final class BookLoanController
             ? 'Возврат принят. Книга помечена недоступной.'
             : 'Возврат принят. Книга снова доступна.');
         header('Location: /poselenie/knigi/moi');
+        LoanNotify::bookReturned((int) $loan['borrower_id'], (string) $loan['book_title'], $condition === 'broken');
     }
 
     // --- helpers ---

@@ -193,8 +193,25 @@ final class ToolController
         $cat   = trim($_POST['category'] ?? '');
         $desc  = trim($_POST['description'] ?? '');
         $cond  = trim($_POST['condition_note'] ?? '');
-        $terms = trim($_POST['terms'] ?? '');
         $errors = [];
+        // Залог: выбор из списка, при «Денежный залог» — сумма в рублях. В tools.terms
+        // уходит готовая строка (её же разбирает форма редактирования); вариант
+        // «custom» — старый текст условий, введённый до появления списка.
+        $termsKind = (string) ($_POST['terms_kind'] ?? '');
+        $deposit   = trim((string) ($_POST['deposit_amount'] ?? ''));
+        $terms = null;
+        if ($termsKind === 'none') {
+            $terms = 'Без залога';
+        } elseif ($termsKind === 'deposit') {
+            if ($deposit === '' || !ctype_digit($deposit) || (int) $deposit <= 0) {
+                $errors['terms'] = 'Укажите сумму залога — целое число рублей больше нуля.';
+            } else {
+                $terms = 'Денежный залог: ' . (int) $deposit . ' ₽';
+            }
+        } elseif ($termsKind === 'custom') {
+            $custom = trim((string) ($_POST['terms_custom'] ?? ''));
+            $terms = $custom !== '' ? mb_substr($custom, 0, 200) : null;
+        }
         if (!Validator::length($name, 2, 200)) { $errors['name'] = 'Название: 2–200 символов.'; }
         if ($cat !== '' && !Validator::length($cat, 1, 80)) { $errors['category'] = 'Категория до 80 символов.'; }
         return [[
@@ -202,7 +219,10 @@ final class ToolController
             'category' => mb_substr($cat, 0, 80),
             'description'    => $desc !== '' ? $desc : null,
             'condition_note' => $cond !== '' ? mb_substr($cond, 0, 200) : null,
-            'terms'          => $terms !== '' ? mb_substr($terms, 0, 200) : null,
+            'terms'          => $terms,
+            // Для перерисовки формы после ошибки — чтобы выбор залога не сбрасывался.
+            'terms_kind'     => $termsKind,
+            'deposit_amount' => $deposit,
         ], $errors];
     }
 

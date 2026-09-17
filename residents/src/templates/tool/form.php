@@ -54,9 +54,37 @@ $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselen
             <div class="res-meta">Инструмент скрыт из каталога — вернуть его можно кнопкой в «Моих инструментах».</div>
         <?php endif; ?>
     <?php endif; ?>
+    <?php
+        // Залог хранится строкой в tools.terms: «Без залога» / «Денежный залог: N ₽».
+        // Старые карточки со свободным текстом сохраняем как есть — отдельным
+        // вариантом списка, чтобы редактирование не стирало написанное вручную.
+        $curTerms = (string) ($tool['terms'] ?? '');
+        $termsKind = $tool['terms_kind'] ?? null;        // выставлен после ошибки валидации
+        $depositAmount = (string) ($tool['deposit_amount'] ?? '');
+        if ($termsKind === null) {
+            if ($curTerms === '') { $termsKind = ''; }
+            elseif ($curTerms === 'Без залога') { $termsKind = 'none'; }
+            elseif (preg_match('/^Денежный залог: (\d+) ₽$/u', $curTerms, $m)) { $termsKind = 'deposit'; $depositAmount = $m[1]; }
+            else { $termsKind = 'custom'; }
+        }
+    ?>
     <label>Условия и залог
-        <input type="text" name="terms" maxlength="200" value="<?= View::e($tool['terms'] ?? '') ?>">
+        <select name="terms_kind" id="toolTermsKind">
+            <option value="">— выберите —</option>
+            <option value="none"<?= $termsKind === 'none' ? ' selected' : '' ?>>Без залога</option>
+            <option value="deposit"<?= $termsKind === 'deposit' ? ' selected' : '' ?>>Денежный залог</option>
+            <?php if ($termsKind === 'custom'): ?>
+                <option value="custom" selected><?= View::e($curTerms) ?></option>
+            <?php endif; ?>
+        </select>
     </label>
+    <?php if ($termsKind === 'custom'): ?>
+        <input type="hidden" name="terms_custom" value="<?= View::e($curTerms) ?>">
+    <?php endif; ?>
+    <label id="toolDepositRow"<?= $termsKind === 'deposit' ? '' : ' hidden' ?>>Сумма залога, ₽
+        <input type="number" name="deposit_amount" id="toolDepositAmount" min="1" max="1000000" step="100" inputmode="numeric" value="<?= View::e($depositAmount) ?>">
+    </label>
+    <?php if (isset($errors['terms'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['terms']) ?></div><?php endif; ?>
     <label>Описание / для чего инструмент
         <textarea name="description"><?= View::e($tool['description'] ?? '') ?></textarea>
     </label>
@@ -75,6 +103,19 @@ $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselen
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Добавить инструмент в каталог' ?></button>
     <a class="res-btn res-btn--ghost" href="<?= View::e($cancelUrl) ?>">Отмена</a>
 </form>
+
+<script>
+// Поле «Сумма залога» показывается только для варианта «Денежный залог».
+(function () {
+  var sel = document.getElementById('toolTermsKind'), row = document.getElementById('toolDepositRow');
+  if (!sel || !row) { return; }
+  sel.addEventListener('change', function () {
+    var on = sel.value === 'deposit';
+    row.hidden = !on;
+    if (on) { document.getElementById('toolDepositAmount').focus(); }
+  });
+})();
+</script>
 
 <script>
 // Клиентское превью выбранных фото (как в профиле/дневнике/книгах): накопительный выбор.

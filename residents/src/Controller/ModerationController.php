@@ -94,12 +94,17 @@ final class ModerationController
         $this->guard();
         $id = (int) ($_POST['id'] ?? 0);
         $entry = $this->diary->findById($id);
+        $firstPublish = $entry && ($entry['published_at'] ?? null) === null;   // правку уже опубликованной не анонсируем
         if ($entry) {
             $this->diary->approve($id, date('Y-m-d H:i:s'));
             $this->notifyOwnerDiary($entry, 'опубликована', null);
             Flash::set('success', 'Запись опубликована.');
         }
         header('Location: /poselenie/moderation');
+        if ($firstPublish) {
+            $owner = $this->families->findById((int) $entry['family_id']);
+            CatalogAnnounce::diary((int) $entry['id'], (string) $entry['title'], $owner['name'] ?? null);
+        }
     }
 
     public function rejectEntry(): void

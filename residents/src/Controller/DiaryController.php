@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{DiaryRepository, ImageRepository};
+use SkazResidents\Service\CatalogAnnounce;
 
 final class DiaryController
 {
@@ -78,6 +79,12 @@ final class DiaryController
             default     => 'Запись отправлена на проверку редактору сайта.',
         });
         header('Location: /poselenie/dnevniki');
+        // Запись «соседям» публикуется сразу — анонсируем. «На сайте» уходит на
+        // проверку редактору и до неё в ленте не видна: её анонсирует модерация
+        // (ModerationController::approveEntry). Личную запись не анонсируем.
+        if ($data['visibility'] === 'residents') {
+            CatalogAnnounce::diary($id, $data['title'], Auth::name());
+        }
     }
 
     public function showEdit(array $params): void

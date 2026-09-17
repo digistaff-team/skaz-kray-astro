@@ -29,6 +29,14 @@ final class CatalogAnnounce
         self::announce($head, $line, '/poselenie/instrumenty/' . $id);
     }
 
+    /** Анонс новой записи в дневниках поместий. */
+    public static function diary(int $id, string $title, ?string $author): void
+    {
+        $head = '📔 Новая запись в дневниках поместий';
+        $line = '«' . $title . '»' . (($author ?? '') !== '' ? ' · ' . $author : '');
+        self::announce($head, $line, '/poselenie/dnevniki/' . $id);
+    }
+
     /** Анонс новой поездки (попутки), опубликованной водителем. */
     public static function trip(int $id, string $origin, string $destination, string $date, string $time, int $seats): void
     {

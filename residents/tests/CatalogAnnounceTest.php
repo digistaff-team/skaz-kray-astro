@@ -34,6 +34,13 @@ final class CatalogAnnounceTest extends TestCase
         $this->assertSame('/poselenie/yarmarka', base64_decode(strtr($code, '-_', '+/')));
     }
 
+    public function test_deep_link_for_diary_entry(): void
+    {
+        $link = CatalogAnnounce::deepLink('https://t.me/SkazKray_bot/app', '/poselenie/dnevniki/5');
+        $code = substr($link, strlen('https://t.me/SkazKray_bot/app?startapp='));
+        $this->assertSame('/poselenie/dnevniki/5', base64_decode(strtr($code, '-_', '+/')));
+    }
+
     public function test_trip_line_has_route_when_and_seats(): void
     {
         $line = CatalogAnnounce::tripLine('Сказочный Край', 'Владимир', '2026-10-12', '09:00', 3);

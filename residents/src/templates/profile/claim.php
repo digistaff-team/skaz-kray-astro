@@ -62,7 +62,6 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                         <a class="<?= $cls ?>" href="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>">
                             <b class="prof-name"><?= $name ?></b>
                             <?php if ($plotMeta !== ''): ?><div class="res-meta"><?= $plotMeta ?></div><?php endif; ?>
-                            <?php if ($occupied): ?><div class="res-meta">Уже с семьёй — можно присоединиться</div><?php endif; ?>
                         </a>
                     <?php else: ?>
                         <div class="<?= $cls ?>">

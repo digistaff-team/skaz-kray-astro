@@ -15,7 +15,7 @@ $occupied = $occupied ?? false;
     </div>
 </div>
 <?php if ($occupied): ?>
-    <p class="res-meta">Это поместье уже ведёт кто-то из вашей семьи. Вы можете присоединиться как совладелец — тогда вы вместе сможете править данные поместья, у каждого свой вход через Telegram.</p>
+    <p class="res-meta">Это поместье уже ведёт кто-то из вашей семьи. Вы можете присоединиться как совладелец — тогда вы вместе сможете править данные поместья, у каждого свой вход.</p>
 <?php endif; ?>
 
 <form class="res-form" method="post" action="/poselenie/moye-pomestie/vybor/<?= (int) $h['id'] ?>" style="margin-top:1rem">

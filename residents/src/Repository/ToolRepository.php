@@ -98,6 +98,8 @@ final class ToolRepository
         return $st->fetchAll();
     }
 
+    public const POPULAR_CATEGORIES = ['Электроинструмент', 'Ручной инструмент', 'Садовый инвентарь', 'Строительный', 'Измерительный', 'Автомобильный'];
+
     /** Уникальные категории для фильтра/подсказок (без скрытых). @return array<int,string> */
     public function categories(): array
     {
@@ -105,6 +107,14 @@ final class ToolRepository
             'SELECT DISTINCT category FROM tools WHERE status <> \'hidden\' AND category <> \'\' ORDER BY category'
         )->fetchAll(PDO::FETCH_COLUMN);
         return array_map('strval', $rows);
+    }
+
+    /** Полный список категорий: популярные + уже встречающиеся в каталоге (без дублей). @return array<int,string> */
+    public function categoriesForForm(): array
+    {
+        $out = self::POPULAR_CATEGORIES;
+        foreach ($this->categories() as $c) { if (!in_array($c, $out, true)) { $out[] = $c; } }
+        return $out;
     }
 
     public function delete(int $id): void

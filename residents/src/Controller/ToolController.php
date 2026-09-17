@@ -34,7 +34,7 @@ final class ToolController
         unset($t);
         View::render('tool/catalog', [
             'tools'      => $tools,
-            'categories' => $this->tools->categories(),
+            'categories' => $this->tools->categoriesForForm(),
             'q'          => $search,
             'category'   => $category,
             'status'     => $status,
@@ -68,7 +68,7 @@ final class ToolController
     public function showCreate(): void
     {
         $this->requireHousehold('Инструменты');
-        View::render('tool/form', ['tool' => null, 'images' => [], 'categories' => $this->tools->categories(), 'errors' => []], 'Новый инструмент');
+        View::render('tool/form', ['tool' => null, 'images' => [], 'categories' => $this->tools->categoriesForForm(), 'errors' => []], 'Новый инструмент');
     }
 
     public function create(): void
@@ -77,11 +77,12 @@ final class ToolController
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
-            View::render('tool/form', ['tool' => $data, 'images' => [], 'categories' => $this->tools->categories(), 'errors' => $errors], 'Новый инструмент');
+            View::render('tool/form', ['tool' => $data, 'images' => [], 'categories' => $this->tools->categoriesForForm(), 'errors' => $errors], 'Новый инструмент');
             return;
         }
         $id = $this->tools->create(Auth::id(), $data['name'], $data['category'], $data['description'], $data['condition_note'], $data['terms'], date('Y-m-d H:i:s'));
         $this->handleUploads($id);
+        if ($data['status'] === 'on_loan') { $this->tools->setStatus($id, 'on_loan'); }
         Flash::set('success', 'Инструмент добавлен в каталог.');
         header('Location: /poselenie/instrumenty/' . $id);
     }
@@ -93,7 +94,7 @@ final class ToolController
         View::render('tool/form', [
             'tool'       => $tool,
             'images'     => $this->images->listFor('tool', (int) $tool['id']),
-            'categories' => $this->tools->categories(),
+            'categories' => $this->tools->categoriesForForm(),
             'errors'     => [],
         ], 'Редактирование инструмента');
     }
@@ -106,11 +107,16 @@ final class ToolController
         [$data, $errors] = $this->validate();
         if ($errors) {
             $data['id'] = $tool['id'];
-            View::render('tool/form', ['tool' => $data, 'images' => $this->images->listFor('tool', (int) $tool['id']), 'categories' => $this->tools->categories(), 'errors' => $errors], 'Редактирование инструмента');
+            View::render('tool/form', ['tool' => $data, 'images' => $this->images->listFor('tool', (int) $tool['id']), 'categories' => $this->tools->categoriesForForm(), 'errors' => $errors], 'Редактирование инструмента');
             return;
         }
         $this->tools->update((int) $tool['id'], $data['name'], $data['category'], $data['description'], $data['condition_note'], $data['terms'], date('Y-m-d H:i:s'));
         $this->handleUploads((int) $tool['id']);
+        // Статус меняем только при отсутствии активной заявки — чтобы не рассинхронить
+        // с системой выдачи (реальный on_loan управляется заявками).
+        if ($this->loans->activeForTool((int) $tool['id']) === null) {
+            $this->tools->setStatus((int) $tool['id'], $data['status']);
+        }
         Flash::set('success', 'Изменения сохранены.');
         header('Location: /poselenie/instrumenty/' . $tool['id']);
     }
@@ -184,6 +190,8 @@ final class ToolController
         $desc  = trim($_POST['description'] ?? '');
         $cond  = trim($_POST['condition_note'] ?? '');
         $terms = trim($_POST['terms'] ?? '');
+        // Статус из формы: только «свободен»/«на руках», по умолчанию свободен.
+        $status = (($_POST['status'] ?? '') === 'on_loan') ? 'on_loan' : 'available';
         $errors = [];
         if (!Validator::length($name, 2, 200)) { $errors['name'] = 'Название: 2–200 символов.'; }
         if ($cat !== '' && !Validator::length($cat, 1, 80)) { $errors['category'] = 'Категория до 80 символов.'; }
@@ -193,6 +201,7 @@ final class ToolController
             'description'    => $desc !== '' ? $desc : null,
             'condition_note' => $cond !== '' ? mb_substr($cond, 0, 200) : null,
             'terms'          => $terms !== '' ? mb_substr($terms, 0, 200) : null,
+            'status' => $status,
         ], $errors];
     }
 

@@ -78,6 +78,17 @@ final class ToolRepositoryTest extends TestCase
         $this->assertCount(2, $this->tools->listByFamily($this->fam));
     }
 
+    public function test_categories_for_form_merges_popular_and_catalog(): void
+    {
+        $this->tools->create($this->fam, 'A', 'Кузнечный', null, null, null, '2026-08-29 10:00:00');
+        $this->tools->create($this->fam, 'B', 'Электроинструмент', null, null, null, '2026-08-29 10:00:00');
+        $cats = $this->tools->categoriesForForm();
+        $this->assertContains('Электроинструмент', $cats);   // популярная и уже в каталоге — без дубля
+        $this->assertContains('Садовый инвентарь', $cats);   // популярная, в каталоге её нет
+        $this->assertContains('Кузнечный', $cats);           // своя категория из каталога
+        $this->assertSame(array_values(array_unique($cats)), $cats);
+    }
+
     public function test_delete(): void
     {
         $id = $this->tools->create($this->fam, 'X', '', null, null, null, '2026-08-29 10:00:00');

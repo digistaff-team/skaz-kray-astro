@@ -22,6 +22,7 @@
   'use strict';
 
   var SCRIPT_SRC = 'https://telegram.org/js/telegram-web-app.js';
+  var ASKED_KEY = 'skazWriteAccessAsked';   // «уже спрашивали на этом устройстве»
   var TIMEOUT_MS = 8000;
 
   var waiters = null; // колбэки, ждущие текущей загрузки
@@ -130,10 +131,47 @@
     return '';
   }
 
+  /**
+   * Разовый запрос разрешения боту писать в личку (Bot API 6.9+).
+   *
+   * Запуск мини-приложения сам по себе такого права НЕ даёт: писать первым бот
+   * может только тем, кто нажал Start в чате или согласился здесь. Поэтому при
+   * входе один раз показываем системный диалог — иначе уведомления о бронях,
+   * выдаче и возврате до жителя не дойдут.
+   *
+   * Спрашиваем только если право ещё не выдано (initDataUnsafe.user
+   * .allows_write_to_pm) и если на этом устройстве ещё не спрашивали: повторно
+   * дёргать человека, однажды отказавшего, невежливо. cb вызывается ровно один
+   * раз в любом случае — и после ответа, и если диалог не поддержан или завис,
+   * чтобы вход не мог из-за него застопориться.
+   */
+  function askWriteAccess(wa, cb, timeoutMs) {
+    var done = false;
+    var finish = function () { if (!done) { done = true; try { cb(); } catch (e) {} } };
+    var timer = w.setTimeout(finish, timeoutMs || 6000);
+
+    try {
+      var asked = false;
+      try { asked = w.localStorage.getItem(ASKED_KEY) === '1'; } catch (e) {}
+      var user = wa && wa.initDataUnsafe ? wa.initDataUnsafe.user : null;
+      var supported = wa && typeof wa.requestWriteAccess === 'function'
+        && (typeof wa.isVersionAtLeast !== 'function' || wa.isVersionAtLeast('6.9'));
+
+      if (!supported || asked || (user && user.allows_write_to_pm)) {
+        w.clearTimeout(timer); finish(); return;
+      }
+      try { w.localStorage.setItem(ASKED_KEY, '1'); } catch (e) {}
+      wa.requestWriteAccess(function () { w.clearTimeout(timer); finish(); });
+    } catch (e) {
+      w.clearTimeout(timer); finish();
+    }
+  }
+
   w.SkazTg = {
     ensure: ensure,
     initData: initData,
     startParam: startParam,
-    launchInitData: launchInitData
+    launchInitData: launchInitData,
+    askWriteAccess: askWriteAccess
   };
 })(window, document);

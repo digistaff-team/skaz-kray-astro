@@ -46,7 +46,13 @@
       body: 'initData=' + encodeURIComponent(initData) + '&startapp=' + encodeURIComponent(startParam)
     }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
       .then(function (data) {
-        if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }
+        if (data.ok && data.redirect) {
+          // Перед уходом в портал один раз спрашиваем разрешение боту писать в
+          // личку — без него уведомления о бронях и выдаче не дойдут. Диалог не
+          // может задержать вход: askWriteAccess всегда вызывает колбэк.
+          SkazTg.askWriteAccess(wa, function () { window.location.assign(data.redirect); });
+          return;
+        }
         if (data.reason === 'not_subscribed') { window.location.assign('/poselenie/tg/gate'); return; }
         if (data.reason === 'error') { window.location.assign('/poselenie/tg/gate?reason=error'); return; }
         if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору поселения.'); return; }

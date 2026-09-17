@@ -112,13 +112,13 @@ final class ToolController
         }
         $this->tools->update((int) $tool['id'], $data['name'], $data['category'], $data['description'], $data['condition_note'], $data['terms'], date('Y-m-d H:i:s'));
         $this->handleUploads((int) $tool['id']);
-        // Статус из формы редактирования: только «свободен» ⇄ «на руках» и только
-        // когда инструмент не скрыт/не на обслуживании (эти два состояния снимаются
-        // кнопками в «Моих инструментах») и по нему нет активной заявки — иначе
-        // разошлись бы с системой выдачи, где on_loan ставится самой заявкой.
-        $status = (($_POST['status'] ?? '') === 'on_loan') ? 'on_loan' : 'available';
-        if (in_array($tool['status'], ['available', 'on_loan'], true)
-            && $this->loans->activeForTool((int) $tool['id']) === null) {
+        // Статус из формы редактирования: свободен / на руках / в ремонте. Скрытый
+        // инструмент форма не трогает (скрытие снимается кнопкой в «Моих
+        // инструментах»), и статус не меняем при активной заявке — иначе разошлись
+        // бы с системой выдачи, где on_loan ставится самой заявкой.
+        $status = $_POST['status'] ?? '';
+        if (!in_array($status, ['available', 'on_loan', 'maintenance'], true)) { $status = 'available'; }
+        if ($tool['status'] !== 'hidden' && $this->loans->activeForTool((int) $tool['id']) === null) {
             $this->tools->setStatus((int) $tool['id'], $status);
         }
         Flash::set('success', 'Изменения сохранены.');

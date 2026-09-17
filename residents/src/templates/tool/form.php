@@ -42,15 +42,16 @@ $cancelUrl = $isEdit ? '/poselenie/instrumenty/' . (int) $tool['id'] : '/poselen
         </select>
     </label>
     <?php if ($isEdit): $curStatus = (string) ($tool['status'] ?? 'available'); ?>
-        <?php if ($curStatus === 'available' || $curStatus === 'on_loan'): ?>
-            <label>Статус инструмента
+        <?php if ($curStatus !== 'hidden'): ?>
+            <label>Статус
                 <select name="status">
                     <option value="available"<?= $curStatus === 'available' ? ' selected' : '' ?>>Инструмент свободен</option>
                     <option value="on_loan"<?= $curStatus === 'on_loan' ? ' selected' : '' ?>>Инструмент на руках</option>
+                    <option value="maintenance"<?= $curStatus === 'maintenance' ? ' selected' : '' ?>>Инструмент в ремонте</option>
                 </select>
             </label>
         <?php else: ?>
-            <div class="res-meta">Инструмент <?= $curStatus === 'hidden' ? 'скрыт из каталога' : 'на обслуживании' ?> — вернуть его в каталог можно кнопкой в «Моих инструментах».</div>
+            <div class="res-meta">Инструмент скрыт из каталога — вернуть его можно кнопкой в «Моих инструментах».</div>
         <?php endif; ?>
     <?php endif; ?>
     <label>Условия и залог

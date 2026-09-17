@@ -106,11 +106,21 @@ final class ToolController
         [$data, $errors] = $this->validate();
         if ($errors) {
             $data['id'] = $tool['id'];
+            $data['status'] = $tool['status']; // чтобы поле статуса показало реальное состояние
             View::render('tool/form', ['tool' => $data, 'images' => $this->images->listFor('tool', (int) $tool['id']), 'categories' => $this->tools->categoriesForForm(), 'errors' => $errors], 'Редактирование инструмента');
             return;
         }
         $this->tools->update((int) $tool['id'], $data['name'], $data['category'], $data['description'], $data['condition_note'], $data['terms'], date('Y-m-d H:i:s'));
         $this->handleUploads((int) $tool['id']);
+        // Статус из формы редактирования: только «свободен» ⇄ «на руках» и только
+        // когда инструмент не скрыт/не на обслуживании (эти два состояния снимаются
+        // кнопками в «Моих инструментах») и по нему нет активной заявки — иначе
+        // разошлись бы с системой выдачи, где on_loan ставится самой заявкой.
+        $status = (($_POST['status'] ?? '') === 'on_loan') ? 'on_loan' : 'available';
+        if (in_array($tool['status'], ['available', 'on_loan'], true)
+            && $this->loans->activeForTool((int) $tool['id']) === null) {
+            $this->tools->setStatus((int) $tool['id'], $status);
+        }
         Flash::set('success', 'Изменения сохранены.');
         header('Location: /poselenie/instrumenty/' . $tool['id']);
     }

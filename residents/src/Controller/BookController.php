@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
-use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepository, HouseholdProfileRepository};
+use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepository};
 
 /**
  * Сервис обмена книгами (раздел жителей). Каталог виден только вошедшим жителям;
@@ -11,11 +11,12 @@ use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepositor
  */
 final class BookController
 {
+    use RequiresHousehold;
+
     public function __construct(
         private BookRepository $books = new BookRepository(),
         private BookLoanRepository $loans = new BookLoanRepository(),
-        private ImageRepository $images = new ImageRepository(),
-        private HouseholdProfileRepository $households = new HouseholdProfileRepository()
+        private ImageRepository $images = new ImageRepository()
     ) {}
 
     public function catalog(): void
@@ -179,19 +180,10 @@ final class BookController
 
     // --- helpers ---
 
-    /**
-     * Доступ в раздел «Книги» — только жителям с привязанным поместьем; иначе
-     * ведём на выбор поместья (как первый вход). Раздел завязан на поместье
-     * (владелец книги = семья), поэтому без привязки в него не пускаем.
-     */
+    /** Вход + требование привязанного поместья (см. RequiresHousehold). */
     private function guard(): void
     {
-        Auth::requireLogin();
-        if (!$this->households->householdByFamily(Auth::id())) {
-            Flash::set('info', 'Сначала выберите ваше поместье — после этого откроется раздел «Книги».');
-            header('Location: /poselenie/moye-pomestie/vybor');
-            exit;
-        }
+        $this->requireHousehold('Книги');
     }
 
     /** @return array{0:array<string,?string>,1:array<string,string>} */

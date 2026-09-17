@@ -14,6 +14,8 @@ use SkazResidents\Repository\{TripRepository, TripBookingRepository};
  */
 final class TripBookingController
 {
+    use RequiresHousehold;
+
     private const MAX_SEATS = 8;
 
     public function __construct(
@@ -119,7 +121,7 @@ final class TripBookingController
 
     private function guard(): void
     {
-        Auth::requireLogin();
+        $this->requireHousehold('Поездки');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

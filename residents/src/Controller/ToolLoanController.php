@@ -15,6 +15,8 @@ use SkazResidents\Repository\{ToolRepository, ToolLoanRepository};
  */
 final class ToolLoanController
 {
+    use RequiresHousehold;
+
     public function __construct(
         private ToolRepository $tools = new ToolRepository(),
         private ToolLoanRepository $loans = new ToolLoanRepository()
@@ -123,7 +125,7 @@ final class ToolLoanController
 
     private function guard(): void
     {
-        Auth::requireLogin();
+        $this->requireHousehold('Инструменты');
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
     }
 

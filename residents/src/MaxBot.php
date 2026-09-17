@@ -45,6 +45,30 @@ final class MaxBot
         return false;
     }
 
+    /**
+     * Отправить сообщение в чат/группу MAX (в отличие от sendMessage — не в диалог
+     * с ботом, а по chat_id; бот должен состоять в этой группе).
+     */
+    public static function sendToChat(string $botToken, string $chatId, string $text): bool
+    {
+        if ($botToken === '' || $chatId === '') { return false; }
+
+        $url  = self::BASE . '/messages?chat_id=' . rawurlencode($chatId) . '&disable_link_preview=true';
+        $body = json_encode(['text' => $text], JSON_UNESCAPED_UNICODE);
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $raw = self::httpPost($url, (string) $body, $botToken);
+            if ($raw !== null) {
+                $data = json_decode($raw, true);
+                if (is_array($data) && !isset($data['code']) && isset($data['message'])) { return true; }
+                error_log('MaxBot::sendToChat не ок для чата ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+                return false;
+            }
+            if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
+        }
+        return false;
+    }
+
     private static function httpPost(string $url, string $body, string $token): ?string
     {
         $headers = ['Authorization: ' . $token, 'Content-Type: application/json'];

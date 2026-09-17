@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
 use SkazResidents\Repository\{ToolRepository, ToolLoanRepository, ImageRepository};
+use SkazResidents\Service\CatalogAnnounce;
 
 /**
  * Сервис шеринга инструментов (раздел жителей). Каталог виден только вошедшим
@@ -84,6 +85,7 @@ final class ToolController
         $this->handleUploads($id);
         Flash::set('success', 'Инструмент добавлен в каталог.');
         header('Location: /poselenie/instrumenty/' . $id);
+        CatalogAnnounce::tool($id, $data['name'], $data['category']);   // уходит после ответа
     }
 
     public function showEdit(array $params): void

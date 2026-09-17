@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload};
 use SkazResidents\Repository\{BookRepository, BookLoanRepository, ImageRepository};
+use SkazResidents\Service\CatalogAnnounce;
 
 /**
  * Сервис обмена книгами (раздел жителей). Каталог виден только вошедшим жителям;
@@ -83,6 +84,7 @@ final class BookController
         if ($data['status'] === 'on_loan') { $this->books->setStatus($id, 'on_loan'); }
         Flash::set('success', 'Книга добавлена в каталог.');
         header('Location: /poselenie/knigi/' . $id);
+        CatalogAnnounce::book($id, $data['title'], $data['author']);   // уходит после ответа
     }
 
     public function showEdit(array $params): void

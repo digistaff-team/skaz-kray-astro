@@ -55,6 +55,9 @@ return [
     // Ссылка, открывающая раздел Совета как Telegram Mini App — для рассылки
     // уведомления о встрече (bin/council-meeting-notify.php).
     'council_app_link' => 'https://t.me/SkazKray_bot/sovet',
+    // Мини-приложение раздела жителей: база для диплинков в анонсах бота
+    // (t.me/<бот>/<app>?startapp=<base64url пути внутри /poselenie/>).
+    'residents_app_link' => 'https://t.me/SkazKray_bot/app',
     'uploads_dir'  => __DIR__ . '/../public/uploads',   // куда пишем файлы
     'uploads_url'  => '/poselenie/uploads',             // как отдаём (nginx)
     'session_name' => 'skazres',

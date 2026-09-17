@@ -116,7 +116,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 <?php foreach ($t['photos'] as $img): ?>
                     <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
                         <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                        <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" loading="lazy">
+                        <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy">
                         <button type="submit" class="photo-del" title="Удалить фото">×</button>
                     </form>
                 <?php endforeach; ?>
@@ -230,7 +230,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     <?php foreach ($t['photos'] as $img): ?>
                         <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
                             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                            <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="" loading="lazy">
+                            <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy">
                             <button type="submit" class="photo-del" title="Удалить фото">×</button>
                         </form>
                     <?php endforeach; ?>

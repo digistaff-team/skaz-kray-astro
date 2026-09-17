@@ -44,7 +44,7 @@ $uid = Auth::id();
         </h2>
         <p class="res-meta"><?= View::e($e['family_name']) ?> · <?= View::e(substr((string) $e['published_at'], 0, 10)) ?></p>
         <?php if (!empty($e['images'])): ?>
-            <img src="<?= View::e(entry_image_url($e['images'][0]['path'])) ?>" alt="">
+            <img src="<?= View::e(entry_image_thumb($e['images'][0]['path'], 480)) ?>" alt="" loading="lazy">
         <?php endif; ?>
         <p><?= View::e(mb_strimwidth(strip_tags((string) $e['body']), 0, 300, '…')) ?></p>
         <div class="cab-item-actions">

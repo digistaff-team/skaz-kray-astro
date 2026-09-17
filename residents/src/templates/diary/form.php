@@ -35,7 +35,7 @@ $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat'
         <?php foreach ($images as $img): ?>
             <form class="photo-uploaded" method="post" action="/poselenie/dnevnik/<?= (int) $entry['id'] ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
                 <?= Csrf::field() ?>
-                <img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="">
+                <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="">
                 <button type="submit" class="photo-del" title="Удалить фото">×</button>
             </form>
         <?php endforeach; ?>

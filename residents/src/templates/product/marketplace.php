@@ -16,7 +16,7 @@
     <?php foreach ($products as $p): ?>
         <div class="res-card market-card">
             <?php if (!empty($p['photo'])): ?>
-                <img class="market-photo" src="<?= View::e(entry_image_url($p['photo'])) ?>" alt="">
+                <img class="market-photo" src="<?= View::e(entry_image_thumb($p['photo'], 480)) ?>" alt="" loading="lazy">
             <?php endif; ?>
             <strong class="market-title"><?= View::e($p['title']) ?></strong>
             <span class="market-price"><?= ($p['price'] ?? '') !== '' ? View::e($p['price']) : 'по договорённости' ?></span>

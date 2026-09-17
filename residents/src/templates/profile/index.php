@@ -67,7 +67,7 @@ $h = $household;
             <?php if (!empty($m['images'])): ?>
                 <div class="photo-preview">
                     <?php foreach ($m['images'] as $img): ?>
-                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy"></a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -94,7 +94,7 @@ $h = $household;
             <?php if (!empty($c['images'])): ?>
                 <div class="photo-preview">
                     <?php foreach ($c['images'] as $img): ?>
-                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy"></a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -121,7 +121,7 @@ $h = $household;
             <?php if (!empty($pet['images'])): ?>
                 <div class="photo-preview">
                     <?php foreach ($pet['images'] as $img): ?>
-                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_url($img['path'])) ?>" alt=""></a>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy"></a>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>

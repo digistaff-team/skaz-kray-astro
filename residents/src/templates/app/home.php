@@ -68,7 +68,30 @@
   var grid = document.getElementById('appGrid');
   if (!grid) return;
   var KEY = 'poselenie_tile_order_v1';
-  var keyOf = function (t) { try { return new URL(t.href).pathname; } catch (e) { return t.getAttribute('href'); } };
+  var hrefOf = function (t) { return t.getAttribute('data-href') || t.getAttribute('href') || ''; };
+  var keyOf = function (t) { try { return new URL(hrefOf(t), location.origin).pathname; } catch (e) { return hrefOf(t); } };
+
+  // На сенсорных устройствах прячем настоящий href в data-href. Клиенты вроде
+  // MAX и Telegram показывают при удержании ссылки свою панель («открыть»,
+  // «копировать», «поделиться») нативно, до страницы: ни contextmenu, ни
+  // -webkit-touch-callout её не отменяют, и перетащить плитку невозможно. Без
+  // href предлагать нечего, а переход делаем сами по клику. На десктопе ссылки
+  // остаются настоящими — там удержание ничему не мешает.
+  var touch = false;
+  try { touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (e) {}
+  if (touch) {
+    Array.prototype.forEach.call(grid.querySelectorAll('.app-tile[href]'), function (t) {
+      t.setAttribute('data-href', t.getAttribute('href'));
+      t.removeAttribute('href');
+      t.setAttribute('role', 'link');
+      t.setAttribute('tabindex', '0');
+    });
+    grid.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var t = e.target.closest && e.target.closest('.app-tile');
+      if (t && hrefOf(t)) { e.preventDefault(); window.location.assign(hrefOf(t)); }
+    });
+  }
 
   // Применяем сохранённый порядок; новые плитки остаются в конце.
   try {
@@ -147,7 +170,12 @@
 
   grid.addEventListener('pointerup', finish);
   grid.addEventListener('pointercancel', finish);
-  // Если это было перетаскивание, гасим переход по ссылке.
-  grid.addEventListener('click', function (e) { if (suppress) { e.preventDefault(); e.stopPropagation(); } }, true);
+  // Если это было перетаскивание, гасим переход по ссылке; обычный тап по
+  // плитке без href (сенсорный режим) уводит по сохранённому адресу.
+  grid.addEventListener('click', function (e) {
+    if (suppress) { e.preventDefault(); e.stopPropagation(); return; }
+    var t = e.target.closest && e.target.closest('.app-tile');
+    if (t && !t.hasAttribute('href') && hrefOf(t)) { e.preventDefault(); window.location.assign(hrefOf(t)); }
+  }, true);
 })();
 </script>

@@ -719,6 +719,7 @@ a.prof-card--free:hover .prof-name { color: #3f3f38; }
    (жест уже уходит в скролл и приходит pointercancel). Страница прокручивается
    касанием вне плиток (шапка, карточка дневника, подписи, промежутки). */
 .app-grid .app-tile {
+  cursor: pointer;                 /* в сенсорном режиме плитка — <a> без href (см. home.php) */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

@@ -17,6 +17,8 @@ final class TaskController
     private const PRIORITIES = ['низкая', 'средняя', 'высокая'];
     private const STATUSES   = ['новая', 'в работе', 'выполнена'];
     private const SORTS      = ['priority', 'created', 'progress', 'spent'];
+    /** Когда нужны деньги по задаче: post — возмещение после выполнения, pre — предоплата. */
+    private const TIMINGS    = ['post', 'pre'];
     /** Фото задач лежат в общей таблице images под этим owner_type. */
     private const PHOTO_OWNER = 'task';
     private const MAX_PHOTOS  = 10;
@@ -65,6 +67,11 @@ final class TaskController
             $this->back();
             return;
         }
+        if ($this->expenseIncomplete($_POST['spent'] ?? 0, $_POST['expense_category_id'] ?? null)) {
+            Flash::set('error', 'К сумме расходов нужна статья расхода — иначе расход не попадёт в бюджет.');
+            $this->back();
+            return;
+        }
         $priority = $this->pickPriority($_POST['priority'] ?? '');
         $desc = trim($_POST['description'] ?? '');
         $assignee = trim($_POST['assignee'] ?? '');
@@ -83,6 +90,7 @@ final class TaskController
         }
         if (isset($_POST['spent'])) { $patch['spent'] = max(0, (float) str_replace(',', '.', (string) $_POST['spent'])); }
         $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id'] ?? null);
+        $patch['expense_timing']      = $this->pickTiming($_POST['expense_timing'] ?? null);
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
         $this->approval->sync($id);
         $this->handleUploads($id);
@@ -100,6 +108,15 @@ final class TaskController
         if (!$task) { $this->back(); return; }
         $oldAssignee = (string) ($task['assignee'] ?? '');
 
+        if (isset($_POST['spent']) && $this->expenseIncomplete(
+            $_POST['spent'],
+            $_POST['expense_category_id'] ?? ($task['expense_category_id'] ?? null)
+        )) {
+            Flash::set('error', 'К сумме расходов нужна статья расхода — иначе расход не попадёт в бюджет.');
+            $this->back();
+            return;
+        }
+
         $patch = [];
         if (isset($_POST['title']))       { $patch['title']       = mb_substr(trim($_POST['title']), 0, 300) ?: 'Без названия'; }
         if (isset($_POST['assignee']))    { $patch['assignee']    = trim($_POST['assignee']); }
@@ -116,6 +133,10 @@ final class TaskController
             if ($_POST['status'] === 'выполнена' && !isset($patch['progress'])) { $patch['progress'] = 100; }
         }
         if (isset($_POST['expense_category_id'])) { $patch['expense_category_id'] = $this->pickCategory($_POST['expense_category_id']); }
+        // Предоплату назад не отыграть: деньги у казначея уже запрошены.
+        if (isset($_POST['expense_timing']) && (string) ($task['expense_timing'] ?? 'post') !== 'pre') {
+            $patch['expense_timing'] = $this->pickTiming($_POST['expense_timing']);
+        }
 
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
         $this->approval->sync($id);
@@ -375,6 +396,20 @@ final class TaskController
     {
         $v = trim($v);
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) ? $v : null;
+    }
+
+    /** 'pre' (предоплата) или 'post' (возмещение после выполнения, по умолчанию). */
+    private function pickTiming(mixed $raw): string
+    {
+        $v = is_string($raw) ? trim($raw) : '';
+        return in_array($v, self::TIMINGS, true) ? $v : 'post';
+    }
+
+    /** Расход указан наполовину: сумма есть, а статьи (куда её отнести в бюджете) нет. */
+    private function expenseIncomplete(mixed $rawSpent, mixed $rawCategory): bool
+    {
+        $spent = max(0, (float) str_replace(',', '.', (string) $rawSpent));
+        return $spent > 0 && $this->pickCategory($rawCategory) === null;
     }
 
     /** id существующей расходной статьи бюджета или null. */

@@ -77,6 +77,7 @@ CREATE TABLE council_tasks (
     progress INTEGER NOT NULL DEFAULT 0,
     spent REAL NOT NULL DEFAULT 0,
     expense_category_id INTEGER,
+    expense_timing TEXT NOT NULL DEFAULT 'post',
     expense_status TEXT NOT NULL DEFAULT 'none',
     expense_msg_chat_id TEXT,
     expense_msg_id INTEGER,

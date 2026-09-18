@@ -57,9 +57,15 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </label>
         </div>
         <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
-        <label class="js-expense-cat" style="display:none">Статья расхода (для отчёта по бюджету)
+        <label class="js-expense-money" style="display:none">Оплата расходов
+            <select name="expense_timing">
+                <option value="post" selected>Постоплата — возместить после выполнения</option>
+                <option value="pre">Предоплата — деньги нужны заранее</option>
+            </select>
+        </label>
+        <label class="js-expense-money" style="display:none">Статья расхода (обязательно)
             <select name="expense_category_id">
-                <option value="">— не относить к бюджету —</option>
+                <option value="">— выберите статью —</option>
                 <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
             </select>
         </label>
@@ -103,7 +109,8 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 // Статус одобрения расхода казначеём — только когда есть статья (иначе расход не учитывается).
                 $es = (string) ($t['expense_status'] ?? 'none');
                 $esLabel = ['pending' => '⏳ на одобрении', 'approved' => '✅ одобрено', 'rejected' => '🚫 отклонено'][$es] ?? '';
-                if ($esLabel !== '' && (int) ($t['expense_category_id'] ?? 0) > 0): ?> <span class="res-meta">(<?= $esLabel ?>)</span><?php endif; ?>
+                $tmLabel = (string) ($t['expense_timing'] ?? 'post') === 'pre' ? 'предоплата' : 'постоплата';
+                if ((int) ($t['expense_category_id'] ?? 0) > 0): ?> <span class="res-meta">(<?= $tmLabel . ($esLabel !== '' ? ' · ' . $esLabel : '') ?>)</span><?php endif; ?>
             <?php endif; ?>
             · Прогресс: <?= (int) $t['progress'] ?>%<?php if (!empty($t['due_date'])): ?> · Срок: <?= View::e(ru_date((string) $t['due_date'])) ?><?php endif; ?>
         </p>
@@ -168,9 +175,22 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </div>
             <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             <?php $curCat = (int) ($t['expense_category_id'] ?? 0); $activeIds = array_map('intval', array_column($expenseCats ?? [], 'id')); ?>
-            <label class="js-expense-cat"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Статья расхода (для отчёта по бюджету)
+            <?php $curTiming = (string) ($t['expense_timing'] ?? 'post'); ?>
+            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Оплата расходов
+                <?php if ($curTiming === 'pre'): // предоплата уже запрошена у казначея — назад дороги нет ?>
+                    <select disabled>
+                        <option selected>Предоплата — деньги нужны заранее</option>
+                    </select>
+                <?php else: ?>
+                    <select name="expense_timing">
+                        <option value="post" selected>Постоплата — возместить после выполнения</option>
+                        <option value="pre">Предоплата — деньги нужны заранее</option>
+                    </select>
+                <?php endif; ?>
+            </label>
+            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Статья расхода (обязательно)
                 <select name="expense_category_id">
-                    <option value="">— не относить к бюджету —</option>
+                    <option value="">— выберите статью —</option>
                     <?php if ($curCat > 0 && !in_array($curCat, $activeIds, true)): ?><option value="<?= $curCat ?>" selected>Текущая статья (архив)</option><?php endif; ?>
                     <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"<?= $curCat === (int) $c['id'] ? ' selected' : '' ?>><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
@@ -242,13 +262,17 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 <?php endif; ?>
 
 <script>
-// «Статья расхода» показывается только когда указана ненулевая сумма затрат.
+// «Оплата расходов» и «Статья расхода» показываются только при ненулевой сумме затрат.
 (function () {
   function sync(inp) {
     var form = inp.closest('form'); if (!form) return;
-    var cat = form.querySelector('.js-expense-cat'); if (!cat) return;
-    var v = parseFloat((inp.value || '0').replace(',', '.'));
-    cat.style.display = (v > 0) ? '' : 'none';
+    var on = parseFloat((inp.value || '0').replace(',', '.')) > 0;
+    Array.prototype.forEach.call(form.querySelectorAll('.js-expense-money'), function (box) {
+      box.style.display = on ? '' : 'none';
+    });
+    // Статья обязательна вместе с суммой, но required на скрытом поле не даёт отправить форму.
+    var cat = form.querySelector('select[name="expense_category_id"]');
+    if (cat) { if (on) { cat.setAttribute('required', 'required'); } else { cat.removeAttribute('required'); } }
   }
   Array.prototype.forEach.call(document.querySelectorAll('.js-spent'), function (inp) {
     sync(inp);

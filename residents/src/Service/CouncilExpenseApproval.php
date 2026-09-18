@@ -8,10 +8,14 @@ use SkazResidents\Repository\{CouncilTaskRepository, CouncilLedgerRepository, Co
 /**
  * Одобрение расходов по задачам Совета казначеем (Сергей Шубин) через бота.
  *
- * Поток: задача с суммой (spent) и статьёй расхода (expense_category_id),
- * отмеченная «выполнена», уходит казначею в Telegram с кнопками «Одобрить»/
- * «Отклонить». Расход попадает в бюджет (council_ledger_entries) ТОЛЬКО после
- * «Одобрить»; «Отклонить» — исполнителю уходит уведомление.
+ * Поток: задача с суммой (spent) и статьёй расхода (expense_category_id) уходит
+ * казначею в Telegram с кнопками «Одобрить»/«Отклонить». Расход попадает в бюджет
+ * (council_ledger_entries) ТОЛЬКО после «Одобрить»; «Отклонить» — исполнителю
+ * уходит уведомление.
+ *
+ * Момент запроса задаёт council_tasks.expense_timing:
+ *   post (по умолчанию) — возмещение расходов: запрос уходит, когда задача отмечена «выполнена»;
+ *   pre                 — финансирование предоплаты: запрос уходит сразу, как задача сохранена.
  *
  * council_tasks.expense_status: none → pending → approved | rejected.
  * Единственная точка записи расхода задачи в бюджет — sync() (гейт по approved).
@@ -30,6 +34,22 @@ final class CouncilExpenseApproval
         return (float) ($task['spent'] ?? 0) > 0 && (int) ($task['expense_category_id'] ?? 0) > 0;
     }
 
+    /** Предоплата: деньги нужны заранее, запрос казначею не ждёт выполнения задачи. */
+    public function isPrepaid(array $task): bool
+    {
+        return (string) ($task['expense_timing'] ?? 'post') === 'pre';
+    }
+
+    /**
+     * По задаче настал момент просить деньги: расход указан (сумма + статья) и
+     * предоплата — сразу, постоплата — только когда задача выполнена.
+     */
+    public function needsRequest(array $task): bool
+    {
+        if (!$this->hasExpense($task)) { return false; }
+        return $this->isPrepaid($task) || (string) $task['status'] === 'выполнена';
+    }
+
     /**
      * Синхронизировать расход задачи с бюджетом. Операция создаётся/обновляется
      * ТОЛЬКО когда расход одобрен; иначе удаляется. Вызывается после любого
@@ -40,10 +60,9 @@ final class CouncilExpenseApproval
         $task = $this->tasks->find($taskId);
         if (!$task) { $this->ledger->deleteByTask($taskId); return; }
 
-        // Висящий запрос на одобрение больше не актуален (задачу вернули в работу
-        // или убрали расход) — переписать сообщение казначею и снять pending.
-        if ((string) ($task['expense_status'] ?? '') === 'pending'
-            && !($this->hasExpense($task) && (string) $task['status'] === 'выполнена')) {
+        // Висящий запрос на одобрение больше не актуален (убрали расход, задачу
+        // с постоплатой вернули в работу) — переписать сообщение казначею и снять pending.
+        if ((string) ($task['expense_status'] ?? '') === 'pending' && !$this->needsRequest($task)) {
             $this->cancelPending($taskId, 'запрос отменён: условия задачи изменились');
             $task = $this->tasks->find($taskId);
             if (!$task) { $this->ledger->deleteByTask($taskId); return; }
@@ -64,16 +83,16 @@ final class CouncilExpenseApproval
     }
 
     /**
-     * Если задача выполнена и имеет расход (сумма + статья), ещё не одобренный и не
-     * отправленный на одобрение — пометить pending и отправить казначею запрос с
-     * кнопками. true — запрос отправлен; false — не требуется или казначей
+     * Если по задаче настал момент просить деньги (см. needsRequest) и расход ещё не
+     * одобрен и не отправлен на одобрение — пометить pending и отправить казначею
+     * запрос с кнопками. true — запрос отправлен; false — не требуется или казначей
      * недоступен (статус pending всё равно выставлен, расход ждёт одобрения).
      */
     public function requestIfNeeded(int $taskId): bool
     {
         $task = $this->tasks->find($taskId);
         if (!$task) { return false; }
-        if ((string) $task['status'] !== 'выполнена' || !$this->hasExpense($task)) { return false; }
+        if (!$this->needsRequest($task)) { return false; }
         $status = (string) ($task['expense_status'] ?? 'none');
         if ($status === 'approved' || $status === 'pending') { return false; }
 
@@ -119,9 +138,12 @@ final class CouncilExpenseApproval
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $amount = number_format((float) $task['spent'], 0, '.', ' ');
-        $text = 'Задача: ' . $e((string) ($task['title'] ?? '')) . "\n"
+        // Предоплата — просьба профинансировать предстоящие траты, постоплата — возместить понесённые.
+        $pre = $this->isPrepaid($task);
+        $text = ($pre ? '💰 Запрос на финансирование (предоплата)' : '💰 Запрос на возмещение расходов (постоплата)') . "\n"
+              . ($pre ? 'Создана задача: ' : 'Выполнена задача: ') . $e((string) ($task['title'] ?? '')) . "\n"
               . 'Исполнитель: ' . $e(trim((string) ($task['assignee'] ?? '')) ?: '—') . "\n"
-              . 'Расходы: ' . $e($amount) . ' руб.';
+              . ($pre ? 'Предстоящие расходы: ' : 'Расходы: ') . $e($amount) . ' руб.';
         $id = (int) $task['id'];
         $keyboard = (string) json_encode(['inline_keyboard' => [[
             ['text' => '✅ Одобрить',  'callback_data' => "x:{$id}:approve"],
@@ -182,9 +204,11 @@ final class CouncilExpenseApproval
         if (!$member || empty($member['telegram_id'])) { return; }
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $text = 'Ваш запрос на возмещение расходов по выполнению Задачи «'
+        $text = ($this->isPrepaid($task)
+                    ? 'Ваш запрос на финансирование предоплаты по Задаче «'
+                    : 'Ваш запрос на возмещение расходов по выполнению Задачи «')
               . $e((string) ($task['title'] ?? '')) . '» отклонён. '
-              . 'Свяжитесь с Сергеем Шубиным, чтобы уточнить детали.';
+              . 'Свяжитесь с ' . $e($this->approverName()) . ', чтобы уточнить детали.';
 
         $this->finishRequest();
         TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text, 'HTML');

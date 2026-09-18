@@ -9,7 +9,8 @@ use SkazResidents\Service\CouncilExpenseApproval;
 
 /**
  * Одобрение расходов задач Совета: расход попадает в бюджет только после approve,
- * reject убирает его, запрос шлётся лишь у выполненной задачи с суммой и статьёй.
+ * reject убирает его. Запрос казначею при постоплате шлётся у выполненной задачи
+ * с суммой и статьёй, при предоплате — сразу, не дожидаясь выполнения.
  * Telegram не дёргается — в тестах Config пуст, botToken='' (отправка пропускается).
  */
 final class CouncilExpenseApprovalTest extends TestCase
@@ -32,13 +33,13 @@ final class CouncilExpenseApprovalTest extends TestCase
     {
         $d = array_merge([
             'title' => 'Купить лопаты', 'assignee' => 'Иван Иванов', 'author' => 'Совет',
-            'status' => 'выполнена', 'spent' => 1500, 'cat' => 1, 'exp' => 'none',
+            'status' => 'выполнена', 'spent' => 1500, 'cat' => 1, 'exp' => 'none', 'timing' => 'post',
         ], $over);
         $st = $this->pdo->prepare(
-            "INSERT INTO council_tasks (title, assignee, author, status, progress, spent, expense_category_id, expense_status)
-             VALUES (?, ?, ?, ?, 100, ?, ?, ?)"
+            "INSERT INTO council_tasks (title, assignee, author, status, progress, spent, expense_category_id, expense_timing, expense_status)
+             VALUES (?, ?, ?, ?, 100, ?, ?, ?, ?)"
         );
-        $st->execute([$d['title'], $d['assignee'], $d['author'], $d['status'], $d['spent'], $d['cat'], $d['exp']]);
+        $st->execute([$d['title'], $d['assignee'], $d['author'], $d['status'], $d['spent'], $d['cat'], $d['timing'], $d['exp']]);
         return (int) $this->pdo->lastInsertId();
     }
 
@@ -85,6 +86,51 @@ final class CouncilExpenseApprovalTest extends TestCase
         $id = $this->task(['status' => 'в работе']);
         $this->assertFalse($this->svc->requestIfNeeded($id));
         $this->assertSame('none', $this->statusOf($id));
+    }
+
+    public function test_prepaid_request_sent_before_completion(): void
+    {
+        $id = $this->task(['status' => 'новая', 'timing' => 'pre']);
+        $this->svc->requestIfNeeded($id);
+        $this->assertSame('pending', $this->statusOf($id), 'предоплата просится сразу, не дожидаясь выполнения');
+    }
+
+    public function test_prepaid_request_skipped_when_no_category(): void
+    {
+        $id = $this->task(['status' => 'новая', 'timing' => 'pre', 'cat' => null]);
+        $this->assertFalse($this->svc->requestIfNeeded($id));
+        $this->assertSame('none', $this->statusOf($id));
+    }
+
+    public function test_prepaid_pending_survives_work_in_progress(): void
+    {
+        $id = $this->task(['status' => 'новая', 'timing' => 'pre', 'exp' => 'pending']);
+        $this->setMsg($id, '777', 42);
+        (new CouncilTaskRepository())->updateFields($id, ['status' => 'в работе'], date('Y-m-d H:i:s'));
+
+        $this->svc->sync($id);
+
+        $this->assertSame('pending', $this->statusOf($id), 'запрос на предоплату не протухает от смены статуса');
+        $this->assertSame(['777', 42], $this->msgOf($id), 'сообщение казначею остаётся живым');
+    }
+
+    public function test_prepaid_approve_puts_expense_in_ledger_before_completion(): void
+    {
+        $id = $this->task(['status' => 'в работе', 'timing' => 'pre', 'exp' => 'pending']);
+        $this->assertTrue($this->svc->approve($id));
+        $entry = (new CouncilLedgerRepository())->findByTask($id);
+        $this->assertNotNull($entry, 'одобренная предоплата ложится в бюджет сразу');
+        $this->assertSame(1500.0, (float) $entry['amount']);
+    }
+
+    public function test_prepaid_request_not_repeated_after_completion(): void
+    {
+        $id = $this->task(['status' => 'новая', 'timing' => 'pre']);
+        $this->svc->requestIfNeeded($id);
+        (new CouncilTaskRepository())->updateFields($id, ['status' => 'выполнена'], date('Y-m-d H:i:s'));
+
+        $this->assertFalse($this->svc->requestIfNeeded($id), 'второй раз деньги по той же задаче не просим');
+        $this->assertSame('pending', $this->statusOf($id));
     }
 
     public function test_approve_puts_expense_in_ledger(): void

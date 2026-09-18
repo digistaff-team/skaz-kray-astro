@@ -2,7 +2,7 @@
 <div class="water-overlay" id="waterOverlay" hidden>
     <div class="water-card" role="dialog" aria-modal="true" aria-label="Уровень воды в Шебше">
         <button type="button" class="water-close" id="waterClose" aria-label="Закрыть" title="Закрыть">&times;</button>
-        <h2 class="water-title">Шебш у моста</h2>
+        <h2 class="water-title">Река Шебш</h2>
         <!-- Содержимое подгружается при первом открытии: замер спрашивать на каждой
              странице портала не нужно (так же лениво, как картинка карты). -->
         <div class="water-content" id="waterContent"><p class="water-empty">Смотрим уровень…</p></div>

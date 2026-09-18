@@ -16,7 +16,7 @@ use SkazResidents\View;
     </div>
     <p class="water-meta">
         Уровень <?= View::e($water['levelLabel']) ?> БСВ · <?= View::e($water['changeLabel']) ?><br>
-        замер в <?= View::e($water['measuredAt']) ?> МСК
+        Прошлый замер был в <?= View::e($water['measuredAt']) ?>
     </p>
 
     <?php if ($water['chart']): $c = $water['chart']; ?>
@@ -39,7 +39,7 @@ use SkazResidents\View;
     <?php endif; ?>
 
     <p class="water-note">
-        Данные гидропоста на Шебше, замер раз в час.
+        Данные гидропоста на мосту, замер каждый час
         <a href="https://shebsh-water-level.vercel.app" target="_blank" rel="noopener">Подробный график</a>
     </p>
 <?php endif; ?>

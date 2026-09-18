@@ -20,7 +20,10 @@ return [
     // не хранится в этом файле. chat_id группы и ссылка — не секреты, можно тут.
     'telegram' => [
         'bot_token'     => getenv('SKAZKRAY_BOT_TOKEN') ?: '',
-        'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
+        // Канал оповещений об уровне воды в Шебше (бот должен быть его администратором).
+    // Не задан — сообщения уйдут в общий чат жителей (group_chat_id).
+    'water_alert_chat_id' => '-1002339206250',
+    'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
         'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
         // Секрет webhook бота (X-Telegram-Bot-Api-Secret-Token) для кнопок под
         // уведомлениями о задачах. Задаётся при setWebhook (bin/council-set-webhook.php).

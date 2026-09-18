@@ -156,17 +156,31 @@ final class WaterAlertTest extends TestCase
         $this->assertSame('calm', $this->state->state()['status']);
     }
 
-    public function test_ignores_implausible_jump(): void
+    public function test_ignores_jump_towards_calm_water(): void
     {
         $this->measure('2026-09-18 10:00:00', 120.0);
         $this->alert()->check('2026-09-18 10:05:00');
         $this->sent = [];
 
-        // Источник уехал на 9 метров — так шкала не меняется, это сбой.
+        // Источник уехал на 9 метров «в безопасную сторону» — ложный отбой не даём.
         $this->measure('2026-09-18 11:00:00', 1000.0);
         $this->assertNull($this->alert()->check('2026-09-18 11:05:00'));
-        $this->assertSame([], $this->sent, 'ложная тревога хуже пропущенной строки в логе');
+        $this->assertSame([], $this->sent, 'ложный отбой опаснее лишней строки в логе');
         $this->assertSame('calm', $this->state->state()['status'], 'состояние всё равно догоняет источник');
+    }
+
+    public function test_warns_despite_jump_when_water_rises_fast(): void
+    {
+        $this->measure('2026-09-18 10:00:00', 800.0);
+        $this->alert()->check('2026-09-18 10:05:00');
+
+        // Ливневый паводок: вода поднялась на 7 метров за час. Молчать нельзя.
+        $this->measure('2026-09-18 11:00:00', 30.0, 700.0);
+        $text = $this->alert()->check('2026-09-18 11:05:00');
+
+        $this->assertNotNull($text, 'быстрый подъём — это и есть повод написать');
+        $this->assertStringContainsString('Вода у моста', $text);
+        $this->assertStringContainsString('проверьте обстановку лично', $text, 'скачок оговариваем');
     }
 
     public function test_silent_without_history(): void

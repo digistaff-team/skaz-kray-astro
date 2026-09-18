@@ -15,17 +15,21 @@ use SkazResidents\Repository\{WaterAlertRepository, WaterLevelRepository};
  *   — вода отступила до calm — отбой, один раз.
  * В остальных случаях молчим: иначе сообщение уходило бы каждый час.
  *
- * Скачок уровня больше JUMP_GUARD_CM за один шаг считаем сбоем источника
- * (у AllRivers уже менялась привязка шкалы) и не оповещаем, только пишем в лог:
- * ложная тревога хуже пропущенной строки в журнале. Поэтому состояние
- * запоминается на каждом замере, даже когда в группу не пишем, — иначе сравнивать
- * было бы не с чем до первой тревоги.
+ * Скачок уровня больше JUMP_GUARD_CM за один шаг — повод не верить источнику
+ * на слово (у AllRivers уже менялась привязка шкалы). Но замалчивать такой скачок
+ * нельзя: ливневый паводок в горах поднимает воду быстро, и это ровно тот случай,
+ * ради которого всё затевалось. Поэтому при скачке к опасной обстановке пишем в
+ * группу с пометкой «проверьте лично», а при скачке к спокойной — молчим: ложный
+ * отбой хуже лишней строки в логе.
+ *
+ * Состояние запоминается на каждом замере, даже когда в группу не пишем, — иначе
+ * сравнивать было бы не с чем до первой тревоги.
  */
 final class WaterAlert
 {
     /** Повтор сообщения, пока держится тревога, часов. */
     private const REPEAT_HOURS = 6;
-    /** Недоверчивость к источнику: скачок больше этого за шаг — сбой, см. */
+    /** Скачок больше этого за шаг — верим с оговоркой (см. докблок), см. */
     private const JUMP_GUARD_CM = 300;
 
     /** @var (callable(string):void)|null подмена отправки для тестов */
@@ -53,14 +57,19 @@ final class WaterAlert
         $status = $this->water->status($this->water->bridgeGapCm($level));
         $prev   = $this->state->state();
 
-        if ($prev !== null && abs($level - (float) $prev['level_cm']) > self::JUMP_GUARD_CM) {
+        $jumped = $prev !== null && abs($level - (float) $prev['level_cm']) > self::JUMP_GUARD_CM;
+        if ($jumped) {
             error_log(sprintf(
-                'WaterAlert: скачок уровня %.2f → %.2f см, похоже на сбой источника — не оповещаем',
+                'WaterAlert: скачок уровня %.2f → %.2f см — %s',
                 (float) $prev['level_cm'],
-                $level
+                $level,
+                $status === 'calm' ? 'молчим, похоже на сбой источника' : 'оповещаем с оговоркой'
             ));
-            $this->state->remember($status, $level);
-            return null;
+            // Скачок «улучшил» картину — отбой по такому замеру не даём.
+            if ($status === 'calm') {
+                $this->state->remember($status, $level);
+                return null;
+            }
         }
 
         if (!$this->shouldNotify($status, $prev, $now)) {
@@ -68,7 +77,7 @@ final class WaterAlert
             return null;
         }
 
-        $text = $this->message($status, $level, (float) $row['change_24h']);
+        $text = $this->message($status, $level, (float) $row['change_24h'], $jumped);
         $this->send($text);
         $this->state->remember($status, $level, $now);
         return $text;
@@ -92,12 +101,17 @@ final class WaterAlert
         return true;   // и ухудшение, и отбой достойны сообщения
     }
 
-    private function message(string $status, float $levelCm, float $changeCm): string
+    private function message(string $status, float $levelCm, float $changeCm, bool $suspect = false): string
     {
         $gap = $this->water->bridgeGapCm($levelCm);
         $gapText = $this->water->formatDistance(abs($gap));
         $tail = 'Уровень ' . $this->water->formatMeters($this->water->bsv($levelCm), 2) . ' БСВ, '
               . $this->water->changeLabel($changeCm) . '.';
+
+        // Замер после резкого скачка мог прийти и от сбоя источника — просим проверить.
+        if ($suspect) {
+            $tail .= ' Уровень изменился скачком — проверьте обстановку лично.';
+        }
 
         if ($gap <= 0) {
             return "\u{1F6A8} Мост под водой: уровень выше нижней кромки на {$gapText}. {$tail}";
@@ -109,14 +123,21 @@ final class WaterAlert
         };
     }
 
-    /** Группа жителей в Telegram и в MAX (адреса — в config.php). */
+    /**
+     * Канал оповещений в Telegram и группа в MAX (адреса — в config.php).
+     * Отдельный ключ telegram.water_alert_chat_id: про воду пишем в свой канал,
+     * а не в общий чат жителей. Не задан — падаем обратно на общий чат.
+     */
     private function send(string $text): void
     {
         if ($this->sender !== null) { ($this->sender)($text); return; }
 
         $tg = Config::get('telegram');
         $tgToken = is_array($tg) ? (string) ($tg['bot_token'] ?? '') : '';
-        $tgChat  = is_array($tg) ? (string) ($tg['group_chat_id'] ?? '') : '';
+        $tgChat  = is_array($tg) ? (string) ($tg['water_alert_chat_id'] ?? '') : '';
+        if ($tgChat === '') {
+            $tgChat = is_array($tg) ? (string) ($tg['group_chat_id'] ?? '') : '';
+        }
         if ($tgToken !== '' && $tgChat !== '') {
             TelegramBot::sendMessage($tgToken, $tgChat, $text);
         }

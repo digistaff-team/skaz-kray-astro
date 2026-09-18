@@ -10,7 +10,7 @@ use SkazResidents\View;
         <a class="res-btn res-btn--ghost" href="/poselenie/zakupki/moi">Мои закупки</a>
     </div>
 </div>
-<p class="res-meta">Оптовая цена начинается с объёма, который одной семье не нужен. Здесь соседи складываются в один заказ: смотрите, что собирают, и записывайтесь своим количеством.</p>
+<p class="res-meta">Оптовая цена начинается с объёма, который одной семье не нужен. Здесь соседи объединяют свои заказы и получают нужное количество по выгодной цене.</p>
 
 <form class="tool-filters" method="get" action="/poselenie/zakupki">
     <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Товар, категория или поставщик">

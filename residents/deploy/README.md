@@ -41,42 +41,30 @@ nginx -t && systemctl reload nginx
 дополнительных `--exclude` не требуется.
 
 ## 6. Обновление кода
-Локально (Linux/macOS): `bash residents/deploy/deploy.sh`
+```bash
+bash residents/deploy/deploy.sh             # выкатить
+bash residents/deploy/deploy.sh --dry-run   # только посмотреть, что уедет и что удалится
+```
+Работает и с Windows (Git Bash), и с Linux/macOS: `rsync` не нужен — дерево уезжает
+архивом через `ssh`. Скрипт сам:
 
-### 6a. Деплой с Windows (нет `rsync`/`composer` локально)
-`deploy.sh` требует `rsync` локально и `composer` в PATH **на сервере** — на
-машине с Git Bash под Windows нет первого, на сервере нет второго (там только
-`/root/composer.phar`). Обходной путь:
+- отправляет весь код, кроме `config/config.php`, `config/.env`, `public/uploads/`,
+  `vendor/`, `tests/`, `.phpunit.cache/` и `.git/`;
+- удаляет на сервере файлы, которых больше нет в проекте (аналог `rsync --delete`).
+  Если «лишних» набралось больше десятой части дерева, чистка пропускается — это
+  почти всегда сбой сверки, а не правда. Посмотрите `--dry-run` и, если удаление
+  верное, повторите с `FORCE_DELETE=1 bash residents/deploy/deploy.sh`;
+- пересобирает автозагрузчик: `composer` из PATH, а если его нет (как на нашем
+  сервере) — `php8.3 /root/composer.phar`;
+- возвращает всему дереву владельца `www-data:www-data` (архив приезжает с Windows,
+  где владельца нет, а `config.php` читается только этим пользователем).
 
-- **Мелкая правка (без новых классов, без изменений `composer.json`, без миграций)** —
-  скопировать изменённые файлы точечно и вернуть владельца. `composer` при этом
-  не нужен (автозагрузчик пересобирать нечего), схему БД не трогаем:
-  ```bash
-  D=/var/www/skaz-residents
-  scp residents/src/.../Файл.php abconsult:$D/src/.../Файл.php
-  ssh abconsult "chown www-data:www-data $D/src/.../Файл.php"
-  ```
-  Файлы в бою должны остаться `www-data:www-data` (копирование от root делает их
-  root:root — поэтому `chown` обязателен).
+**OPcache** перезагружать не нужно: на сервере `opcache.validate_timestamps=On`,
+байткод перечитывается по mtime изменённых файлов — поэтому деплой не трогает
+PHP-FPM. Новые `.sql`-миграции деплой НЕ применяет: их накатывают вручную от root
+(см. разделы про соответствующие схемы).
 
-- **Крупная правка (новые классы/файлы, смена зависимостей)** — синхронизировать
-  всё дерево через `tar` (аналог rsync, но без `--delete`) и пересобрать
-  автозагрузчик phar-ом:
-  ```bash
-  tar -C residents -cf - \
-    --exclude=vendor --exclude=.phpunit.cache --exclude=public/uploads \
-    --exclude=tests --exclude=config/config.php --exclude=config/.env . \
-    | ssh abconsult 'tar -x -C /var/www/skaz-residents'
-  ssh abconsult 'cd /var/www/skaz-residents && php8.3 /root/composer.phar install --no-dev --optimize-autoloader'
-  ssh abconsult 'chown -R www-data:www-data /var/www/skaz-residents'
-  ```
-
-- **OPcache** перезагружать не нужно: на сервере `opcache.validate_timestamps=On`,
-  байткод перечитывается по mtime изменённых файлов (поэтому и штатный `deploy.sh`
-  не трогает PHP-FPM). Новые `.sql`-миграции, если они есть в правке, накатываются
-  вручную (см. разделы про соответствующие схемы) — деплой их не применяет.
-
-### 6b. Тесты (PHP только на сервере)
+### 6a. Тесты (PHP только на сервере)
 Локально PHP нет — прогон в изолированной папке на сервере (рабочее дерево, а не
 только закоммиченное):
 ```bash

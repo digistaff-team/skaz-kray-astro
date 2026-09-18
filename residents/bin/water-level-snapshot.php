@@ -11,6 +11,10 @@ declare(strict_types=1);
  * чужой /api/history живёт в Vercel KV и уже отдавал 502. Повторный запуск в
  * тот же час не плодит строки (первичный ключ measured_at).
  *
+ * После записи решает, оповещать ли группу жителей о подходе воды к мосту
+ * (SkazResidents\Service\WaterAlert): сообщение уходит на ухудшении обстановки,
+ * на отбое и, пока держится тревога, не чаще раза в несколько часов.
+ *
  * Флаг: --dry-run (спросить источник и показать, ничего не записывая).
  *
  * Запуск: php8.3 bin/water-level-snapshot.php [--dry-run]
@@ -19,7 +23,7 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 use SkazResidents\{Config, Database, Env};
-use SkazResidents\Service\WaterLevel;
+use SkazResidents\Service\{WaterAlert, WaterLevel};
 
 $dryRun = in_array('--dry-run', $argv, true);
 
@@ -60,3 +64,6 @@ echo $stamp(sprintf(
     $water->bsv($data['level_cm']),
     $water->bridgeGapCm($data['level_cm']) / 100
 )) . PHP_EOL;
+
+$alert = (new WaterAlert($water))->check($now);
+echo $stamp($alert !== null ? 'оповещение в группу: ' . $alert : 'оповещать не о чем') . PHP_EOL;

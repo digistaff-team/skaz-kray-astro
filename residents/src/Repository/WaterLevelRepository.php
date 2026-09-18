@@ -40,6 +40,15 @@ final class WaterLevelRepository
         $st->execute([$hour, $levelCm, $change24h]);
     }
 
+    /** Есть ли уже замер за этот час ('Y-m-d H:i:s'). Нужен импортёру для отчёта. */
+    public function has(string $measuredAt): bool
+    {
+        $hour = substr($measuredAt, 0, 13) . ':00:00';
+        $st = $this->db->prepare('SELECT 1 FROM water_level_history WHERE measured_at = ?');
+        $st->execute([$hour]);
+        return $st->fetchColumn() !== false;
+    }
+
     /** Последний замер или null, если история пуста. @return array<string,mixed>|null */
     public function latest(): ?array
     {

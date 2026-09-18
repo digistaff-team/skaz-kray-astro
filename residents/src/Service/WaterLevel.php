@@ -213,7 +213,7 @@ final class WaterLevel
         $url = (string) (Config::get('water_level_api', 'https://shebsh-water-level.vercel.app/api/water-level')
             ?: 'https://shebsh-water-level.vercel.app/api/water-level');
 
-        $raw = $this->httpGet($url);
+        $raw = self::httpGet($url);
         if ($raw === null) { return null; }
 
         $data = json_decode($raw, true);
@@ -227,7 +227,8 @@ final class WaterLevel
         ];
     }
 
-    private function httpGet(string $url, int $timeout = 4): ?string
+    /** GET с коротким таймаутом. Публичный: тем же способом тянет архив импортёр. */
+    public static function httpGet(string $url, int $timeout = 4): ?string
     {
         if (function_exists('curl_init')) {
             $ch = curl_init($url);

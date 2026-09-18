@@ -386,6 +386,9 @@ body.map-open { overflow: hidden; }
 .app-hello { display: flex; flex-direction: column; line-height: 1.2; }
 .app-hello b { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: #036844; }
 .app-hello span { font-size: 13px; color: var(--muted); }
+/* Две иконки в хедере главной (уровень воды и карта) держатся вместе справа. */
+.app-head-actions { margin-left: auto; flex: none; display: flex; gap: 2px; }
+.app-head-actions .app-map { margin-left: 0; }
 .app-map { margin-left: auto; flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
            background: none; border: 0; border-radius: 10px; font-size: 24px; line-height: 1; color: var(--green); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .app-map svg { display: block; }
@@ -559,6 +562,32 @@ body.map-open { overflow: hidden; }
 .res-form .sovet-money-row > label { flex: 1 1 100%; margin-top: .8rem; }
 .res-form .sovet-money-row.has-timing > .sovet-money-spent { flex: 1 1 8rem; }
 .res-form .sovet-money-row.has-timing > .sovet-money-timing { flex: 1 1 11rem; }
+
+/* Уровень воды в Шебше: модалка по иконке-капле в хедере главной приложения.
+   Крупная цифра — запас до нижней кромки моста, под ней спарклайн за 30 суток. */
+.water-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 22, 20, .92);
+                 display: flex; align-items: center; justify-content: center; padding: 16px; }
+.water-overlay[hidden] { display: none; }
+body.water-open { overflow: hidden; }
+.water-card { position: relative; width: 100%; max-width: 420px; background: #fff; border-radius: 16px; padding: 18px; }
+.water-close { position: absolute; top: 4px; right: 6px; width: 38px; height: 38px; background: none; border: 0;
+               font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; }
+.water-title { margin: 0 6px 12px 0; font-size: 20px; }
+.water-gap { display: flex; flex-direction: column; line-height: 1.1; }
+.water-gap b { font-family: var(--font-head); font-size: 40px; }
+.water-gap span { font-size: 14px; color: var(--muted); }
+.water-gap--calm b { color: var(--green); }
+.water-gap--watch b { color: var(--ochre); }
+.water-gap--alert b { color: #b3261e; }
+.water-meta { margin: 10px 0 12px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+.water-chart { display: block; width: 100%; height: auto; }
+.water-chart-area { fill: #dbeef7; }
+.water-chart-line { fill: none; stroke: #0284c7; stroke-width: 2; stroke-linejoin: round; }
+.water-chart-mark { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 4 3; }
+.water-chart-mark-label { font-size: 7px; fill: #b3261e; }
+.water-axis { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.water-note { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+.water-empty { margin: 0; font-size: 15px; color: var(--muted); }
 
 /* «Общий дом»: две крупные опции-карточки (бронирование и отчёт) */
 .house-options { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }

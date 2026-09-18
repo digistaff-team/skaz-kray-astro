@@ -36,6 +36,7 @@ use SkazResidents\Controller\Council\BotWebhookController as CouncilBotWebhookCo
 use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
+use SkazResidents\Controller\WaterLevelController;
 
 $router = new Router();
 
@@ -220,6 +221,10 @@ $router->get('/poselenie/byudzhet', [$budget, 'index']);
 $app = new AppController();
 $router->get('/poselenie/app', [$app, 'home']);
 $router->get('/poselenie/offline', [$app, 'offline']);
+// Панель «Уровень воды в Шебше» — фрагмент для модалки на главной приложения.
+$waterLevel = new WaterLevelController();
+$router->get('/poselenie/uroven-vody', [$waterLevel, 'panel']);
+
 $pwa = new PwaController();
 $router->get('/poselenie/manifest.webmanifest', [$pwa, 'manifest']);
 $router->get('/poselenie/manifest-sovet.webmanifest', [$pwa, 'manifestSovet']);

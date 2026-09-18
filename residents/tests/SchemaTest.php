@@ -21,6 +21,7 @@ final class SchemaTest extends TestCase
                 'login_attempts', 'password_resets', 'products',
                 'purchase_orders', 'purchases', 'residents',
                 'tool_loans', 'tools', 'trip_bookings', 'trips',
+                'water_level_history',
             ],
             $names
         );

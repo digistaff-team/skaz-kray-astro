@@ -284,3 +284,9 @@ CREATE TABLE purchase_orders (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (purchase_id, family_id)
 );
+
+CREATE TABLE water_level_history (
+    measured_at TEXT NOT NULL PRIMARY KEY,
+    level_cm REAL NOT NULL,
+    change_24h REAL NOT NULL DEFAULT 0
+);

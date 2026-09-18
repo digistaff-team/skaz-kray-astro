@@ -6,7 +6,10 @@
       <b>Сказочный Край</b>
       <span><?= View::e($me) ?></span>
     </div>
-    <button type="button" class="app-map js-map-open" aria-label="Карта поселения" title="Карта поселения"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></button>
+    <div class="app-head-actions">
+      <button type="button" class="app-map js-water-open" aria-label="Уровень воды в Шебше" title="Уровень воды в Шебше"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c3.2 3.6 5.5 6.9 5.5 9.8a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-9.8Z"/><path d="M9.4 13.8a2.8 2.8 0 0 0 2.6 2.7"/></svg></button>
+      <button type="button" class="app-map js-map-open" aria-label="Карта поселения" title="Карта поселения"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></button>
+    </div>
   </div>
 
   <?php $d = $dash['diary']; ?>
@@ -51,6 +54,7 @@
 </div>
 
 <?php require __DIR__ . '/../partials/map.php'; ?>
+<?php require __DIR__ . '/../partials/water.php'; ?>
 
 <script>
 (function () {

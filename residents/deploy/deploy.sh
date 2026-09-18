@@ -19,6 +19,8 @@ DRY=""
 # иначе разные локали дадут разный порядок и comm сочтёт совпадающие файлы лишними.
 SKIP="-path ./vendor -o -path ./tests -o -path ./public/uploads -o -path ./.phpunit.cache"
 SKIP="$SKIP -o -path ./.git -o -path ./config/config.php -o -path ./config/.env"
+# Резервные копии рядом с конфигом (config.php.bak-…) — не наши файлы, но сносить их нельзя.
+SKIP="$SKIP -o -name *.bak -o -name *.bak-*"
 
 cd "$SRC"
 LIST="$(eval "find . \\( $SKIP \\) -prune -o -type f -print" | LC_ALL=C sort)"

@@ -51,7 +51,10 @@ final class WaterLevelTest extends TestCase
     public function test_status_thresholds(): void
     {
         $this->assertSame('calm',  $this->svc->status(749.0));
+        $this->assertSame('calm',  $this->svc->status(300.0), 'ровно 3 м до кромки — ещё спокойно');
+        $this->assertSame('watch', $this->svc->status(299.0), 'ближе 3 м — предупреждаем');
         $this->assertSame('watch', $this->svc->status(120.0));
+        $this->assertSame('alert', $this->svc->status(100.0), 'метр до кромки — тревога');
         $this->assertSame('alert', $this->svc->status(40.0));
         $this->assertSame('alert', $this->svc->status(-10.0), 'мост под водой — тревога');
     }

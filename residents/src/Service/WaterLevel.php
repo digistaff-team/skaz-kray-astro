@@ -31,9 +31,13 @@ final class WaterLevel
     public const BRIDGE_CM = -300;      // (35.160 - 38.158) * 100
     public const HIGH_FLOOD_CM = -200;  // (36.160 - 38.158) * 100
 
-    /** Пороги запаса до моста для цвета панели, см. Ориентир, правится по опыту. */
-    private const CALM_GAP_CM  = 200;
-    private const WATCH_GAP_CM = 50;
+    /**
+     * Пороги запаса до кромки моста, см: ближе CALM — предупреждаем, ближе WATCH —
+     * тревога. Заданы по опыту жителей: предупреждать за 3 м, тревога за 1 м.
+     * Их же использует оповещение в канал (SkazResidents\Service\WaterAlert).
+     */
+    private const CALM_GAP_CM  = 300;
+    private const WATCH_GAP_CM = 100;
 
     /** Замер старше этого — при открытии панели спрашиваем источник заново, мин. */
     private const STALE_MINUTES = 90;

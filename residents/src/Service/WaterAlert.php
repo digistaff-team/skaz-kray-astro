@@ -77,10 +77,18 @@ final class WaterAlert
             return null;
         }
 
-        $text = $this->message($status, $level, (float) $row['change_24h'], $jumped);
+        $text = $this->message($status, $level, (float) $row['change_24h'], $jumped, $this->isImproving($status, $prev));
         $this->send($text);
         $this->state->remember($status, $level, $now);
         return $text;
+    }
+
+    /** Обстановка стала спокойнее, чем была: тексты пишем по направлению. @param array<string,mixed>|null $prev */
+    private function isImproving(string $status, ?array $prev): bool
+    {
+        if ($prev === null) { return false; }
+        $rank = ['calm' => 0, 'watch' => 1, 'alert' => 2];
+        return ($rank[$status] ?? 0) < ($rank[(string) $prev['status']] ?? 0);
     }
 
     /** @param array<string,mixed>|null $prev */
@@ -101,7 +109,7 @@ final class WaterAlert
         return true;   // и ухудшение, и отбой достойны сообщения
     }
 
-    private function message(string $status, float $levelCm, float $changeCm, bool $suspect = false): string
+    private function message(string $status, float $levelCm, float $changeCm, bool $suspect = false, bool $improving = false): string
     {
         $gap = $this->water->bridgeGapCm($levelCm);
         $gapText = $this->water->formatDistance(abs($gap));
@@ -118,7 +126,10 @@ final class WaterAlert
         }
         return match ($status) {
             'alert' => "\u{1F6A8} Вода у моста: до нижней кромки {$gapText}. {$tail}",
-            'watch' => "\u{26A0}\u{FE0F} Шебш поднимается: до нижней кромки моста {$gapText}. {$tail}",
+            // Тот же уровень «внимание» достигается и на подъёме, и на спаде — говорим, что происходит.
+            'watch' => $improving
+                ? "\u{1F30A} Вода отходит от моста: до нижней кромки {$gapText}. {$tail}"
+                : "\u{26A0}\u{FE0F} Шебш поднимается: до нижней кромки моста {$gapText}. {$tail}",
             default => "\u{2705} Вода отступила: до нижней кромки моста {$gapText}. {$tail}",
         };
     }

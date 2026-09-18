@@ -381,18 +381,29 @@ body.map-open { overflow: hidden; }
 
 /* ==== Мобильный лаунчер (PWA) ==== */
 .app-wrap { max-width: 460px; margin: 0 auto; }
-.app-head { display: flex; align-items: center; gap: 12px; padding: 4px 4px 16px; }
-.app-logo { width: 52px; height: 52px; border-radius: 10px; flex: none; }
-.app-hello { display: flex; flex-direction: column; line-height: 1.2; }
-.app-hello b { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: #036844; }
-.app-hello span { font-size: 13px; color: var(--muted); }
+.app-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 16px; }
+.app-logo { width: 48px; height: 48px; border-radius: 10px; flex: none; }
+/* min-width: 0 — длинное название поместья сжимается с многоточием, а не растягивает
+   строку и не выдавливает иконки; nowrap — «Сказочный Край» всегда одной строкой. */
+.app-hello { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.app-hello b { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: #036844;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-hello span { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Две иконки в хедере главной (уровень воды и карта) держатся вместе справа. */
-.app-head-actions { margin-left: auto; flex: none; display: flex; gap: 2px; }
+.app-head-actions { margin-left: auto; flex: none; display: flex; }
 .app-head-actions .app-map { margin-left: 0; }
-.app-map { margin-left: auto; flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+.app-map { margin-left: auto; flex: none; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
            background: none; border: 0; border-radius: 10px; font-size: 24px; line-height: 1; color: var(--green); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.app-map svg { display: block; }
+.app-map svg { display: block; width: 22px; height: 22px; }
 .app-map:hover, .app-map:active { background: #e7f2ec; }
+/* Совсем узкие экраны (до 360 px): уплотняем логотип, иконки и название, чтобы
+   строка оставалась одной и без многоточия. */
+@media (max-width: 360px) {
+  .app-hello b { font-size: 18px; }
+  .app-logo { width: 44px; height: 44px; }
+  .app-map { width: 36px; height: 36px; }
+  .app-map svg { width: 20px; height: 20px; }
+}
 
 .app-card { background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
 .app-card-body { padding: 16px 18px 6px; display: flex; flex-direction: column; gap: 2px; }

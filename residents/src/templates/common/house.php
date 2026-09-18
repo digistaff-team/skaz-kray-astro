@@ -4,18 +4,18 @@ use SkazResidents\View;
 ?>
 <?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Общий дом</h1>
-<p class="res-meta">Терем поселения: занять зал под встречу или праздник и посмотреть, куда уходят наши взносы.</p>
+<p class="res-meta">Забронируйте помещение в Тереме или посмотрите статистику по расходам на содержание Терема</p>
 
 <div class="house-options">
     <a class="res-card house-option" href="<?= View::e($bookingLink) ?>" id="houseBooking">
         <b>Бронирование помещений</b>
-        <span class="res-meta">Свободные часы и заявка на зал — в мини-приложении @SkazTerem_bot</span>
+        <span class="res-meta">Проверьте расписание и забронируйте нужное помещение на свободные часы</span>
     </a>
 
     <?php if ($budgetOpen): ?>
         <a class="res-card house-option" href="/poselenie/byudzhet">
             <b>Отчёт о расходах</b>
-            <span class="res-meta">Приход и расход по статьям — те же цифры, что ведёт Попечительский совет</span>
+            <span class="res-meta">Расходы на содержание Общего дома — учёт ведёт Попечительский совет</span>
         </a>
     <?php else: ?>
         <div class="res-card house-option house-option--off">

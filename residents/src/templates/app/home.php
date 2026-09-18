@@ -39,7 +39,7 @@
     <?php if (Sections::isEnabled('dnevniki')): ?><a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('instrumenty')): ?><a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a><?php endif; ?>
     <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
-    <?php if (Sections::isEnabled('obshchiy-dom')): ?><a class="app-tile" href="/poselenie/obshchiy-dom"><b>Общий<br>дом</b><span>бронирование и расходы</span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('obshchiy-dom')): ?><a class="app-tile" href="/poselenie/obshchiy-dom"><b>Общий дом</b><span>бронирование и отчёт</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('yarmarka')): ?><a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('zakupki')): ?><?php $bc = (int) ($dash['counts']['purchases'] ?? 0); ?><a class="app-tile" href="/poselenie/zakupki"><b>Закупки</b><span><?= $bc > 0 ? $bc . ' ' . View::e(plural_ru($bc, 'сбор идёт', 'сбора идёт', 'сборов идёт')) : 'оптом вскладчину' ?></span></a><?php endif; ?>
   </div>

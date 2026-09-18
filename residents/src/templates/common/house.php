@@ -4,7 +4,7 @@ use SkazResidents\View;
 ?>
 <?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Общий дом</h1>
-<p class="res-meta">Забронируйте помещение в Тереме или посмотрите статистику по расходам на содержание Терема</p>
+<p class="res-meta">Забронируйте помещение или посмотрите статистику по расходам на содержание Общего дома</p>
 
 <div class="house-options">
     <a class="res-card house-option" href="<?= View::e($bookingLink) ?>" id="houseBooking">

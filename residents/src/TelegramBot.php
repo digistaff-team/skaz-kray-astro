@@ -94,6 +94,20 @@ final class TelegramBot
         return false;
     }
 
+    /** Снять закрепление сообщения (старый закреп при замене — не удаляем, а откалываем). */
+    public static function unpinMessage(string $botToken, string $chatId, int $messageId): bool
+    {
+        if ($botToken === '' || $chatId === '') { return false; }
+        $raw = self::httpPost('https://api.telegram.org/bot' . $botToken . '/unpinChatMessage', http_build_query([
+            'chat_id'    => $chatId,
+            'message_id' => $messageId,
+        ]));
+        $data = $raw !== null ? json_decode($raw, true) : null;
+        if (is_array($data) && !empty($data['ok'])) { return true; }
+        error_log('TelegramBot::unpinMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+        return false;
+    }
+
     /**
      * Права бота в чате (getChatMember по самому себе) — чтобы заранее сказать,
      * сможет ли он закрепить сообщение, а не выяснять это по ошибке.

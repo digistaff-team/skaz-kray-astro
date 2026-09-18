@@ -22,6 +22,10 @@ use SkazResidents\{Config, Env, TelegramBot};
 
 $dryRun = in_array('--dry-run', $argv, true);
 $noPin  = in_array('--no-pin', $argv, true);
+// --unpin=<message_id> — открепить прежний закреп после публикации нового.
+// Именно открепить, а не удалить: сообщение остаётся в истории группы.
+$unpin = 0;
+foreach ($argv as $a) { if (str_starts_with($a, '--unpin=')) { $unpin = (int) substr($a, 8); } }
 
 Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
@@ -39,8 +43,7 @@ if ($token === '' || $chatId === '') {
 $text = implode(PHP_EOL, [
     'Приложение жителей ПРП «Сказочный Край»🍀',
     '',
-    'Дневники поместий, инструменты и книги, поездки, совместные закупки,',
-    'Общий дом, карта и справочник поместий — всё в одном приложении!😃👌🏻',
+    'Дневники поместий, инструменты и книги, поездки, совместные закупки, Общий дом, карта и справочник поместий — всё в одном приложении!😃👌🏻',
     '',
     $appLink,
 ]);
@@ -61,6 +64,16 @@ if ($me === null) {
     }
 }
 
+// Только открепить прежнее сообщение, ничего не публикуя.
+if (in_array('--only-unpin', $argv, true)) {
+    if ($unpin <= 0) { fwrite(STDERR, "Укажите --unpin=<message_id>\n"); exit(1); }
+    if ($dryRun) { echo "[DRY-RUN] Открепили бы сообщение {$unpin}.\n"; exit(0); }
+    echo TelegramBot::unpinMessage($token, $chatId, $unpin)
+        ? "Сообщение {$unpin} откреплено — оно осталось в истории группы.\n"
+        : "Открепить сообщение {$unpin} не удалось.\n";
+    exit(0);
+}
+
 if ($dryRun) {
     echo "[DRY-RUN] Ничего не отправлено.\n";
     exit(0);
@@ -78,3 +91,9 @@ if ($noPin) { exit(0); }
 echo TelegramBot::pinMessage($token, $chatId, $messageId)
     ? "Закреплено в группе.\n"
     : "Закрепить не удалось — проверьте право бота «Закреплять сообщения».\n";
+
+if ($unpin > 0) {
+    echo TelegramBot::unpinMessage($token, $chatId, $unpin)
+        ? "Прежний закреп ({$unpin}) откреплён — само сообщение осталось в истории группы.\n"
+        : "Открепить прежний закреп ({$unpin}) не удалось.\n";
+}

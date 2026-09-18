@@ -295,5 +295,5 @@ CREATE TABLE water_alert_state (
     id INTEGER NOT NULL PRIMARY KEY,
     status TEXT NOT NULL,
     level_cm REAL NOT NULL,
-    notified_at TEXT NOT NULL
+    notified_at TEXT
 );

@@ -17,7 +17,9 @@ use SkazResidents\Repository\{WaterAlertRepository, WaterLevelRepository};
  *
  * Скачок уровня больше JUMP_GUARD_CM за один шаг считаем сбоем источника
  * (у AllRivers уже менялась привязка шкалы) и не оповещаем, только пишем в лог:
- * ложная тревога хуже пропущенной строки в журнале.
+ * ложная тревога хуже пропущенной строки в журнале. Поэтому состояние
+ * запоминается на каждом замере, даже когда в группу не пишем, — иначе сравнивать
+ * было бы не с чем до первой тревоги.
  */
 final class WaterAlert
 {
@@ -57,12 +59,14 @@ final class WaterAlert
                 (float) $prev['level_cm'],
                 $level
             ));
-            // Состояние всё же обновляем, иначе на следующем шаге сравним с устаревшим уровнем.
-            $this->state->remember($status, $level, $now);
+            $this->state->remember($status, $level);
             return null;
         }
 
-        if (!$this->shouldNotify($status, $prev, $now)) { return null; }
+        if (!$this->shouldNotify($status, $prev, $now)) {
+            $this->state->remember($status, $level);
+            return null;
+        }
 
         $text = $this->message($status, $level, (float) $row['change_24h']);
         $this->send($text);
@@ -79,7 +83,9 @@ final class WaterAlert
         $was = (string) $prev['status'];
         if ($was === $status) {
             if ($status !== 'alert') { return false; }
-            $age = strtotime($now) - strtotime((string) $prev['notified_at']);
+            $lastSent = (string) ($prev['notified_at'] ?? '');
+            if ($lastSent === '') { return true; }      // состояние знали, а написать не успели
+            $age = strtotime($now) - strtotime($lastSent);
             return $age >= self::REPEAT_HOURS * 3600;   // тревога затянулась — напоминаем
         }
 

@@ -56,6 +56,24 @@ final class WaterAlertTest extends TestCase
 
         $this->assertNull($this->alert()->check('2026-09-18 10:05:00'));
         $this->assertSame([], $this->sent, 'о спокойной воде в группу не пишем');
+
+        $state = $this->state->state();
+        $this->assertSame('calm', $state['status'], 'но состояние запоминаем — по нему ловим скачок шкалы');
+        $this->assertNull($state['notified_at'], 'сообщений ещё не было');
+    }
+
+    public function test_silence_still_tracks_level(): void
+    {
+        $this->measure('2026-09-18 10:00:00', 700.0);
+        $this->alert()->check('2026-09-18 10:05:00');
+
+        $this->measure('2026-09-18 11:00:00', 650.0);
+        $this->assertNull($this->alert()->check('2026-09-18 11:05:00'));
+        $this->assertSame(
+            $this->levelForGap(650.0),
+            (float) $this->state->state()['level_cm'],
+            'уровень в состоянии догоняет свежий замер'
+        );
     }
 
     public function test_warns_when_water_approaches_bridge(): void

@@ -32,7 +32,7 @@ final class SectionGuardsTest extends TestCase
         foreach (glob(__DIR__ . '/../src/Controller/*.php') as $file) {
             $code .= file_get_contents($file);
         }
-        preg_match_all("/require(?:Section|Household)\('([a-z_]+)'\)/", $code, $m);
+        preg_match_all("/require(?:Section|Household)\('([a-z_-]+)'\)/", $code, $m);
 
         foreach (array_unique($m[1]) as $used) {
             $this->assertArrayHasKey($used, Sections::LIST, "Гард ссылается на неизвестный ключ раздела «{$used}»");

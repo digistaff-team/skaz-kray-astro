@@ -42,7 +42,7 @@
             <?php if (Sections::isEnabled('sosedi')): ?><a href="/poselenie/sosedi">Соседи</a><?php endif; ?>
             <a href="/poselenie/moye-pomestie">Наше поместье</a>
             <a href="/poselenie/app">Приложение</a>
-            <?php if (Sections::isEnabled('byudzhet')): ?><a href="/poselenie/byudzhet">Бюджет</a><?php endif; ?>
+            <?php if (Sections::isEnabled('obshchiy-dom')): ?><a href="/poselenie/obshchiy-dom">Общий дом</a><?php endif; ?>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>
             <?php if (Auth::isAdmin()): ?><a href="/poselenie/moderation/razdely">Разделы</a><?php endif; ?>
             <a href="/poselenie/vyhod">Выход</a>

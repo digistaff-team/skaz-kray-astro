@@ -55,6 +55,9 @@ return [
     // Ссылка, открывающая раздел Совета как Telegram Mini App — для рассылки
     // уведомления о встрече (bin/council-meeting-notify.php).
     'council_app_link' => 'https://t.me/SkazKray_bot/sovet',
+    // Бронирование помещений Общего дома — мини-приложение @SkazTerem_bot.
+    // Раздел «Общий дом» ведёт сюда; менять ссылку можно без правки кода.
+    'terem_booking_link' => 'https://t.me/SkazTerem_bot/booking',
     // Мини-приложение раздела жителей: база для диплинков в анонсах бота
     // (t.me/<бот>/<app>?startapp=<base64url пути внутри /poselenie/>).
     'residents_app_link' => 'https://t.me/SkazKray_bot/app',

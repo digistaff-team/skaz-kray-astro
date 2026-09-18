@@ -17,6 +17,7 @@ use SkazResidents\Controller\ToolController;
 use SkazResidents\Controller\ToolLoanController;
 use SkazResidents\Controller\BookController;
 use SkazResidents\Controller\BookLoanController;
+use SkazResidents\Controller\CommonHouseController;
 use SkazResidents\Controller\PurchaseController;
 use SkazResidents\Controller\PurchaseOrderController;
 use SkazResidents\Controller\TripController;
@@ -206,6 +207,10 @@ $router->post('/poselenie/zakupki/{id}/uchastvovat', [$border, 'place']);
 $router->post('/poselenie/zakupki/{id}/otkazatsya', [$border, 'withdraw']);
 $router->post('/poselenie/zakupki/{id}/oplata/{order}', [$border, 'togglePaid']);
 $router->get('/poselenie/zakupki/{id}', [$buy, 'show']);
+
+// Общий дом: хаб с бронированием помещений и отчётом о расходах.
+$house = new CommonHouseController();
+$router->get('/poselenie/obshchiy-dom', [$house, 'index']);
 
 // Бюджет Общего дома — read-only отчёт для всех авторизованных жителей.
 $budget = new BudgetController();

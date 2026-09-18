@@ -1,0 +1,47 @@
+<?php
+use SkazResidents\View;
+/** @var string $bookingLink @var bool $budgetOpen */
+?>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
+<h1>Общий дом</h1>
+<p class="res-meta">Терем поселения: занять зал под встречу или праздник и посмотреть, куда уходят наши взносы.</p>
+
+<div class="house-options">
+    <a class="res-card house-option" href="<?= View::e($bookingLink) ?>" id="houseBooking">
+        <b>Бронирование помещений</b>
+        <span class="res-meta">Свободные часы и заявка на зал — в мини-приложении @SkazTerem_bot</span>
+    </a>
+
+    <?php if ($budgetOpen): ?>
+        <a class="res-card house-option" href="/poselenie/byudzhet">
+            <b>Отчёт о расходах</b>
+            <span class="res-meta">Приход и расход по статьям — те же цифры, что ведёт Попечительский совет</span>
+        </a>
+    <?php else: ?>
+        <div class="res-card house-option house-option--off">
+            <b>Отчёт о расходах</b>
+            <span class="res-meta">Раздел сейчас отключён в поселении</span>
+        </div>
+    <?php endif; ?>
+</div>
+
+<script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
+<script>
+// Бронирование — отдельное мини-приложение. Когда портал открыт внутри
+// Telegram, ссылку надо отдавать клиенту через openTelegramLink: обычный
+// переход внутри WebView либо ничего не делает, либо выкидывает во внешний
+// браузер, где человек оказывается разлогиненным. Вне Telegram (браузер, PWA)
+// работает обычная ссылка — поэтому href настоящий, а не «#».
+(function () {
+  var link = document.getElementById('houseBooking');
+  if (!link || !window.SkazTg) { return; }
+  SkazTg.ensure(function (wa) {
+    if (!wa || typeof wa.openTelegramLink !== 'function') { return; }
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      try { wa.openTelegramLink(link.getAttribute('href')); }
+      catch (err) { window.location.assign(link.getAttribute('href')); }
+    });
+  });
+})();
+</script>

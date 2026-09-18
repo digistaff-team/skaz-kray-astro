@@ -56,14 +56,17 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                 </select>
             </label>
         </div>
-        <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
-        <label class="js-expense-money" style="display:none">Оплата расходов
-            <select name="expense_timing">
-                <option value="post" selected>Постоплата — возместить после выполнения</option>
-                <option value="pre">Предоплата — деньги нужны заранее</option>
-            </select>
-        </label>
-        <label class="js-expense-money" style="display:none">Статья расхода (обязательно)
+        <div class="sovet-money-row">
+            <label class="sovet-money-spent">Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent"></label>
+            <label class="sovet-money-timing js-expense-money" hidden>Оплата расходов
+                <select name="expense_timing">
+                    <option value="" selected>— выберите —</option>
+                    <option value="pre">Предоплата</option>
+                    <option value="post">Постоплата</option>
+                </select>
+            </label>
+        </div>
+        <label class="js-expense-money" hidden>Статья расхода (обязательно)
             <select name="expense_category_id">
                 <option value="">— выберите статью —</option>
                 <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
@@ -176,7 +179,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent" value="<?= rtrim(rtrim(number_format((float) $t['spent'], 2, '.', ''), '0'), '.') ?>"></label>
             <?php $curCat = (int) ($t['expense_category_id'] ?? 0); $activeIds = array_map('intval', array_column($expenseCats ?? [], 'id')); ?>
             <?php $curTiming = (string) ($t['expense_timing'] ?? 'post'); ?>
-            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Оплата расходов
+            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' hidden' ?>>Оплата расходов
                 <?php if ($curTiming === 'pre'): // предоплата уже запрошена у казначея — назад дороги нет ?>
                     <select disabled>
                         <option selected>Предоплата — деньги нужны заранее</option>
@@ -188,7 +191,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     </select>
                 <?php endif; ?>
             </label>
-            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' style="display:none"' ?>>Статья расхода (обязательно)
+            <label class="js-expense-money"<?= (float) $t['spent'] > 0 ? '' : ' hidden' ?>>Статья расхода (обязательно)
                 <select name="expense_category_id">
                     <option value="">— выберите статью —</option>
                     <?php if ($curCat > 0 && !in_array($curCat, $activeIds, true)): ?><option value="<?= $curCat ?>" selected>Текущая статья (архив)</option><?php endif; ?>
@@ -268,11 +271,16 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
     var form = inp.closest('form'); if (!form) return;
     var on = parseFloat((inp.value || '0').replace(',', '.')) > 0;
     Array.prototype.forEach.call(form.querySelectorAll('.js-expense-money'), function (box) {
-      box.style.display = on ? '' : 'none';
+      box.hidden = !on;
     });
-    // Статья обязательна вместе с суммой, но required на скрытом поле не даёт отправить форму.
-    var cat = form.querySelector('select[name="expense_category_id"]');
-    if (cat) { if (on) { cat.setAttribute('required', 'required'); } else { cat.removeAttribute('required'); } }
+    // С появлением выбора оплаты поле суммы уступает ему половину строки.
+    var row = inp.closest('.sovet-money-row');
+    if (row) { row.classList[on ? 'add' : 'remove']('has-timing'); }
+    // Статья и способ оплаты обязательны вместе с суммой, но required на скрытом
+    // поле не даёт отправить форму.
+    Array.prototype.forEach.call(form.querySelectorAll('.js-expense-money select'), function (sel) {
+      if (on) { sel.setAttribute('required', 'required'); } else { sel.removeAttribute('required'); }
+    });
   }
   Array.prototype.forEach.call(document.querySelectorAll('.js-spent'), function (inp) {
     sync(inp);

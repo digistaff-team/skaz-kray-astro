@@ -553,6 +553,13 @@ body.map-open { overflow: hidden; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-kind { flex: 1 1 11rem; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-amount { flex: 1 1 8rem; }
 
+/* Расходы задачи Совета: с появлением суммы выбор предоплата/постоплата встаёт
+   справа в ту же строку, а поле суммы сужается (как залог в форме инструмента). */
+.res-form .sovet-money-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .sovet-money-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .sovet-money-row.has-timing > .sovet-money-spent { flex: 1 1 8rem; }
+.res-form .sovet-money-row.has-timing > .sovet-money-timing { flex: 1 1 11rem; }
+
 /* «Общий дом»: две крупные опции-карточки (бронирование и отчёт) */
 .house-options { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
 .house-option { display: block; text-decoration: none; color: inherit; }

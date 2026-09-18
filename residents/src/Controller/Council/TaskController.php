@@ -67,8 +67,9 @@ final class TaskController
             $this->back();
             return;
         }
-        if ($this->expenseIncomplete($_POST['spent'] ?? 0, $_POST['expense_category_id'] ?? null)) {
-            Flash::set('error', 'К сумме расходов нужна статья расхода — иначе расход не попадёт в бюджет.');
+        $expenseError = $this->expenseError($_POST);
+        if ($expenseError !== null) {
+            Flash::set('error', $expenseError);
             $this->back();
             return;
         }
@@ -108,11 +109,10 @@ final class TaskController
         if (!$task) { $this->back(); return; }
         $oldAssignee = (string) ($task['assignee'] ?? '');
 
-        if (isset($_POST['spent']) && $this->expenseIncomplete(
-            $_POST['spent'],
-            $_POST['expense_category_id'] ?? ($task['expense_category_id'] ?? null)
-        )) {
-            Flash::set('error', 'К сумме расходов нужна статья расхода — иначе расход не попадёт в бюджет.');
+        // Статью в форме правки могли не присылать — тогда считаем её по текущей задаче.
+        $expenseError = $this->expenseError($_POST + ['expense_category_id' => $task['expense_category_id'] ?? null]);
+        if ($expenseError !== null) {
+            Flash::set('error', $expenseError);
             $this->back();
             return;
         }
@@ -405,11 +405,26 @@ final class TaskController
         return in_array($v, self::TIMINGS, true) ? $v : 'post';
     }
 
-    /** Расход указан наполовину: сумма есть, а статьи (куда её отнести в бюджете) нет. */
-    private function expenseIncomplete(mixed $rawSpent, mixed $rawCategory): bool
+    /**
+     * Что не так с расходами в форме: сумма без статьи (некуда отнести в бюджете) или
+     * без выбора предоплата/постоплата (непонятно, когда просить деньги у казначея).
+     * Возвращает готовый текст ошибки или null, если всё в порядке.
+     * @param array<string,mixed> $post
+     */
+    private function expenseError(array $post): ?string
     {
-        $spent = max(0, (float) str_replace(',', '.', (string) $rawSpent));
-        return $spent > 0 && $this->pickCategory($rawCategory) === null;
+        $spent = max(0, (float) str_replace(',', '.', (string) ($post['spent'] ?? 0)));
+        if ($spent <= 0) { return null; }
+        if ($this->pickCategory($post['expense_category_id'] ?? null) === null) {
+            return 'К сумме расходов нужна статья расхода — иначе расход не попадёт в бюджет.';
+        }
+        // У задачи с предоплатой выбор в форме правки заблокирован и не присылается —
+        // требуем его только когда поле вообще пришло.
+        if (array_key_exists('expense_timing', $post)
+            && !in_array((string) $post['expense_timing'], self::TIMINGS, true)) {
+            return 'Выберите, когда нужны деньги: предоплата или постоплата.';
+        }
+        return null;
     }
 
     /** id существующей расходной статьи бюджета или null. */

@@ -76,6 +76,39 @@ final class TelegramBot
         return null;
     }
 
+    /**
+     * Закрепить сообщение в чате. Бот должен быть админом группы с правом
+     * закрепления; disable_notification — чтобы закреп не будил всех участников.
+     */
+    public static function pinMessage(string $botToken, string $chatId, int $messageId, bool $silent = true): bool
+    {
+        if ($botToken === '' || $chatId === '') { return false; }
+        $raw = self::httpPost('https://api.telegram.org/bot' . $botToken . '/pinChatMessage', http_build_query([
+            'chat_id'              => $chatId,
+            'message_id'           => $messageId,
+            'disable_notification' => $silent ? '1' : '0',
+        ]));
+        $data = $raw !== null ? json_decode($raw, true) : null;
+        if (is_array($data) && !empty($data['ok'])) { return true; }
+        error_log('TelegramBot::pinMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+        return false;
+    }
+
+    /**
+     * Права бота в чате (getChatMember по самому себе) — чтобы заранее сказать,
+     * сможет ли он закрепить сообщение, а не выяснять это по ошибке.
+     * @return array<string,mixed>|null
+     */
+    public static function myChatMember(string $botToken, string $chatId, int $botId): ?array
+    {
+        $raw = self::httpPost('https://api.telegram.org/bot' . $botToken . '/getChatMember', http_build_query([
+            'chat_id' => $chatId,
+            'user_id' => $botId,
+        ]));
+        $data = $raw !== null ? json_decode($raw, true) : null;
+        return is_array($data) && !empty($data['ok']) ? (array) $data['result'] : null;
+    }
+
     /** Ответить на нажатие inline-кнопки (обязательно, иначе у пользователя «часики»). */
     public static function answerCallback(string $botToken, string $callbackId, string $text = ''): void
     {

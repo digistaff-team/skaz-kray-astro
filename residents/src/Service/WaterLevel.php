@@ -184,8 +184,8 @@ final class WaterLevel
             'h'         => $h,
             'poly'      => implode(' ', $coords),
             'area'      => '0,' . $h . ' ' . implode(' ', $coords) . ' ' . $w . ',' . $h,
-            'minLabel'  => $this->formatMeters($this->bsv($min), 2),
-            'maxLabel'  => $this->formatMeters($this->bsv($max), 2),
+            // Одна подпись на весь размах: «27,16 – 27,67 м БСВ».
+            'rangeLabel' => number_format($this->bsv($min), 2, ',', ' ') . ' – ' . $this->formatMeters($this->bsv($max), 2) . ' БСВ',
             'firstDate' => $this->shortDate($points[0]['date']),
             'lastDate'  => $this->shortDate($points[count($points) - 1]['date']),
             'days'      => count($points),

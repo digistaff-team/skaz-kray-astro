@@ -31,7 +31,7 @@ use SkazResidents\View;
         </svg>
         <div class="water-axis">
             <span><?= View::e($c['firstDate']) ?></span>
-            <span><?= View::e($c['minLabel']) ?> – <?= View::e($c['maxLabel']) ?> БСВ</span>
+            <span><?= View::e($c['rangeLabel']) ?></span>
             <span><?= View::e($c['lastDate']) ?></span>
         </div>
     <?php else: ?>

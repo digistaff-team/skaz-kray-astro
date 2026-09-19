@@ -139,6 +139,9 @@ function product_price_label(?string $price, ?string $unit = null): string
     $price = trim((string) $price);
     $unit  = trim((string) $unit);
     if ($price === '') { return 'по договорённости'; }
+    // С появлением числового поля цена — это рубли; у товаров до этого в price лежит
+    // свободный текст («500 ₽ за банку») — его показываем как есть.
+    if (preg_match('/^\d+(\.\d+)?$/', $price)) { $price = buy_money($price) . ' ₽'; }
     return $unit === '' ? $price : $price . ' за ' . $unit;
 }
 

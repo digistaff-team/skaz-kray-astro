@@ -68,7 +68,10 @@ final class CatalogAnnounce
     public static function product(int $id, string $title, ?string $price, ?string $unit = null): void
     {
         $head = '🛒 Новое на Ярмарке';
-        $priceText = ($price ?? '') !== '' && ($unit ?? '') !== '' ? $price . ' за ' . $unit : (string) $price;
+        // Тот же вид, что в карточках («500 ₽ за кг.»); без цены в анонсе про неё просто молчим.
+        $priceText = ($price ?? '') === '' ? '' : (function_exists('product_price_label')
+            ? product_price_label($price, $unit)
+            : $price . (($unit ?? '') !== '' ? ' за ' . $unit : ''));
         $line = '«' . $title . '»' . ($priceText !== '' ? ' · ' . $priceText : '');
         self::announce($head, $line, '/poselenie/yarmarka');
     }

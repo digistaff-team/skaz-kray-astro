@@ -186,6 +186,8 @@ final class ProductController
         if (!Validator::length($title, 2, 200)) { $errors['title'] = 'Название: 2–200 символов.'; }
         if (!Validator::required($desc)) { $errors['description'] = 'Опишите товар или услугу.'; }
         if (!Validator::length($contact, 3, 200)) { $errors['contact'] = 'Укажите, как с вами связаться.'; }
+        if ($price !== '' && self::num($price) === null) { $errors['price'] = 'Цена — число в рублях, например 500 или 500.50.'; }
+        $price = $price === '' ? '' : (self::num($price) ?? $price);
         return [[
             'title' => $title, 'description' => $desc,
             'price' => $price === '' ? null : $price,
@@ -195,6 +197,16 @@ final class ProductController
             'contact' => $contact,
             'visibility' => $this->pickVisibility($_POST['visibility'] ?? ''),
         ], $errors];
+    }
+
+    /**
+     * Цена — только цифры в рублях (копейки через точку или запятую), как в закупках.
+     * Старые товары с ценой-текстом остаются как есть, пока их не откроют на редактирование.
+     */
+    private static function num(string $raw): ?string
+    {
+        $v = str_replace([' ', ','], ['', '.'], $raw);
+        return preg_match('/^\d{1,8}(\.\d{1,2})?$/', $v) ? $v : null;
     }
 
     /** residents («только соседи») | public («на сайте»); дефолт — residents. */

@@ -17,8 +17,8 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
     <?php if (isset($errors['description'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['description']) ?></div><?php endif; ?>
     <?php $curUnit = (string) ($product['unit'] ?? ''); $units = $units ?? []; ?>
     <div class="market-price-row<?= ($product['price'] ?? '') !== '' ? ' has-unit' : '' ?>" id="prodPriceRow">
-        <label class="market-price-value">Цена
-            <input type="text" name="price" id="prodPrice" value="<?= View::e($product['price'] ?? '') ?>">
+        <label class="market-price-value">Цена, руб.
+            <input type="text" name="price" id="prodPrice" inputmode="decimal" value="<?= View::e($product['price'] ?? '') ?>">
         </label>
         <label class="market-price-unit" id="prodUnitBox"<?= ($product['price'] ?? '') !== '' ? '' : ' hidden' ?>>Единица изм.
             <select name="unit">
@@ -32,6 +32,7 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
             </select>
         </label>
     </div>
+    <?php if (isset($errors['price'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['price']) ?></div><?php endif; ?>
     <label>Как связаться (телефон, мессенджер и т.п.)
         <input type="text" name="contact" value="<?= View::e($product['contact'] ?? '') ?>" required>
     </label>
@@ -77,7 +78,19 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
     box.hidden = !on;
     row.classList.toggle('has-unit', on);
   }
-  price.addEventListener('input', sync);
+  // В цене только цифры и один разделитель копеек: буквы и знаки валюты выбрасываем
+  // прямо при вводе (та же проверка есть и на сервере).
+  function digitsOnly() {
+    var v = price.value.replace(/[^\d.,]/g, '').replace(/,/g, '.');
+    var i = v.indexOf('.');
+    if (i !== -1) { v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, ''); }
+    if (v !== price.value) {
+      var pos = price.selectionStart, cut = price.value.length - v.length;
+      price.value = v;
+      if (pos !== null) { try { price.setSelectionRange(pos - cut, pos - cut); } catch (e) {} }
+    }
+  }
+  price.addEventListener('input', function () { digitsOnly(); sync(); });
   sync();
 })();
 </script>

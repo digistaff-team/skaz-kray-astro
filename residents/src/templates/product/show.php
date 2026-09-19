@@ -13,9 +13,12 @@
 
 <div class="res-card">
     <p><?= nl2br(View::e((string) $product['description'])) ?></p>
-    <p><strong>Как связаться:</strong> <?= contact_links((string) $product['contact']) ?></p>
+    <p><strong>Продавец:</strong> <?= View::e((string) $product['family_name']) ?></p>
     <?php $phone = contact_phone((string) $product['contact']); $tg = contact_telegram((string) $product['contact']); ?>
-    <?php if ($phone !== null || $tg !== null): ?>
+    <?php if ($phone === null && $tg === null): ?>
+        <?php /* Ни телефона, ни ника — кнопок не будет, показываем текст как есть. */ ?>
+        <p><strong>Как связаться:</strong> <?= contact_links((string) $product['contact']) ?></p>
+    <?php else: ?>
         <p class="market-actions">
             <?php if ($phone !== null): ?>
                 <a class="res-btn" href="tel:<?= View::e($phone) ?>">Позвонить</a>
@@ -25,7 +28,9 @@
             <?php endif; ?>
         </p>
     <?php endif; ?>
-    <p class="market-meta"><?= View::e((string) $product['family_name']) ?><?php if (($product['visibility'] ?? '') === 'public'): ?> · 🌐 на сайте<?php endif; ?></p>
+    <?php if (($product['visibility'] ?? '') === 'public'): ?>
+        <p class="market-meta">🌐 виден всем на сайте</p>
+    <?php endif; ?>
 </div>
 
 <?php if ($isOwner): ?>

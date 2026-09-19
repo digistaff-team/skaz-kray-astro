@@ -1,4 +1,5 @@
 <?php use SkazResidents\{View, Csrf}; /** @var array $products */ ?>
+<?php $backFallback = '/poselenie/yarmarka'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-head">
     <h1>Моя витрина</h1>
     <div class="tool-head-actions">
@@ -9,7 +10,7 @@
 <p class="res-meta">Ваши товары и услуги. «Только соседи» публикуются сразу, «На сайте» — после проверки редактором.</p>
 
 <?php if (!$products): ?>
-    <p class="res-meta tool-empty">Вы пока ничего не разместили. <a href="/poselenie/yarmarka/novyy">Разместить</a>.</p>
+    <p class="res-meta tool-empty">Ваша витрина пока пуста. <a href="/poselenie/yarmarka/novyy">Добавьте свои товары и услуги</a></p>
 <?php endif; ?>
 
 <?php foreach ($products as $p): ?>

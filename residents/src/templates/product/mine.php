@@ -7,10 +7,10 @@
         <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka">Товары и услуги соседей</a>
     </div>
 </div>
-<p class="res-meta">Ваши товары и услуги публикуются по вашему выбору только для соседей или для всех на сайте skaz-kray.ru</p>
+<p class="res-meta">Ваши товары и услуги публикуются по вашему выбору только для соседей или для всех на сайте.</p>
 
 <?php if (!$products): ?>
-    <p class="res-meta tool-empty">Ваша витрина пока пуста. <a href="/poselenie/yarmarka/novyy">Добавьте свои товары и услуги</a></p>
+    <p class="res-meta tool-empty">Ваша витрина пока пуста.<br><a href="/poselenie/yarmarka/novyy">Добавьте свои товары и услуги</a></p>
 <?php endif; ?>
 
 <?php foreach ($products as $p): ?>

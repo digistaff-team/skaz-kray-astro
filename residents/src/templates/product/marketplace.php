@@ -10,7 +10,7 @@
 <p class="res-meta">Что предлагают жители поселения для внутрипоселенческого рынка и на сайте.</p>
 
 <?php if (!$products): ?>
-    <p class="res-meta tool-empty">Ваша витрина пока пуста. <a href="/poselenie/yarmarka/novyy">Добавьте свои товары и услуги</a></p>
+    <p class="res-meta tool-empty">Ваша витрина пока пуста.<br><a href="/poselenie/yarmarka/novyy">Добавьте свои товары и услуги</a></p>
 <?php endif; ?>
 
 <div class="market-grid">

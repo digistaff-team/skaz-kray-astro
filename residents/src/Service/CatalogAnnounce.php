@@ -64,7 +64,7 @@ final class CatalogAnnounce
         return $origin . ' → ' . $destination . ' · ' . $when . ' · мест: ' . $seats;
     }
 
-    /** Анонс нового товара/услуги на Ярмарке (карточки внутри портала нет — ведём в ленту). */
+    /** Анонс нового товара/услуги на Ярмарке: кнопка под сообщением ведёт на карточку товара. */
     public static function product(int $id, string $title, ?string $price, ?string $unit = null): void
     {
         $head = '🛒 Новое на Ярмарке';
@@ -73,7 +73,14 @@ final class CatalogAnnounce
             ? product_price_label($price, $unit)
             : $price . (($unit ?? '') !== '' ? ' за ' . $unit : ''));
         $line = '«' . $title . '»' . ($priceText !== '' ? ' · ' . $priceText : '');
-        self::announce($head, $line, '/poselenie/yarmarka');
+        $path = '/poselenie/yarmarka/' . $id;
+        BotNotify::afterResponse(static function () use ($head, $line, $path): void {
+            BotNotify::toGroupWithButton(
+                static fn(): string => $head . "\n\n" . $line,
+                'Открыть и посмотреть',
+                $path
+            );
+        });
     }
 
     /** Анонс новой книги. */

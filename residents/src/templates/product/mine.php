@@ -18,7 +18,7 @@
         <div class="cab-item-head">
             <strong class="cab-item-title"><?= View::e($p['title']) ?></strong>
             <span class="res-status res-status--<?= View::e($p['status']) ?>"><?= View::e(status_label($p['status'])) ?></span>
-            <span class="market-vis"><?= ($p['visibility'] ?? '') === 'public' ? 'на сайте' : 'соседям' ?></span>
+            <span class="market-vis"><?= ($p['visibility'] ?? '') === 'public' ? 'на сайте' : 'видно только соседям' ?></span>
         </div>
         <?php if ($p['status'] === 'rejected' && $p['reject_reason']): ?>
             <div class="res-flash res-flash--error">Причина: <?= View::e($p['reject_reason']) ?></div>

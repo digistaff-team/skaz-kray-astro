@@ -49,14 +49,8 @@ final class BotNotify
      */
     public static function toGroup(callable $text): void
     {
-        $tg  = Config::get('telegram');
-        $max = Config::get('max');
-        $token  = is_array($tg) ? (string) ($tg['bot_token'] ?? '') : '';
-        $chat   = is_array($tg) ? (string) ($tg['group_chat_id'] ?? '') : '';
-        $mToken = is_array($max) ? (string) ($max['bot_token'] ?? '') : '';
-        $mChat  = is_array($max) ? (string) ($max['group_chat_id'] ?? '') : '';
-        $tgBase = self::appBase('tg');
-        $mBase  = self::appBase('max');
+        ['tgToken' => $token, 'tgChat' => $chat, 'tgBase' => $tgBase,
+         'maxToken' => $mToken, 'maxChat' => $mChat, 'maxBase' => $mBase] = self::groupTargets();
 
         if ($token !== '' && $chat !== '' && !TelegramBot::sendMessage($token, $chat, $text($tgBase))) {
             error_log('BotNotify: сообщение не ушло в Telegram-группу ' . $chat);
@@ -64,6 +58,49 @@ final class BotNotify
         if ($mToken !== '' && $mChat !== '' && $mBase !== '' && !MaxBot::sendToChat($mToken, $mChat, $text($mBase))) {
             error_log('BotNotify: сообщение не ушло в группу MAX ' . $mChat);
         }
+    }
+
+    /**
+     * То же, но ссылка уезжает из текста в кнопку под сообщением: в Telegram это
+     * inline-кнопка с диплинком (нажатие открывает мини-приложение сразу на нужной
+     * странице). В MAX кнопок под сообщением не шлём — там ссылка остаётся в тексте.
+     *
+     * $text() получает сообщение без ссылки, $path — путь внутри /poselenie/.
+     */
+    public static function toGroupWithButton(callable $text, string $buttonLabel, string $path): void
+    {
+        ['tgToken' => $token, 'tgChat' => $chat, 'tgBase' => $tgBase,
+         'maxToken' => $mToken, 'maxChat' => $mChat, 'maxBase' => $mBase] = self::groupTargets();
+
+        if ($token !== '' && $chat !== '') {
+            $markup = (string) json_encode([
+                'inline_keyboard' => [[['text' => $buttonLabel, 'url' => self::deepLink($tgBase, $path)]]],
+            ], JSON_UNESCAPED_UNICODE);
+            if (!TelegramBot::sendMessage($token, $chat, $text(), null, $markup)) {
+                error_log('BotNotify: сообщение не ушло в Telegram-группу ' . $chat);
+            }
+        }
+        if ($mToken !== '' && $mChat !== '' && $mBase !== '') {
+            $withLink = $text() . "\n\n" . 'Открыть: ' . self::deepLink($mBase, $path);
+            if (!MaxBot::sendToChat($mToken, $mChat, $withLink)) {
+                error_log('BotNotify: сообщение не ушло в группу MAX ' . $mChat);
+            }
+        }
+    }
+
+    /** Токены, чаты и ссылки ботов обеих платформ — один разбор настроек на всех. */
+    private static function groupTargets(): array
+    {
+        $tg  = Config::get('telegram');
+        $max = Config::get('max');
+        return [
+            'tgToken'  => is_array($tg) ? (string) ($tg['bot_token'] ?? '') : '',
+            'tgChat'   => is_array($tg) ? (string) ($tg['group_chat_id'] ?? '') : '',
+            'tgBase'   => self::appBase('tg'),
+            'maxToken' => is_array($max) ? (string) ($max['bot_token'] ?? '') : '',
+            'maxChat'  => is_array($max) ? (string) ($max['group_chat_id'] ?? '') : '',
+            'maxBase'  => self::appBase('max'),
+        ];
     }
 
     /**

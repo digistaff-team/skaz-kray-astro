@@ -538,6 +538,10 @@ body.map-open { overflow: hidden; }
 .market-title { font-weight: 700; font-size: 1rem; overflow-wrap: anywhere; }
 .market-price { color: var(--green); font-weight: 700; }
 .market-price--big { font-size: 1.15rem; margin: 0 0 .8rem; }
+/* «Позвонить» и «Написать» на карточке товара — в одну строку. */
+.market-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0; }
+.market-actions .res-btn { margin-top: .6rem; }
+
 .market-gallery { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.2rem; }
 .market-gallery img { width: 100%; max-width: 360px; height: auto; border-radius: 10px; }
 .market-meta { font-size: .82rem; color: var(--muted); }

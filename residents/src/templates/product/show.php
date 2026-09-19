@@ -14,6 +14,17 @@
 <div class="res-card">
     <p><?= nl2br(View::e((string) $product['description'])) ?></p>
     <p><strong>Как связаться:</strong> <?= contact_links((string) $product['contact']) ?></p>
+    <?php $phone = contact_phone((string) $product['contact']); $tg = contact_telegram((string) $product['contact']); ?>
+    <?php if ($phone !== null || $tg !== null): ?>
+        <p class="market-actions">
+            <?php if ($phone !== null): ?>
+                <a class="res-btn" href="tel:<?= View::e($phone) ?>">Позвонить</a>
+            <?php endif; ?>
+            <?php if ($tg !== null): ?>
+                <a class="res-btn res-btn--ghost js-tg-link" href="https://t.me/<?= View::e($tg) ?>" target="_blank" rel="noopener">Написать</a>
+            <?php endif; ?>
+        </p>
+    <?php endif; ?>
     <p class="market-meta"><?= View::e((string) $product['family_name']) ?><?php if (($product['visibility'] ?? '') === 'public'): ?> · 🌐 на сайте<?php endif; ?></p>
 </div>
 

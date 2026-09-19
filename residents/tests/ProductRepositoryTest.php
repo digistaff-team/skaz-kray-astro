@@ -39,6 +39,18 @@ final class ProductRepositoryTest extends TestCase
         $this->assertNull($this->repo->findById($id)['unit']);
     }
 
+    public function test_find_recent_by_title_catches_repeat_submit(): void
+    {
+        $this->repo->create($this->familyId, 'Овощи', 'D', null, 'C', '2026-08-28 09:00:00', 'residents');
+
+        // Повторная отправка через полминуты — находим уже созданный товар.
+        $this->assertNotNull($this->repo->findRecentByTitle($this->familyId, 'Овощи', '2026-08-28 08:58:00'));
+        // Спустя две минуты это уже осознанное второе размещение — не мешаем.
+        $this->assertNull($this->repo->findRecentByTitle($this->familyId, 'Овощи', '2026-08-28 09:02:00'));
+        // Чужой товар с таким же названием не считается дублем.
+        $this->assertNull($this->repo->findRecentByTitle($this->familyId + 1, 'Овощи', '2026-08-28 08:58:00'));
+    }
+
     public function test_approve_publishes(): void
     {
         $id = $this->repo->create($this->familyId, 'Мёд', 'D', '500 ₽', 'C', '2026-08-28 09:00:00');

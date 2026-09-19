@@ -90,6 +90,7 @@ body.map-open { overflow: hidden; }
     background: var(--green); color: #fff; font: inherit; cursor: pointer; text-decoration: none;
 }
 .res-btn--ghost { background: transparent; color: var(--green); border: 1px solid var(--green); }
+.res-btn[disabled] { opacity: .6; cursor: default; }   /* форма уже ушла — второй раз не нажать */
 .res-link-btn { background: none; border: 0; padding: 0; color: var(--green); font: inherit; cursor: pointer; text-decoration: underline; }
 .res-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem; }
 .res-card img { max-width: 100%; height: auto; border-radius: 8px; }

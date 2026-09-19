@@ -10,6 +10,9 @@ final class ProductController
 {
     use RequiresHousehold;
 
+    /** Сколько секунд после размещения товар с тем же названием считается повтором формы. */
+    private const DUPLICATE_WINDOW = 120;
+
     /** Единицы измерения цены: товары (шт., кг.) и услуги (час, день, услуга). */
     public const UNITS = ['шт.', 'час', 'кг.', 'г.', 'л.', 'м.', 'м²', 'м³', 'день', 'комплект', 'упаковка', 'банка', 'пучок', 'услуга'];
 
@@ -86,6 +89,20 @@ final class ProductController
         [$data, $errors] = $this->validate();
         if ($errors) {
             View::render('product/form', ['product' => $data, 'images' => [], 'units' => self::UNITS, 'errors' => $errors], 'Новый товар/услуга');
+            return;
+        }
+        // Страховка от повторной отправки: форма с фото уходит долго, и телефон может
+        // оборвать соединение до ответа — запрос при этом доходит, и повторное нажатие рожало ещё
+        // одну карточку и ещё один анонс в общий чат. Кнопка блокируется и на клиенте (submit-guard).
+        $dup = $this->products->findRecentByTitle(Auth::id(), $data['title'], date('Y-m-d H:i:s', time() - self::DUPLICATE_WINDOW));
+        if ($dup !== null) {
+            // Если предыдущий запрос успел создать товар, но был убит до загрузки фото —
+            // докладываем снимки к нему, а не плодим вторую карточку.
+            if ($this->images->listFor('product', (int) $dup['id']) === []) {
+                $this->handleUploads((int) $dup['id']);
+            }
+            Flash::set('success', 'Этот товар уже размещён — повторная отправка формы дубль не создала.');
+            header('Location: /poselenie/yarmarka/moya');
             return;
         }
         $id = $this->products->create(Auth::id(), $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility'], $data['unit']);

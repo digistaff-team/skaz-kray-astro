@@ -137,6 +137,21 @@ final class ProductRepository
         return $st->fetchAll();
     }
 
+    /**
+     * Товар с тем же названием, созданный этой же семьёй не раньше $since — след повторной
+     * отправки формы (телефон не дождался ответа, житель нажал «Разместить» ещё раз).
+     */
+    public function findRecentByTitle(int $familyId, string $title, string $since): ?array
+    {
+        $st = $this->db->prepare(
+            'SELECT * FROM products
+             WHERE family_id = ? AND title = ? AND created_at >= ?
+             ORDER BY id DESC LIMIT 1'
+        );
+        $st->execute([$familyId, $title, $since]);
+        return $st->fetch() ?: null;
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function listPending(): array
     {

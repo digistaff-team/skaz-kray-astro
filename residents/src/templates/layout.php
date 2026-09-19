@@ -61,5 +61,7 @@
 </footer>
 
 <?php require __DIR__ . '/partials/map.php'; ?>
+
+<?php require __DIR__ . '/partials/submit-guard.php'; ?>
 </body>
 </html>

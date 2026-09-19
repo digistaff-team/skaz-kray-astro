@@ -533,7 +533,7 @@ body.map-open { overflow: hidden; }
 /* выше по файлу есть .res-card img { height: auto } — отсюда составной селектор */
 .market-card .market-photo { flex: 0 0 88px; width: 88px; height: 88px; object-fit: cover; border-radius: 10px; }
 .market-card .market-photo--none { display: flex; align-items: center; justify-content: center;
-                                  background: #eef4ef; font-size: 1.8rem; }
+                                  background: #eef4ef; color: var(--muted); }
 .market-card-body { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
 .market-title { font-weight: 700; font-size: 1rem; overflow-wrap: anywhere; }
 .market-price { color: var(--green); font-weight: 700; }

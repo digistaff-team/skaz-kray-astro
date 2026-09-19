@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
-use SkazResidents\Repository\{ProductRepository, ImageRepository};
+use SkazResidents\Repository\{ProductRepository, ImageRepository, FamilyRepository, HouseholdProfileRepository};
 use SkazResidents\Service\CatalogAnnounce;
 
 final class ProductController
@@ -12,7 +12,9 @@ final class ProductController
 
     public function __construct(
         private ProductRepository $products = new ProductRepository(),
-        private ImageRepository $images = new ImageRepository()
+        private ImageRepository $images = new ImageRepository(),
+        private HouseholdProfileRepository $households = new HouseholdProfileRepository(),
+        private FamilyRepository $families = new FamilyRepository()
     ) {}
 
     /** Лента «Товары соседей» — внутрипоселенческий рынок (все опубликованные товары). */
@@ -44,7 +46,33 @@ final class ProductController
     public function showCreate(): void
     {
         $this->requireHousehold('yarmarka');
-        View::render('product/form', ['product' => null, 'images' => [], 'errors' => []], 'Новый товар/услуга');
+        View::render('product/form', [
+            'product' => ['contact' => $this->defaultContact()],
+            'images' => [],
+            'errors' => [],
+        ], 'Новый товар/услуга');
+    }
+
+    /**
+     * Контакты авторизованного жителя для подстановки в форму нового товара: телефон
+     * из карточки поместья (первый заполненный среди жителей — они отсортированы, первым идёт
+     * хозяин) и @username из Telegram-аккаунта. Поле остаётся редактируемым: это только заготовка.
+     */
+    private function defaultContact(): string
+    {
+        $familyId = Auth::id();
+        if ($familyId === null) { return ''; }
+        $parts = [];
+        $household = $this->households->householdByFamily($familyId);
+        if ($household !== null) {
+            foreach ($this->households->members((int) $household['id']) as $m) {
+                $phone = trim((string) ($m['phone'] ?? ''));
+                if ($phone !== '') { $parts[] = $phone; break; }
+            }
+        }
+        $username = trim((string) ($this->families->findById($familyId)['telegram_username'] ?? ''));
+        if ($username !== '') { $parts[] = '@' . ltrim($username, '@'); }
+        return implode(', ', $parts);
     }
 
     public function create(): void

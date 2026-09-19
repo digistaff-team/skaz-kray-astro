@@ -1,7 +1,9 @@
 <?php use SkazResidents\{Csrf, View};
 $isEdit = !empty($product['id']);
 $action = $isEdit ? '/poselenie/yarmarka/' . (int) $product['id'] . '/redaktirovat' : '/poselenie/yarmarka/novyy';
+$cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
 ?>
+<?php $backFallback = $cancelUrl; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Редактирование' : 'Новый товар или услуга' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>
@@ -13,7 +15,7 @@ $action = $isEdit ? '/poselenie/yarmarka/' . (int) $product['id'] . '/redaktirov
         <textarea name="description" required><?= View::e($product['description'] ?? '') ?></textarea>
     </label>
     <?php if (isset($errors['description'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['description']) ?></div><?php endif; ?>
-    <label>Цена (можно оставить пустым — «по договорённости»)
+    <label>Цена
         <input type="text" name="price" value="<?= View::e($product['price'] ?? '') ?>">
     </label>
     <label>Как связаться (телефон, мессенджер и т.п.)
@@ -23,8 +25,8 @@ $action = $isEdit ? '/poselenie/yarmarka/' . (int) $product['id'] . '/redaktirov
     <?php $vis = $product['visibility'] ?? 'residents'; ?>
     <label>Где разместить
         <select name="visibility">
-            <option value="residents"<?= $vis === 'residents' ? ' selected' : '' ?>>Только соседи (внутрипоселенческий рынок)</option>
-            <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>На сайте (раздел «Ярмарка»)</option>
+            <option value="residents"<?= $vis === 'residents' ? ' selected' : '' ?>>Только в приложении</option>
+            <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>В приложении и на сайте</option>
         </select>
     </label>
     <label class="file-btn">Добавить фото
@@ -32,6 +34,7 @@ $action = $isEdit ? '/poselenie/yarmarka/' . (int) $product['id'] . '/redaktirov
     </label>
     <div id="prodPhotoPreview" class="photo-preview"></div>
     <button class="res-btn" type="submit"><?= $isEdit ? 'Сохранить' : 'Разместить' ?></button>
+    <a class="res-btn res-btn--ghost js-back" href="<?= View::e($cancelUrl) ?>">Отменить</a>
 </form>
 
 <?php if (!empty($images)): ?>

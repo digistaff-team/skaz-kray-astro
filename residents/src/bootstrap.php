@@ -131,6 +131,29 @@ function entry_image_url(string $path): string
 }
 
 /**
+ * Контакты из свободного текста («+7 (988) 242-57-63, @nadinLeto») — кликабельными:
+ * телефон открывает звонилку смартфона (tel:), @ник — чат в Telegram. Текст
+ * экранируем здесь же, поэтому в шаблоне выводится без View::e.
+ */
+function contact_links(string $text): string
+{
+    $html = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    // Телефон в любом привычном виде: +7 (988) 242-57-63, 8 988 242-57-63, 89882425763.
+    $html = (string) preg_replace_callback('~(?<![\d@])\+?\d[\d\s().-]{8,}\d~u', static function (array $m): string {
+        $digits = preg_replace('~\D~', '', $m[0]);
+        if (strlen((string) $digits) < 10) { return $m[0]; }   // не телефон, а какое-то число
+        return '<a href="tel:' . (str_starts_with($m[0], '+') ? '+' : '') . $digits . '">' . $m[0] . '</a>';
+    }, $html);
+    // @ник Telegram. js-tg-link нужен внутри мини-приложения: там обычная ссылка
+    // t.me в webview не открывается (см. partials/tg-links.php).
+    return (string) preg_replace(
+        '~(?<![\w/])@([A-Za-z\d_]{5,32})\b~u',
+        '<a class="js-tg-link" href="https://t.me/$1" target="_blank" rel="noopener">@$1</a>',
+        $html
+    );
+}
+
+/**
  * Цена товара Ярмарки для показа: «500 ₽ за кг.», «500 ₽» или «по договорённости».
  * Цена — свободный текст, единица без цены смысла не имеет и не показывается.
  */

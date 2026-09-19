@@ -4,7 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{ProductRepository, ImageRepository, FamilyRepository, HouseholdProfileRepository};
-use SkazResidents\Service\CatalogAnnounce;
+use SkazResidents\Service\{CatalogAnnounce, AfterResponse};
 
 final class ProductController
 {
@@ -47,6 +47,26 @@ final class ProductController
         }
         unset($p);
         View::render('product/mine', ['products' => $products], 'Моя витрина');
+    }
+
+    /** Полная карточка товара внутри портала: описание, все фото, контакты. */
+    public function show(array $params): void
+    {
+        $this->requireHousehold('yarmarka');
+        $product = $this->products->findById((int) $params['id']);
+        // Соседям видно опубликованное; свой товар владелец открывает в любом статусе.
+        if ($product === null
+            || ((string) $product['status'] !== 'published' && (int) $product['family_id'] !== Auth::id())) {
+            http_response_code(404);
+            View::render('public/notfound', [], 'Товар не найден');
+            return;
+        }
+        $product['family_name'] = (string) ($this->families->findById((int) $product['family_id'])['name'] ?? '');
+        View::render('product/show', [
+            'product' => $product,
+            'images'  => $this->images->listFor('product', (int) $product['id']),
+            'isOwner' => (int) $product['family_id'] === Auth::id(),
+        ], $product['title']);
     }
 
     public function showCreate(): void
@@ -98,25 +118,46 @@ final class ProductController
         if ($dup !== null) {
             // Если предыдущий запрос успел создать товар, но был убит до загрузки фото —
             // докладываем снимки к нему, а не плодим вторую карточку.
-            if ($this->images->listFor('product', (int) $dup['id']) === []) {
-                $this->handleUploads((int) $dup['id']);
-            }
-            Flash::set('success', 'Этот товар уже размещён — повторная отправка формы дубль не создала.');
+            $needPhotos = $this->images->listFor('product', (int) $dup['id']) === [];
+            Flash::set('success', 'Этот товар уже размещён — повторная отправка формы дубль не создала.'
+                . ($needPhotos ? self::photosNote() : ''));
             header('Location: /poselenie/yarmarka/moya');
+            if ($needPhotos) {
+                $dupId = (int) $dup['id'];
+                AfterResponse::run(fn() => $this->handleUploads($dupId), 'Ярмарка');
+            }
             return;
         }
         $id = $this->products->create(Auth::id(), $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility'], $data['unit']);
-        $this->handleUploads($id);
-        Flash::set('success', $data['visibility'] === 'public'
+        Flash::set('success', ($data['visibility'] === 'public'
             ? 'Товар отправлен на проверку — после неё появится в разделе Ярмарка на сайте.'
-            : 'Товар опубликован на внутрипоселенческом рынке (виден соседям).');
+            : 'Товар опубликован на внутрипоселенческом рынке (виден соседям).') . self::photosNote());
         header('Location: /poselenie/yarmarka/moya');
-        // Товар «только соседям» публикуется сразу — анонсируем. Товар «на сайте»
-        // уходит на проверку и ещё не виден жителям: его анонсирует модерация,
-        // когда одобрит (ModerationController::approveProduct).
-        if ($data['visibility'] !== 'public') {
-            CatalogAnnounce::product($id, $data['title'], $data['price'], $data['unit']);
+        // Всё долгое — после ответа: снимки едут в Telegram по 10–15 секунд.
+        // Анонсируем только товар «только соседям»: он публикуется сразу, а товар
+        // «на сайте» ждёт проверки и его анонсирует модерация (ModerationController::approveProduct).
+        AfterResponse::run(function () use ($id, $data): void {
+            if ($data['visibility'] !== 'public') {
+                CatalogAnnounce::product($id, $data['title'], $data['price'], $data['unit']);
+            }
+            $this->handleUploads($id);
+        }, 'Ярмарка');
+    }
+
+    /** Приписка к сообщению: фото грузятся уже после редиректа, карточка секунду-другую без них. */
+    private static function photosNote(): string
+    {
+        return self::hasPhotos() ? ' Фото появятся через несколько секунд.' : '';
+    }
+
+    /** Есть ли в запросе хоть один реально выбранный файл. */
+    private static function hasPhotos(): bool
+    {
+        $errors = $_FILES['photos']['error'] ?? null;
+        foreach (is_array($errors) ? $errors : [$errors] as $err) {
+            if ($err !== null && $err !== UPLOAD_ERR_NO_FILE) { return true; }
         }
+        return false;
     }
 
     public function showEdit(array $params): void
@@ -143,11 +184,12 @@ final class ProductController
             return;
         }
         $this->products->update((int) $product['id'], $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility'], $data['unit']);
-        $this->handleUploads((int) $product['id']);
-        Flash::set('success', $data['visibility'] === 'public'
+        Flash::set('success', ($data['visibility'] === 'public'
             ? 'Изменения отправлены на проверку (раздел Ярмарка на сайте).'
-            : 'Товар обновлён на внутрипоселенческом рынке.');
+            : 'Товар обновлён на внутрипоселенческом рынке.') . self::photosNote());
         header('Location: /poselenie/yarmarka/moya');
+        $productId = (int) $product['id'];
+        AfterResponse::run(fn() => $this->handleUploads($productId), 'Ярмарка');
     }
 
     public function delete(array $params): void
@@ -252,7 +294,8 @@ final class ProductController
             // Фолбэк на локальное хранилище, если Telegram недоступен.
             [$name, $err] = Upload::saveImage($file, $dir);
             if ($name !== null) { $this->images->add('product', $ownerId, $name, $sort++); }
-            elseif ($err !== null) { Flash::set('error', $err); }
+            // Flash здесь бесполезен: загрузка идёт после ответа, сессия уже закрыта.
+            elseif ($err !== null) { error_log('Ярмарка: фото не загрузилось — ' . $err); }
         }
     }
 

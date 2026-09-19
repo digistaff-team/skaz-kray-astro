@@ -15,22 +15,10 @@ use SkazResidents\Repository\FamilyRepository;
  */
 final class BotNotify
 {
-    /**
-     * Выполнить работу после того, как ответ ушёл пользователю. Сессию закрываем
-     * первой: иначе следующий запрос жителя (редирект после формы) ждал бы снятия
-     * блокировки файла сессии всё время отправки. Ошибки — только в лог: почта и
-     * сама операция в БД уже прошли, ронять их из-за бота нельзя.
-     */
+    /** Отправка после ответа пользователю — механика в {@see AfterResponse}. */
     public static function afterResponse(callable $fn): void
     {
-        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
-        if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
-        ignore_user_abort(true);
-        try {
-            $fn();
-        } catch (\Throwable $e) {
-            error_log('BotNotify: ' . $e->getMessage());
-        }
+        AfterResponse::run($fn, 'BotNotify');
     }
 
     /**

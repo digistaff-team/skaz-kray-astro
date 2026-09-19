@@ -18,6 +18,6 @@ $u = PublicController::uploadsUrl();
             <img src="<?= $u ?>/<?= View::e($img['path']) ?>" alt="">
         <?php endforeach; ?>
         <p><?= nl2br(View::e($product['description'])) ?></p>
-        <p><strong>Как связаться:</strong> <?= View::e($product['contact']) ?></p>
+        <p><strong>Как связаться:</strong> <?= contact_links($product['contact']) ?></p>
     </div>
 </article>

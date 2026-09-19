@@ -15,14 +15,17 @@
 
 <div class="market-grid">
     <?php foreach ($products as $p): ?>
-        <div class="res-card market-card">
+        <a class="res-card market-card" href="/poselenie/yarmarka/<?= (int) $p['id'] ?>">
             <?php if (!empty($p['photo'])): ?>
-                <img class="market-photo" src="<?= View::e(entry_image_thumb($p['photo'], 480)) ?>" alt="" loading="lazy">
+                <img class="market-photo" src="<?= View::e(entry_image_thumb($p['photo'], 240)) ?>" alt="" loading="lazy">
+            <?php else: ?>
+                <span class="market-photo market-photo--none" aria-hidden="true">🛒</span>
             <?php endif; ?>
-            <strong class="market-title"><?= View::e($p['title']) ?></strong>
-            <span class="market-price"><?= View::e(product_price_label($p['price'] ?? null, $p['unit'] ?? null)) ?></span>
-            <p class="res-meta"><?= View::e(mb_strimwidth(strip_tags((string) $p['description']), 0, 160, '…')) ?></p>
-            <p class="market-meta"><?= View::e($p['family_name']) ?> · <?= View::e($p['contact']) ?><?php if (($p['visibility'] ?? '') === 'public'): ?> · 🌐 на сайте<?php endif; ?></p>
-        </div>
+            <span class="market-card-body">
+                <strong class="market-title"><?= View::e($p['title']) ?></strong>
+                <span class="market-price"><?= View::e(product_price_label($p['price'] ?? null, $p['unit'] ?? null)) ?></span>
+                <span class="market-meta"><?= View::e($p['family_name']) ?><?php if (($p['visibility'] ?? '') === 'public'): ?> · 🌐 на сайте<?php endif; ?></span>
+            </span>
+        </a>
     <?php endforeach; ?>
 </div>

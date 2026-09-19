@@ -92,6 +92,7 @@ $router->get('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'showEdit']);
 $router->post('/poselenie/yarmarka/{id}/redaktirovat', [$product, 'update']);
 $router->post('/poselenie/yarmarka/{id}/udalit', [$product, 'delete']);
 $router->post('/poselenie/yarmarka/{id}/foto/{img}/udalit', [$product, 'deletePhoto']);
+$router->get('/poselenie/yarmarka/{id}', [$product, 'show']);   // карточка товара (после moya/novyy — те объявлены выше)
 
 // Справочник «Соседи» — карточки поместий и жителей (только для вошедших, ПДн).
 $residents = new ResidentsController();

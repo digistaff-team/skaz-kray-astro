@@ -51,7 +51,7 @@
             <strong><?= View::e($p['title']) ?></strong>
             <span class="res-meta">— <?= View::e($p['family_name']) ?></span>
             <p><?= nl2br(View::e($p['description'])) ?></p>
-            <p class="res-meta">Цена: <?= View::e(product_price_label($p['price'], $p['unit'] ?? null)) ?> · Контакт: <?= View::e($p['contact']) ?></p>
+            <p class="res-meta">Цена: <?= View::e(product_price_label($p['price'], $p['unit'] ?? null)) ?> · Контакт: <?= contact_links($p['contact']) ?></p>
             <form method="post" action="/poselenie/moderation/product/approve" style="display:inline">
                 <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
                 <button class="res-btn" type="submit">Опубликовать</button>

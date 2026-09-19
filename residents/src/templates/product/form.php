@@ -40,8 +40,8 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
     <?php $vis = $product['visibility'] ?? 'residents'; ?>
     <label>Где разместить
         <select name="visibility">
-            <option value="residents"<?= $vis === 'residents' ? ' selected' : '' ?>>Только в приложении</option>
-            <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>В приложении и на сайте</option>
+            <option value="residents"<?= $vis === 'residents' ? ' selected' : '' ?>>Только для соседей</option>
+            <option value="public"<?= $vis === 'public' ? ' selected' : '' ?>>Для всех на сайте</option>
         </select>
     </label>
     <label class="file-btn">Добавить фото

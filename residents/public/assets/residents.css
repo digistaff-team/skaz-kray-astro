@@ -524,11 +524,22 @@ body.map-open { overflow: hidden; }
 .cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }
 
 /* ==== Рынок «Товары и услуги соседей» ==== */
-.market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-.market-card { display: flex; flex-direction: column; gap: .3rem; }
-.market-photo { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; }
-.market-title { font-weight: 700; font-size: 1rem; }
+/* Лента Ярмарки: карточка-строка — слева фото, справа название и цена, вся
+   карточка ведёт на полную версию с описанием. */
+.market-grid { display: grid; grid-template-columns: 1fr; gap: .7rem; }
+.market-card { display: flex; flex-direction: row; align-items: center; gap: .9rem;
+               padding: .7rem; margin-bottom: 0; color: inherit; text-decoration: none; }
+.market-card:hover { border-color: var(--green); }
+/* выше по файлу есть .res-card img { height: auto } — отсюда составной селектор */
+.market-card .market-photo { flex: 0 0 88px; width: 88px; height: 88px; object-fit: cover; border-radius: 10px; }
+.market-card .market-photo--none { display: flex; align-items: center; justify-content: center;
+                                  background: #eef4ef; font-size: 1.8rem; }
+.market-card-body { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.market-title { font-weight: 700; font-size: 1rem; overflow-wrap: anywhere; }
 .market-price { color: var(--green); font-weight: 700; }
+.market-price--big { font-size: 1.15rem; margin: 0 0 .8rem; }
+.market-gallery { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.2rem; }
+.market-gallery img { width: 100%; max-width: 360px; height: auto; border-radius: 10px; }
 .market-meta { font-size: .82rem; color: var(--muted); }
 .market-vis { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; }
 

@@ -65,10 +65,11 @@ final class CatalogAnnounce
     }
 
     /** Анонс нового товара/услуги на Ярмарке (карточки внутри портала нет — ведём в ленту). */
-    public static function product(int $id, string $title, ?string $price): void
+    public static function product(int $id, string $title, ?string $price, ?string $unit = null): void
     {
         $head = '🛒 Новое на Ярмарке';
-        $line = '«' . $title . '»' . (($price ?? '') !== '' ? ' · ' . $price : '');
+        $priceText = ($price ?? '') !== '' && ($unit ?? '') !== '' ? $price . ' за ' . $unit : (string) $price;
+        $line = '«' . $title . '»' . ($priceText !== '' ? ' · ' . $priceText : '');
         self::announce($head, $line, '/poselenie/yarmarka');
     }
 

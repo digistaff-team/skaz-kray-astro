@@ -522,7 +522,7 @@ body.map-open { overflow: hidden; }
 .cab-thing-name { font-weight: 700; }
 .cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }
 
-/* ==== Рынок «Товары соседей» ==== */
+/* ==== Рынок «Товары и услуги соседей» ==== */
 .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
 .market-card { display: flex; flex-direction: column; gap: .3rem; }
 .market-photo { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 10px; }
@@ -566,6 +566,13 @@ body.map-open { overflow: hidden; }
 .res-form .tool-terms-row > label { flex: 1 1 100%; margin-top: .8rem; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-kind { flex: 1 1 11rem; }
 .res-form .tool-terms-row.has-deposit > .tool-terms-amount { flex: 1 1 8rem; }
+
+/* Ярмарка: «Единица изм.» встаёт справа от цены, когда цена заполнена
+   (та же схема, что залог в форме инструмента и расходы задачи Совета). */
+.res-form .market-price-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .market-price-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .market-price-row.has-unit > .market-price-value { flex: 1 1 8rem; }
+.res-form .market-price-row.has-unit > .market-price-unit { flex: 1 1 8rem; }
 
 /* Расходы задачи Совета: с появлением суммы выбор предоплата/постоплата встаёт
    справа в ту же строку, а поле суммы сужается (как залог в форме инструмента). */

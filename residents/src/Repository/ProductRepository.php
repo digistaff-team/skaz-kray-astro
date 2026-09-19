@@ -18,36 +18,36 @@ final class ProductRepository
      * Видимость: residents («только соседи» — внутрипоселенческий рынок, публикуется
      * сразу) | public («на сайте», в разделе Ярмарка — на проверку редактору).
      */
-    public function create(int $familyId, string $title, string $description, ?string $price, string $contact, string $now, string $visibility = 'public'): int
+    public function create(int $familyId, string $title, string $description, ?string $price, string $contact, string $now, string $visibility = 'public', ?string $unit = null): int
     {
         $status      = $visibility === 'public' ? 'pending' : 'published';
         $publishedAt = $visibility === 'public' ? null : $now;
         $st = $this->db->prepare(
-            'INSERT INTO products (family_id, title, description, price, contact, visibility, status, published_at, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO products (family_id, title, description, price, unit, contact, visibility, status, published_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $st->execute([$familyId, $title, $description, $price, $contact, $visibility, $status, $publishedAt, $now, $now]);
+        $st->execute([$familyId, $title, $description, $price, $unit, $contact, $visibility, $status, $publishedAt, $now, $now]);
         return (int) $this->db->lastInsertId();
     }
 
-    public function update(int $id, string $title, string $description, ?string $price, string $contact, string $now, string $visibility = 'public'): void
+    public function update(int $id, string $title, string $description, ?string $price, string $contact, string $now, string $visibility = 'public', ?string $unit = null): void
     {
         if ($visibility === 'public') {
             $st = $this->db->prepare(
                 'UPDATE products
-                 SET title = ?, description = ?, price = ?, contact = ?, visibility = ?,
+                 SET title = ?, description = ?, price = ?, unit = ?, contact = ?, visibility = ?,
                      status = \'pending\', reject_reason = NULL, published_at = NULL, updated_at = ?
                  WHERE id = ?'
             );
-            $st->execute([$title, $description, $price, $contact, $visibility, $now, $id]);
+            $st->execute([$title, $description, $price, $unit, $contact, $visibility, $now, $id]);
         } else {
             $st = $this->db->prepare(
                 'UPDATE products
-                 SET title = ?, description = ?, price = ?, contact = ?, visibility = ?,
+                 SET title = ?, description = ?, price = ?, unit = ?, contact = ?, visibility = ?,
                      status = \'published\', reject_reason = NULL, published_at = ?, updated_at = ?
                  WHERE id = ?'
             );
-            $st->execute([$title, $description, $price, $contact, $visibility, $now, $now, $id]);
+            $st->execute([$title, $description, $price, $unit, $contact, $visibility, $now, $now, $id]);
         }
     }
 

@@ -30,6 +30,7 @@ CREATE TABLE products (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     price TEXT,
+    unit TEXT,
     contact TEXT NOT NULL,
     visibility TEXT NOT NULL DEFAULT 'public',
     status TEXT NOT NULL DEFAULT 'pending',

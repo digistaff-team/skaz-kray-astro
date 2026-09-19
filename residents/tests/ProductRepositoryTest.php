@@ -26,6 +26,19 @@ final class ProductRepositoryTest extends TestCase
         $this->assertSame('тел 8-900', $p['contact']);
     }
 
+    public function test_unit_is_saved_and_updated(): void
+    {
+        $id = $this->repo->create($this->familyId, 'Мёд', 'Липовый', '500 ₽', 'C', '2026-08-28 09:00:00', 'residents', 'кг.');
+        $this->assertSame('кг.', $this->repo->findById($id)['unit']);
+
+        $this->repo->update($id, 'Мёд', 'Липовый', '600 ₽', 'C', '2026-08-29 09:00:00', 'residents', 'банка');
+        $this->assertSame('банка', $this->repo->findById($id)['unit']);
+
+        // Цену убрали — единица тоже уходит (так её передаёт контроллер).
+        $this->repo->update($id, 'Мёд', 'Липовый', null, 'C', '2026-08-30 09:00:00', 'residents', null);
+        $this->assertNull($this->repo->findById($id)['unit']);
+    }
+
     public function test_approve_publishes(): void
     {
         $id = $this->repo->create($this->familyId, 'Мёд', 'D', '500 ₽', 'C', '2026-08-28 09:00:00');

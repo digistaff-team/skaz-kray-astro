@@ -34,6 +34,7 @@ CREATE TABLE products (
     title         VARCHAR(200) NOT NULL,
     description   MEDIUMTEXT   NOT NULL,
     price         VARCHAR(80)  NULL,                          -- свободный текст; NULL = по договорённости
+    unit          VARCHAR(20)  NULL,                          -- единица измерения цены (шт., час, кг. и т.д.); имеет смысл только с ценой
     contact       VARCHAR(200) NOT NULL,
     visibility    VARCHAR(16)  NOT NULL DEFAULT 'public',      -- residents (соседям) | public (на сайте)
     status        VARCHAR(16)  NOT NULL DEFAULT 'pending',

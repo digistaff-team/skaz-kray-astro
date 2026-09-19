@@ -15,9 +15,23 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
         <textarea name="description" required><?= View::e($product['description'] ?? '') ?></textarea>
     </label>
     <?php if (isset($errors['description'])): ?><div class="res-flash res-flash--error"><?= View::e($errors['description']) ?></div><?php endif; ?>
-    <label>Цена
-        <input type="text" name="price" value="<?= View::e($product['price'] ?? '') ?>">
-    </label>
+    <?php $curUnit = (string) ($product['unit'] ?? ''); $units = $units ?? []; ?>
+    <div class="market-price-row<?= ($product['price'] ?? '') !== '' ? ' has-unit' : '' ?>" id="prodPriceRow">
+        <label class="market-price-value">Цена
+            <input type="text" name="price" id="prodPrice" value="<?= View::e($product['price'] ?? '') ?>">
+        </label>
+        <label class="market-price-unit" id="prodUnitBox"<?= ($product['price'] ?? '') !== '' ? '' : ' hidden' ?>>Единица изм.
+            <select name="unit">
+                <option value="">— не указана —</option>
+                <?php if ($curUnit !== '' && !in_array($curUnit, $units, true)): ?>
+                    <option value="<?= View::e($curUnit) ?>" selected><?= View::e($curUnit) ?></option>
+                <?php endif; ?>
+                <?php foreach ($units as $u): ?>
+                    <option value="<?= View::e($u) ?>"<?= $curUnit === $u ? ' selected' : '' ?>><?= View::e($u) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+    </div>
     <label>Как связаться (телефон, мессенджер и т.п.)
         <input type="text" name="contact" value="<?= View::e($product['contact'] ?? '') ?>" required>
     </label>
@@ -49,6 +63,24 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
+
+<script>
+// «Единица изм.» показывается справа от цены только когда цена заполнена:
+// без цены («по договорённости») единица не имеет смысла.
+(function () {
+  var price = document.getElementById('prodPrice'),
+      box = document.getElementById('prodUnitBox'),
+      row = document.getElementById('prodPriceRow');
+  if (!price || !box || !row) { return; }
+  function sync() {
+    var on = price.value.trim() !== '';
+    box.hidden = !on;
+    row.classList.toggle('has-unit', on);
+  }
+  price.addEventListener('input', sync);
+  sync();
+})();
+</script>
 
 <script>
 (function () {

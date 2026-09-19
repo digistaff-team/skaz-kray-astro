@@ -26,7 +26,7 @@ $pages = (int) ceil($total / $perPage);
                             </a>
                         <?php endif; ?>
                         <div class="pcard-body">
-                            <time class="pcard-date"><?= $p['price'] !== null ? View::e($p['price']) : 'по договорённости' ?></time>
+                            <time class="pcard-date"><?= View::e(product_price_label($p['price'], $p['unit'] ?? null)) ?></time>
                             <h3 class="pcard-title"><a href="/yarmarka/<?= $id ?>"><?= View::e($p['title']) ?></a></h3>
                             <p class="pcard-excerpt"><?= View::e(mb_strimwidth((string) $p['description'], 0, 160, '…')) ?></p>
                             <a href="/yarmarka/<?= $id ?>" class="pcard-more"><?= View::e($p['family_name']) ?> →</a>

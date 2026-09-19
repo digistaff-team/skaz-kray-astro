@@ -131,6 +131,18 @@ function entry_image_url(string $path): string
 }
 
 /**
+ * Цена товара Ярмарки для показа: «500 ₽ за кг.», «500 ₽» или «по договорённости».
+ * Цена — свободный текст, единица без цены смысла не имеет и не показывается.
+ */
+function product_price_label(?string $price, ?string $unit = null): string
+{
+    $price = trim((string) $price);
+    $unit  = trim((string) $unit);
+    if ($price === '') { return 'по договорённости'; }
+    return $unit === '' ? $price : $price . ' за ' . $unit;
+}
+
+/**
  * Уменьшенная копия фото для миниатюр: /tg-media/w<W>/<file_id>.jpg.
  * Оригиналы из Telegram весят 300–500 КБ, и тянуть их ради иконки 84×84 — это
  * мегабайты трафика на страницу (так тормозил справочник «Наши соседи»).

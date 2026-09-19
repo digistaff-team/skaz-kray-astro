@@ -134,7 +134,7 @@ final class ModerationController
         }
         header('Location: /poselenie/moderation');
         if ($firstPublish) {
-            CatalogAnnounce::product((int) $p['id'], (string) $p['title'], $p['price'] ?? null);
+            CatalogAnnounce::product((int) $p['id'], (string) $p['title'], $p['price'] ?? null, $p['unit'] ?? null);
         }
     }
 

@@ -3,7 +3,7 @@
     <h1>Моя витрина</h1>
     <div class="tool-head-actions">
         <a class="res-btn" href="/poselenie/yarmarka/novyy">Добавить</a>
-        <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka">Товары соседей</a>
+        <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka">Товары и услуги соседей</a>
     </div>
 </div>
 <p class="res-meta">Ваши товары и услуги. «Только соседи» публикуются сразу, «На сайте» — после проверки редактором.</p>
@@ -22,7 +22,7 @@
         <?php if ($p['status'] === 'rejected' && $p['reject_reason']): ?>
             <div class="res-flash res-flash--error">Причина: <?= View::e($p['reject_reason']) ?></div>
         <?php endif; ?>
-        <p class="res-meta"><?= ($p['price'] ?? '') !== '' ? View::e($p['price']) : 'по договорённости' ?></p>
+        <p class="res-meta"><?= View::e(product_price_label($p['price'] ?? null, $p['unit'] ?? null)) ?></p>
         <div class="cab-item-actions">
             <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Изменить</a>
             <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onsubmit="return confirm('Удалить?')">

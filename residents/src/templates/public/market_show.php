@@ -8,7 +8,7 @@ $u = PublicController::uploadsUrl();
         </nav>
         <h1><?= View::e($product['title']) ?></h1>
         <div class="post-meta">
-            <span><?= $product['price'] !== null ? View::e($product['price']) : 'по договорённости' ?></span>
+            <span><?= View::e(product_price_label($product['price'], $product['unit'] ?? null)) ?></span>
             <ul class="post-cats"><li><a href="/yarmarka/"><?= View::e($product['family_name']) ?></a></li></ul>
         </div>
     </header>

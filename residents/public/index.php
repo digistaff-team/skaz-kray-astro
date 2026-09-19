@@ -84,7 +84,7 @@ $router->get('/poselenie/dnevniki', [$diary, 'feed']);
 $router->get('/poselenie/dnevniki/{id}', [$diary, 'feedShow']);
 
 $product = new ProductController();
-$router->get('/poselenie/yarmarka', [$product, 'index']);        // «Товары соседей» — лента рынка
+$router->get('/poselenie/yarmarka', [$product, 'index']);        // «Товары и услуги соседей» — лента рынка
 $router->get('/poselenie/yarmarka/moya', [$product, 'mine']);    // «Моя витрина»
 $router->get('/poselenie/yarmarka/novyy', [$product, 'showCreate']);
 $router->post('/poselenie/yarmarka/novyy', [$product, 'create']);

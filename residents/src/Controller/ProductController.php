@@ -10,6 +10,9 @@ final class ProductController
 {
     use RequiresHousehold;
 
+    /** Единицы измерения цены: товары (шт., кг.) и услуги (час, день, услуга). */
+    public const UNITS = ['шт.', 'час', 'кг.', 'г.', 'л.', 'м.', 'м²', 'м³', 'день', 'комплект', 'упаковка', 'банка', 'пучок', 'услуга'];
+
     public function __construct(
         private ProductRepository $products = new ProductRepository(),
         private ImageRepository $images = new ImageRepository(),
@@ -17,7 +20,7 @@ final class ProductController
         private FamilyRepository $families = new FamilyRepository()
     ) {}
 
-    /** Лента «Товары соседей» — внутрипоселенческий рынок (все опубликованные товары). */
+    /** Лента «Товары и услуги соседей» — внутрипоселенческий рынок (все опубликованные товары). */
     public function index(): void
     {
         $this->requireHousehold('yarmarka');
@@ -27,7 +30,7 @@ final class ProductController
             $p['photo'] = $imgs[0]['path'] ?? null;
         }
         unset($p);
-        View::render('product/marketplace', ['products' => $products, 'me' => Auth::id()], 'Товары соседей');
+        View::render('product/marketplace', ['products' => $products, 'me' => Auth::id()], 'Товары и услуги соседей');
     }
 
     /** «Моя витрина» — свои товары/услуги (любой статус), управление. */
@@ -49,6 +52,7 @@ final class ProductController
         View::render('product/form', [
             'product' => ['contact' => $this->defaultContact()],
             'images' => [],
+            'units' => self::UNITS,
             'errors' => [],
         ], 'Новый товар/услуга');
     }
@@ -81,10 +85,10 @@ final class ProductController
         if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
         [$data, $errors] = $this->validate();
         if ($errors) {
-            View::render('product/form', ['product' => $data, 'images' => [], 'errors' => $errors], 'Новый товар/услуга');
+            View::render('product/form', ['product' => $data, 'images' => [], 'units' => self::UNITS, 'errors' => $errors], 'Новый товар/услуга');
             return;
         }
-        $id = $this->products->create(Auth::id(), $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility']);
+        $id = $this->products->create(Auth::id(), $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility'], $data['unit']);
         $this->handleUploads($id);
         Flash::set('success', $data['visibility'] === 'public'
             ? 'Товар отправлен на проверку — после неё появится в разделе Ярмарка на сайте.'
@@ -94,7 +98,7 @@ final class ProductController
         // уходит на проверку и ещё не виден жителям: его анонсирует модерация,
         // когда одобрит (ModerationController::approveProduct).
         if ($data['visibility'] !== 'public') {
-            CatalogAnnounce::product($id, $data['title'], $data['price']);
+            CatalogAnnounce::product($id, $data['title'], $data['price'], $data['unit']);
         }
     }
 
@@ -105,6 +109,7 @@ final class ProductController
         View::render('product/form', [
             'product' => $product,
             'images' => $this->images->listFor('product', (int) $product['id']),
+            'units' => self::UNITS,
             'errors' => [],
         ], 'Редактирование товара');
     }
@@ -117,10 +122,10 @@ final class ProductController
         [$data, $errors] = $this->validate();
         if ($errors) {
             $data['id'] = $product['id'];
-            View::render('product/form', ['product' => $data, 'images' => $this->images->listFor('product', (int) $product['id']), 'errors' => $errors], 'Редактирование товара');
+            View::render('product/form', ['product' => $data, 'images' => $this->images->listFor('product', (int) $product['id']), 'units' => self::UNITS, 'errors' => $errors], 'Редактирование товара');
             return;
         }
-        $this->products->update((int) $product['id'], $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility']);
+        $this->products->update((int) $product['id'], $data['title'], $data['description'], $data['price'], $data['contact'], date('Y-m-d H:i:s'), $data['visibility'], $data['unit']);
         $this->handleUploads((int) $product['id']);
         Flash::set('success', $data['visibility'] === 'public'
             ? 'Изменения отправлены на проверку (раздел Ярмарка на сайте).'
@@ -175,6 +180,7 @@ final class ProductController
         $title = trim($_POST['title'] ?? '');
         $desc  = trim($_POST['description'] ?? '');
         $price = trim($_POST['price'] ?? '');
+        $unit  = trim($_POST['unit'] ?? '');
         $contact = trim($_POST['contact'] ?? '');
         $errors = [];
         if (!Validator::length($title, 2, 200)) { $errors['title'] = 'Название: 2–200 символов.'; }
@@ -182,7 +188,11 @@ final class ProductController
         if (!Validator::length($contact, 3, 200)) { $errors['contact'] = 'Укажите, как с вами связаться.'; }
         return [[
             'title' => $title, 'description' => $desc,
-            'price' => $price === '' ? null : $price, 'contact' => $contact,
+            'price' => $price === '' ? null : $price,
+            // Единица осмысленна только вместе с ценой (в форме она и появляется только при заполненной цене);
+            // чужое значение из подменённой формы просто отбрасываем.
+            'unit' => ($price !== '' && in_array($unit, self::UNITS, true)) ? $unit : null,
+            'contact' => $contact,
             'visibility' => $this->pickVisibility($_POST['visibility'] ?? ''),
         ], $errors];
     }

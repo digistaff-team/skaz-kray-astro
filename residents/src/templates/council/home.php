@@ -19,7 +19,7 @@
     <p class="sovet-meet-date"><?= View::e($nextMeeting['date']) ?></p>
     <p class="res-meta"><?= View::e($nextMeeting['place']) ?></p>
     <p class="res-meta">
-        Дежурный председатель: <strong><?= View::e($nextMeeting['dutyChair']) ?></strong><br>
+        Дежурный председатель: <strong><?= View::e($nextMeeting['dutyChair']) ?></strong><?php if (!empty($nextMeeting['dutyAckAt'])): ?> <span class="sovet-duty-ack" title="Подтвердил через бота">✅ дежурство принято</span><?php endif; ?><br>
         Дежурный секретарь: <strong><?= View::e($nextMeeting['dutySecretary']) ?></strong>
     </p>
     <p><button type="button" id="agenda-open" class="sovet-agenda-trigger">Повестка встречи</button></p>

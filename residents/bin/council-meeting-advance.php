@@ -10,16 +10,22 @@ declare(strict_types=1);
  * Если встреча перенесена (её дата не сегодня) — НЕ двигаем: тот же дежурный
  * остаётся на перенесённую встречу, график сдвигается сам собой.
  *
- * Флаг --force игнорирует проверку даты (для ручного прогона).
- * Запуск: php8.3 bin/council-meeting-advance.php [--force]
+ * После ротации новому Дежурному председателю уходит личное сообщение от бота
+ * (CouncilDutyNotify) — чтобы он узнал о дежурстве сразу, а не из карточки встречи.
+ *
+ * Флаги: --force (игнорировать проверку даты), --dry-run (показать, кто станет
+ * дежурным и какой текст ему уйдёт, ничего не меняя и не отправляя).
+ * Запуск: php8.3 bin/council-meeting-advance.php [--force] [--dry-run]
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
 use SkazResidents\{Config, Database, Env, CouncilDutyRotation};
 use SkazResidents\Repository\CouncilMeetingRepository;
+use SkazResidents\Service\CouncilDutyNotify;
 
-$force = in_array('--force', $argv, true);
+$force  = in_array('--force', $argv, true);
+$dryRun = in_array('--dry-run', $argv, true);
 
 Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
@@ -45,5 +51,27 @@ if (!$force) {
     }
 }
 
+if ($dryRun) {
+    $next = new DateTime($startsAt, new DateTimeZone('Europe/Moscow'));
+    $next->modify('+7 days');
+    $chair = CouncilDutyRotation::nameForIndex($repo->rotationIndex() + 1);
+    $when  = CouncilMeetingRepository::formatDisplay($next->format('Y-m-d H:i:s'), null);
+    $log("[DRY-RUN] следующий дежурный: {$chair}, встреча {$when}");
+    echo "---- сообщение дежурному ----\n"
+       . CouncilDutyNotify::text($chair, $when, (string) ($m['place'] ?? ''), CouncilDutyNotify::link(CouncilDutyNotify::base('tg')))
+       . "\n[кнопка] ✅ " . CouncilDutyNotify::ACK_LABEL
+       . "\n-----------------------------\n";
+    exit(0);
+}
+
 $r = CouncilDutyRotation::advance();
 $log("встреча состоялась ({$meetingDay}) → перенос на {$r['date']}, следующий дежурный: {$r['chair']}");
+
+// Новому дежурному — личное сообщение от бота. Дату и место берём уже из
+// обновлённой карточки встречи, чтобы написать то же, что человек увидит в приложении.
+$next = $repo->get();
+if ($r['chair'] !== '' && CouncilDutyNotify::newChair($r['chair'], (string) ($next['date'] ?? ''), (string) ($next['place'] ?? ''), $repo->rotationIndex())) {
+    $log("уведомление отправлено: {$r['chair']}");
+} elseif ($r['chair'] !== '') {
+    $log("уведомление НЕ отправлено: {$r['chair']} (нет привязки к боту или ошибка отправки)");
+}

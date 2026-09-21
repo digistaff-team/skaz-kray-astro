@@ -47,6 +47,7 @@ final class CouncilMeetingRepository
             'agenda'        => self::splitAgenda((string) ($row['agenda'] ?? '')),
             'startsAt'      => self::toInput($row['starts_at'] ?? null),
             'endsAt'        => self::toInput($row['ends_at'] ?? null),
+            'dutyAckAt'     => ($row['duty_ack_at'] ?? null) ?: null,
         ];
     }
 
@@ -86,6 +87,19 @@ final class CouncilMeetingRepository
     public function setRotationIndex(int $i): void
     {
         $this->db->prepare('UPDATE council_meeting SET rotation_index = ? WHERE id = 1')->execute([$i]);
+    }
+
+    /** Когда текущий дежурный нажал «Дежурство принял» (null — ещё не подтвердил). */
+    public function dutyAckAt(): ?string
+    {
+        $v = $this->db->query('SELECT duty_ack_at FROM council_meeting WHERE id = 1')->fetchColumn();
+        return ($v === false || $v === null || $v === '') ? null : (string) $v;
+    }
+
+    /** Отметить подтверждение дежурства; null — сбросить (делается при ротации). */
+    public function setDutyAck(?string $when): void
+    {
+        $this->db->prepare('UPDATE council_meeting SET duty_ack_at = ? WHERE id = 1')->execute([$when]);
     }
 
     /** Повестка как единый текст (для textarea в форме). */

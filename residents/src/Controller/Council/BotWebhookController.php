@@ -3,8 +3,8 @@ declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
 use SkazResidents\{Config, TelegramBot};
-use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository};
-use SkazResidents\Service\CouncilExpenseApproval;
+use SkazResidents\Repository\{CouncilTaskRepository, CouncilMemberRepository, CouncilMeetingRepository};
+use SkazResidents\Service\{CouncilExpenseApproval, CouncilDutyNotify};
 
 /**
  * Webhook @SkazKray_bot — обрабатывает нажатия inline-кнопок под уведомлением о
@@ -47,6 +47,12 @@ final class BotWebhookController
         $chatId     = (string) ($msg['chat']['id'] ?? '');
         $msgId      = (int) ($msg['message_id'] ?? 0);
         $msgText    = (string) ($msg['text'] ?? '');
+
+        // «Дежурство принял» под сообщением о переходе роли Дежурного председателя.
+        if (preg_match('/^d:ack:(\d+)$/', $data, $dm)) {
+            $this->handleDutyAck($token, $cq, (int) $dm[1]);
+            return;
+        }
 
         // Кнопки казначея под запросом на одобрение расходов задачи.
         if (preg_match('/^x:(\d+):(approve|reject)$/', $data, $xm)) {
@@ -111,6 +117,40 @@ final class BotWebhookController
                 (new CouncilExpenseApproval())->requestIfNeeded($taskId);
                 return;
         }
+    }
+
+    /**
+     * «Дежурство принял»: подтверждает, что новый Дежурный председатель узнал о
+     * переходе роли. Нажать может только сам дежурный и только по актуальной кнопке
+     * (в callback_data зашита позиция ротации — прошлонедельная кнопка не считается).
+     * @param array<string,mixed> $cq
+     */
+    private function handleDutyAck(string $token, array $cq, int $rotationIndex): void
+    {
+        $callbackId = (string) ($cq['id'] ?? '');
+        $fromId     = (int) ($cq['from']['id'] ?? 0);
+        $msg        = is_array($cq['message'] ?? null) ? $cq['message'] : [];
+        $chatId     = (string) ($msg['chat']['id'] ?? '');
+        $msgId      = (int) ($msg['message_id'] ?? 0);
+        $msgText    = (string) ($msg['text'] ?? '');
+
+        $meetings = new CouncilMeetingRepository();
+        if ($rotationIndex !== $meetings->rotationIndex()) {
+            TelegramBot::answerCallback($token, $callbackId, 'Дежурство уже перешло дальше');
+            self::renderExpenseEdit($token, $chatId, $msgId, $msgText . "\n\n⚠️ Это сообщение о прошлом дежурстве.");
+            return;
+        }
+
+        $member = (new CouncilMemberRepository())->findByTelegramId($fromId);
+        $name = $member ? (string) $member['name'] : '';
+        if ($name === '' || $name !== (string) ($meetings->get()['dutyChair'] ?? '')) {
+            TelegramBot::answerCallback($token, $callbackId, 'Подтвердить дежурство может только дежурный председатель');
+            return;
+        }
+
+        $meetings->setDutyAck(date('Y-m-d H:i:s'));
+        TelegramBot::answerCallback($token, $callbackId, '✅ ' . CouncilDutyNotify::ACK_LABEL);
+        self::renderExpenseEdit($token, $chatId, $msgId, $msgText . "\n\n✅ " . CouncilDutyNotify::ACK_LABEL);
     }
 
     /**

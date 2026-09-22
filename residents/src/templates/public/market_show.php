@@ -1,6 +1,4 @@
-<?php use SkazResidents\View; use SkazResidents\Controller\PublicController;
-$u = PublicController::uploadsUrl();
-?>
+<?php use SkazResidents\View; ?>
 <article class="post">
     <header class="post-head wrap">
         <nav class="crumbs" aria-label="Хлебные крошки">
@@ -15,7 +13,7 @@ $u = PublicController::uploadsUrl();
 
     <div class="wrap post-body prose">
         <?php foreach ($product['images'] as $img): ?>
-            <img src="<?= $u ?>/<?= View::e($img['path']) ?>" alt="">
+            <img src="<?= View::e(entry_image_url($img['path'])) ?>" alt="">
         <?php endforeach; ?>
         <p><?= nl2br(View::e($product['description'])) ?></p>
         <p><strong>Как связаться:</strong> <?= contact_links($product['contact']) ?></p>

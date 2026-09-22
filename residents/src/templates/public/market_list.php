@@ -1,5 +1,4 @@
-<?php use SkazResidents\View; use SkazResidents\Controller\PublicController;
-$u = PublicController::uploadsUrl();
+<?php use SkazResidents\View;
 $pages = (int) ceil($total / $perPage);
 ?>
 <div class="cat">
@@ -22,7 +21,7 @@ $pages = (int) ceil($total / $perPage);
                     <article class="pcard">
                         <?php if (!empty($p['images'])): ?>
                             <a href="/yarmarka/<?= $id ?>" class="pcard-media" tabindex="-1" aria-hidden="true">
-                                <img src="<?= $u ?>/<?= View::e($p['images'][0]['path']) ?>" alt="" loading="lazy">
+                                <img src="<?= View::e(entry_image_thumb($p['images'][0]['path'], 480)) ?>" alt="" loading="lazy">
                             </a>
                         <?php endif; ?>
                         <div class="pcard-body">

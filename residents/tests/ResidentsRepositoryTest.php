@@ -148,6 +148,21 @@ final class ResidentsRepositoryTest extends TestCase
         $this->assertSame([], $free['people']);
     }
 
+    /** Фото жителя, загруженные в «Нашем поместье», видны и в справочнике соседей. */
+    public function test_grouped_attaches_photos_to_people(): void
+    {
+        $pdo = Database::pdo();
+        $id = (int) $pdo->query("SELECT id FROM residents WHERE full_name = 'Руденко Сергей'")->fetchColumn();
+        $pdo->exec("INSERT INTO images (owner_type, owner_id, path, sort) VALUES
+            ('resident', {$id}, 'residents/sergey-1.jpg', 0),
+            ('resident', {$id}, 'residents/sergey-2.jpg', 1)");
+
+        $people = $this->repo->grouped()[0]['people'];
+        $this->assertCount(2, $people[0]['images']);
+        $this->assertSame('residents/sergey-1.jpg', $people[0]['images'][0]['path']);
+        $this->assertSame([], $people[1]['images']);   // у жителя без фото — пустой список
+    }
+
     /** @param array<int,array<string,mixed>> $groups */
     private function householdByName(array $groups, string $name): ?array
     {

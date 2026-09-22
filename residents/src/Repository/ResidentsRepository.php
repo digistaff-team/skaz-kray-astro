@@ -70,6 +70,16 @@ final class ResidentsRepository
             $byPets[(int) $p['household_id']][] = $p;
         }
 
+        // Фото жителей (owner_type = 'resident', та же images, что и в «Нашем поместье»).
+        // Спрашиваем только про жителей привязанных поместий: ПДн непривязанных мы не
+        // раскрываем — значит и за их фото ходить незачем.
+        $personIds = [];
+        foreach ($households as $h) {
+            if ($h['fam_id'] === null) { continue; }
+            foreach ($byHousehold[(int) $h['id']] ?? [] as $p) { $personIds[] = (int) $p['id']; }
+        }
+        $personImages = $this->imagesFor('resident', $personIds);
+
         $needle = $q !== null ? trim($q) : '';
         $result = [];
         foreach ($households as $h) {
@@ -77,6 +87,8 @@ final class ResidentsRepository
             // Жителей и авто отдаём только для привязанных поместий (иначе ПДн не
             // раскрываем — карточка показывается серой статичной плашкой).
             $h['people'] = $h['claimed'] ? ($byHousehold[(int) $h['id']] ?? []) : [];
+            foreach ($h['people'] as &$person) { $person['images'] = $personImages[(int) $person['id']] ?? []; }
+            unset($person);
             $h['cars']   = $h['claimed'] ? ($byCars[(int) $h['id']] ?? []) : [];
             $h['pets']   = $h['claimed'] ? ($byPets[(int) $h['id']] ?? []) : [];
             // Подключённые аккаунты (Telegram) — только для привязанных поместий.

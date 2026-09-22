@@ -166,6 +166,14 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
                                 <a href="https://t.me/<?= View::e($tgByPerson[(int) $p['id']]) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
                             <?php endif; ?>
                         </div>
+                        <?php if (!empty($p['images'])): ?>
+                            <div class="photo-preview">
+                                <?php foreach ($p['images'] as $img): ?>
+                                    <?php $u = entry_image_url($img['path']); ?>
+                                    <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($p['full_name']) ?>" loading="lazy">
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
                 <?php if (!empty($h['cars'])): ?>

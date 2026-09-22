@@ -1,6 +1,6 @@
 <?php
 use SkazResidents\View;
-/** @var string $bookingLink @var bool $budgetOpen */
+/** @var string $bookingLink @var bool $budgetOpen @var array $protocols */
 ?>
 <?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Общий дом</h1>
@@ -24,6 +24,15 @@ use SkazResidents\View;
         </div>
     <?php endif; ?>
 </div>
+
+<details class="res-card sovet-acc house-protocols">
+    <summary><h2>Протоколы встреч Попечительского совета Общего дома</h2></summary>
+    <ul class="sovet-doclist">
+        <?php foreach ($protocols as $p): ?>
+            <li><a href="<?= View::e($p['href']) ?>" target="_blank" rel="noopener"><?= View::e($p['title']) ?></a></li>
+        <?php endforeach; ?>
+    </ul>
+</details>
 
 <script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>

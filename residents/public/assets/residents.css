@@ -630,6 +630,9 @@ body.water-open { overflow: hidden; }
 .house-option b { display: block; font-size: 1.05rem; margin-bottom: .2rem; }
 .house-option:hover { border-color: var(--green); }
 .house-option--off { opacity: .6; }
+/* Протоколы Попечительского совета — тот же список, что в /sovet */
+.house-protocols { margin-top: 1rem; }
+.house-protocols > summary h2 { font-size: 1.05rem; }
 
 /* ==== Закупки: доска, прогресс пула, состав участников ==== */
 .buy-list { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }

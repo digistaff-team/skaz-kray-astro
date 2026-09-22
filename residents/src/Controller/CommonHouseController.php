@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Config, View};
+use SkazResidents\{Auth, Config, CouncilData, View};
 
 /**
  * «Общий дом» — раздел-хаб для жителей: бронирование помещений и отчёт о
@@ -12,6 +12,8 @@ use SkazResidents\{Auth, Config, View};
  * @SkazTerem_bot (ссылка настраивается ключом terem_booking_link), а отчёт —
  * это существующая страница «Бюджет Общего дома» (/poselenie/byudzhet), где
  * жители видят те же цифры, что совет ведёт в «Бухгалтерии Общего дома».
+ * Протоколы встреч Попечительского совета берутся из того же источника, что и
+ * список в /sovet (CouncilData::protocols()), — второй перечень не заводим.
  */
 final class CommonHouseController
 {
@@ -26,6 +28,7 @@ final class CommonHouseController
         View::render('common/house', [
             'bookingLink' => (string) (Config::get('terem_booking_link', self::BOOKING_LINK) ?: self::BOOKING_LINK),
             'budgetOpen'  => \SkazResidents\Sections::isEnabled('byudzhet'),
+            'protocols'   => CouncilData::protocols(),
         ], 'Общий дом');
     }
 }

@@ -30,6 +30,13 @@
             <strong><?= View::e($e['title']) ?></strong>
             <span class="res-meta">— <?= View::e($e['family_name']) ?></span>
             <p><?= nl2br(View::e($e['body'])) ?></p>
+            <?php if (!empty($e['images'])): ?>
+                <div class="photo-preview">
+                    <?php foreach ($e['images'] as $img): ?>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy"></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
             <form method="post" action="/poselenie/moderation/entry/approve" style="display:inline">
                 <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $e['id'] ?>">
                 <button class="res-btn" type="submit">Опубликовать</button>
@@ -52,6 +59,13 @@
             <span class="res-meta">— <?= View::e($p['family_name']) ?></span>
             <p><?= nl2br(View::e($p['description'])) ?></p>
             <p class="res-meta"><?= View::e(product_price_label($p['price'], $p['unit'] ?? null)) ?> · Контакт: <?= contact_links($p['contact']) ?></p>
+            <?php if (!empty($p['images'])): ?>
+                <div class="photo-preview">
+                    <?php foreach ($p['images'] as $img): ?>
+                        <a href="<?= View::e(entry_image_url($img['path'])) ?>" target="_blank" rel="noopener"><img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy"></a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
             <form method="post" action="/poselenie/moderation/product/approve" style="display:inline">
                 <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $p['id'] ?>">
                 <button class="res-btn" type="submit">Опубликовать</button>

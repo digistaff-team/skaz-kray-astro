@@ -4,7 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer, Sections};
 use SkazResidents\Service\CatalogAnnounce;
-use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository, SectionSettingsRepository};
+use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository, SectionSettingsRepository, ImageRepository};
 
 final class ModerationController
 {
@@ -12,7 +12,8 @@ final class ModerationController
         private FamilyRepository $families = new FamilyRepository(),
         private DiaryRepository $diary = new DiaryRepository(),
         private ProductRepository $products = new ProductRepository(),
-        private SectionSettingsRepository $sections = new SectionSettingsRepository()
+        private SectionSettingsRepository $sections = new SectionSettingsRepository(),
+        private ImageRepository $images = new ImageRepository()
     ) {}
 
     public function index(): void
@@ -21,9 +22,25 @@ final class ModerationController
         View::render('moderation/index', [
             'pendingFamilies' => $this->families->listByStatus('pending'),
             'activeFamilies'  => $this->families->listByStatus('active'),
-            'pendingEntries'  => $this->diary->listPending(),
-            'pendingProducts' => $this->products->listPending(),
+            // Фото прикладываем к карточкам: решение «опубликовать/отклонить»
+            // принимается по тому же, что увидят соседи, а не по одному тексту.
+            'pendingEntries'  => $this->withImages($this->diary->listPending(), 'entry'),
+            'pendingProducts' => $this->withImages($this->products->listPending(), 'product'),
         ], 'Модерация');
+    }
+
+    /**
+     * Прицепить фото к списку карточек — одним запросом на тип, без N+1.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @return array<int,array<string,mixed>>
+     */
+    private function withImages(array $rows, string $ownerType): array
+    {
+        $images = $this->images->listForMany($ownerType, array_map(static fn(array $r): int => (int) $r['id'], $rows));
+        foreach ($rows as &$row) { $row['images'] = $images[(int) $row['id']] ?? []; }
+        unset($row);
+        return $rows;
     }
 
     /** Страница настроек: список разделов приложения с тумблерами вкл/выкл (только админ сайта). */

@@ -5,6 +5,8 @@
 <script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
+  // Переходы отсюда — location.replace: страница-вход техническая и в истории
+  // вкладки не остаётся (иначе «Назад» на первом экране возвращал бы сюда).
   var statusEl = document.getElementById('tg-status');
   function show(msg) { if (statusEl) statusEl.textContent = msg; }
 
@@ -20,7 +22,7 @@
 
   <?php if ($alreadyLoggedIn): ?>
   // Уже авторизованы — SDK ждать незачем: deep-link читается из самой ссылки.
-  window.location.assign(decodeStart(SkazTg.startParam(null), '/sovet'));
+  window.location.replace(decodeStart(SkazTg.startParam(null), '/sovet'));
   return;
   <?php endif; ?>
 
@@ -45,8 +47,8 @@
       body: 'initData=' + encodeURIComponent(initData) + '&startapp=' + encodeURIComponent(startParam)
     }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
       .then(function (data) {
-        if (data.ok && data.redirect) { window.location.assign(data.redirect); return; }
-        if (data.reason === 'need_surname') { window.location.assign('/sovet/tg/familiya'); return; }
+        if (data.ok && data.redirect) { window.location.replace(data.redirect); return; }
+        if (data.reason === 'need_surname') { window.location.replace('/sovet/tg/familiya'); return; }
         if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору совета.'); return; }
         show('Не удалось войти. Проверьте, что вы открыли раздел через бота @SkazKray_bot.');
       })

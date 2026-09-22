@@ -5,6 +5,10 @@
 <script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
+  // Все переходы отсюда — location.replace, а не assign: страница-вход
+  // техническая, в истории вкладки ей делать нечего. Иначе после захода по
+  // диплинку из чата «Назад» на первом же экране возвращал бы сюда, а отсюда
+  // тот же startapp мгновенно уводил бы вперёд — кнопка как будто не работает.
   var statusEl = document.getElementById('tg-status');
   function show(msg) { if (statusEl) statusEl.textContent = msg; }
 
@@ -20,7 +24,7 @@
 
   <?php if ($alreadyLoggedIn): ?>
   // Уже авторизованы — SDK ждать незачем: deep-link читается из самой ссылки.
-  window.location.assign(decodeStartParam(SkazTg.startParam(null), '/poselenie/app'));
+  window.location.replace(decodeStartParam(SkazTg.startParam(null), '/poselenie/app'));
   return;
   <?php endif; ?>
 
@@ -50,15 +54,15 @@
           // Перед уходом в портал один раз спрашиваем разрешение боту писать в
           // личку — без него уведомления о бронях и выдаче не дойдут. Диалог не
           // может задержать вход: askWriteAccess всегда вызывает колбэк.
-          SkazTg.askWriteAccess(wa, function () { window.location.assign(data.redirect); });
+          SkazTg.askWriteAccess(wa, function () { window.location.replace(data.redirect); });
           return;
         }
-        if (data.reason === 'not_subscribed') { window.location.assign('/poselenie/tg/gate'); return; }
-        if (data.reason === 'error') { window.location.assign('/poselenie/tg/gate?reason=error'); return; }
+        if (data.reason === 'not_subscribed') { window.location.replace('/poselenie/tg/gate'); return; }
+        if (data.reason === 'error') { window.location.replace('/poselenie/tg/gate?reason=error'); return; }
         if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору поселения.'); return; }
         show('Не удалось войти. Проверьте, что вы открыли портал через бота @SkazKray_bot.');
       })
-      .catch(function () { window.location.assign('/poselenie/tg/gate?reason=error'); });
+      .catch(function () { window.location.replace('/poselenie/tg/gate?reason=error'); });
   });
 })();
 </script>

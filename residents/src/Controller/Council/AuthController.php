@@ -52,6 +52,7 @@ final class AuthController
         }
 
         CouncilAuth::login($member);
+        Auth::setPlatform('web');
         header('Location: /sovet');
     }
 

@@ -85,6 +85,7 @@ final class AuthController
         }
 
         Auth::login($family);
+        Auth::setPlatform('web');
         header('Location: /poselenie/app'); // единый домашний экран для всех устройств
     }
 

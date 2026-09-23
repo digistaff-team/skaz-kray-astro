@@ -77,6 +77,7 @@ final class TgAuthController
         }
 
         Auth::login($family);
+        Auth::setPlatform('tg');
         echo json_encode(['ok' => true, 'redirect' => $redirect]);
     }
 

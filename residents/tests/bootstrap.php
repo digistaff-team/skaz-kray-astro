@@ -6,6 +6,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     $GLOBALS['_SESSION'] = $_SESSION ?? [];
 }
 
+// Хелперы шаблонов (склонения, ссылки на фото): нужны тестам, которые рендерят
+// разметку. Полный src/bootstrap.php сюда не годится — он читает config/.env,
+// стартует сессию и подключается к боевой БД.
+require __DIR__ . '/../src/helpers.php';
+
 use SkazResidents\Database;
 
 /** Свежая SQLite in-memory БД со схемой — вызывается в setUp() тестов. */

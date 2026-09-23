@@ -15,6 +15,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Сказочный Край">
     <script>
+      // Как открыт портал: tg | max | web (пусто — сессия от прошлых версий).
+      // Клиентский код по этому признаку решает, идти ли за SDK мессенджера:
+      // чужой SDK бесполезен, а запрос к нему может висеть до таймаута.
+      window.SkazPlatform = '<?= View::e(\SkazResidents\Auth::platform()) ?>';
+    </script>
+    <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
           navigator.serviceWorker.register('/poselenie/sw.js', { scope: '/' }).catch(function () {});

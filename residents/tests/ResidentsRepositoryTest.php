@@ -107,6 +107,33 @@ final class ResidentsRepositoryTest extends TestCase
         $this->assertSame([], $this->repo->grouped('кузнечное дело'));
     }
 
+    public function test_glade_groups_sorts_glades_and_plots(): void
+    {
+        $groups = $this->repo->gladeGroups();
+        $this->assertSame([1, 4], array_column($groups, 'num'));
+        $this->assertSame(['(1) Обережная', '(4) Рассветная'], array_column($groups, 'name'));
+        // Ключ нормализован — по нему поляну находит эндпоинт ленивой подгрузки.
+        $this->assertSame('(1) обережная', $groups[0]['key']);
+        $this->assertCount(1, $groups[0]['hhs']);
+    }
+
+    public function test_glade_group_finds_by_key_and_misses_gracefully(): void
+    {
+        $key = ResidentsRepository::gladeKey('  (4)   РАССВЕТНАЯ ');
+        $group = $this->repo->gladeGroup($key);
+        $this->assertNotNull($group);
+        $this->assertSame('(4) Рассветная', $group['name']);
+        $this->assertNull($this->repo->gladeGroup('нет такой поляны'));
+    }
+
+    public function test_glade_groups_respect_search(): void
+    {
+        // Поиск сужает справочник до поляны с найденным поместьем.
+        $groups = $this->repo->gladeGroups('компьютерный дизайн');
+        $this->assertCount(1, $groups);
+        $this->assertSame('(1) Обережная', $groups[0]['name']);
+    }
+
     public function test_stats_counts_rows(): void
     {
         $stats = $this->repo->stats();

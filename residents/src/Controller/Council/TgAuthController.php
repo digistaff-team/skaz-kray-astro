@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{CouncilAuth, Config, View, TelegramWebApp};
+use SkazResidents\{Auth, CouncilAuth, Config, View, TelegramWebApp};
 use SkazResidents\Repository\CouncilMemberRepository;
 
 /**
@@ -54,6 +54,7 @@ final class TgAuthController
         }
 
         CouncilAuth::login($member);
+        Auth::setPlatform('tg');
         echo json_encode(['ok' => true, 'redirect' => self::decodeStart((string) ($_POST['startapp'] ?? ''))]);
     }
 
@@ -97,6 +98,7 @@ final class TgAuthController
                 return;
             }
             CouncilAuth::login($existing);
+            Auth::setPlatform('tg');
             header('Location: /sovet');
             return;
         }
@@ -136,6 +138,7 @@ final class TgAuthController
         $this->members->bindTelegram((int) $member['id'], $telegramId);
         $member['telegram_id'] = $telegramId;
         CouncilAuth::login($member);
+        Auth::setPlatform('tg');
         header('Location: /sovet');
     }
 

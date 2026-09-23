@@ -31,6 +31,28 @@
     return (w.Telegram && w.Telegram.WebApp) || null;
   }
 
+  /**
+   * Стоит ли вообще идти за SDK на telegram.org.
+   *
+   * Внутри Telegram клиент отдаёт SDK сам, и запроса не возникает. А вот в
+   * мини-приложении MAX и в обычном браузере запрос уходит — и висит: у части
+   * операторов telegram.org не отказывает в соединении, а молчит, так что
+   * ответа нет до системного таймаута TCP. Страница при этом отрисована
+   * (скрипт async), но вкладка остаётся «в загрузке», и хост мини-приложения
+   * держит свой индикатор — снаружи это выглядит как «раздел грузится вечно».
+   * Толку от SDK там всё равно нет: openTelegramLink есть только в Telegram.
+   *
+   * Признаки Telegram по убыванию надёжности: SDK уже в окне; платформа из
+   * сессии (см. Auth::setPlatform); мост, который нативный клиент вставляет в
+   * webview; параметры запуска Mini App в самой ссылке (страницы входа).
+   */
+  function inTelegram() {
+    if (current()) { return true; }
+    if (w.SkazPlatform === 'tg') { return true; }
+    if (w.SkazPlatform === 'max' || w.SkazPlatform === 'web') { return false; }
+    return !!(w.TelegramWebviewProxy || w.TelegramWebviewProxyProto || launchInitData());
+  }
+
   function flush(wa) {
     var list = waiters;
     waiters = null; // неудачу не кэшируем: повторный вызов пробует снова
@@ -49,6 +71,10 @@
 
     var ready = current();
     if (ready) { cb(ready); return; }
+
+    // Не Telegram — за SDK не идём вовсе: колбэк получает null сразу, как если
+    // бы загрузка не удалась. Все вызывающие этот случай уже обрабатывают.
+    if (!inTelegram()) { cb(null); return; }
 
     if (waiters) { waiters.push(cb); return; } // загрузка уже идёт
     waiters = [cb];

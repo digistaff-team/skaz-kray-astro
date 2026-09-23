@@ -103,6 +103,65 @@ final class ResidentsRepository
     }
 
     /**
+     * Тот же справочник, но разложенный по полянам — в том виде, в каком его
+     * показывает страница. Вынесено из шаблона, потому что этот же порядок
+     * нужен эндпоинту, который отдаёт поляну по клику (ленивый режим MAX):
+     * поляна опознаётся по ключу из этого списка, и обе стороны обязаны
+     * считать его одинаково.
+     *
+     * Ключ нормализован (регистр + пробелы), чтобы варианты написания одной
+     * поляны из разных таблиц («ЛюбоДарье»/«Любодарье») не двоились;
+     * отображаем первое встреченное написание. Поляны — по номеру в «(N) …»
+     * (без номера в конец), участки внутри — по числу в «Уч.».
+     *
+     * @return array<int,array{key:string,name:string,num:int,hhs:array<int,array<string,mixed>>}>
+     */
+    public function gladeGroups(?string $q = null): array
+    {
+        $groups = [];
+        foreach ($this->grouped($q) as $h) {
+            $key = self::gladeKey((string) $h['glade']);
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['key' => $key, 'name' => (string) $h['glade'], 'num' => self::gladeNum((string) $h['glade']), 'hhs' => []];
+            }
+            $groups[$key]['hhs'][] = $h;
+        }
+        foreach ($groups as &$g) {
+            usort($g['hhs'], static fn(array $a, array $b): int => self::plotNum((string) $a['plot']) <=> self::plotNum((string) $b['plot']));
+        }
+        unset($g);
+        usort($groups, static fn(array $a, array $b): int => $a['num'] <=> $b['num']);
+        return $groups;
+    }
+
+    /** Одна поляна по ключу из gladeGroups(), либо null. */
+    public function gladeGroup(string $key, ?string $q = null): ?array
+    {
+        foreach ($this->gladeGroups($q) as $g) {
+            if ($g['key'] === $key) { return $g; }
+        }
+        return null;
+    }
+
+    /** Ключ поляны: регистр и лишние пробелы не должны плодить дубли. */
+    public static function gladeKey(string $glade): string
+    {
+        return mb_strtolower(trim(preg_replace('~\s+~u', ' ', $glade) ?? ''));
+    }
+
+    /** Номер поляны из «(N) Название»; без номера — в конец списка. */
+    public static function gladeNum(string $glade): int
+    {
+        return preg_match('~^\((\d+)\)~u', trim($glade), $m) ? (int) $m[1] : 999;
+    }
+
+    /** Номер участка: первое число из «Уч.»; без числа — в конец поляны. */
+    public static function plotNum(string $plot): int
+    {
+        return preg_match('~\d+~', trim($plot), $m) ? (int) $m[0] : 9999;
+    }
+
+    /**
      * Подключённые аккаунты поместий с Telegram-ссылкой — основной владелец
      * (households.family_id) и совладельцы (household_owners). Только активные и
      * только с публичным @username (без него ссылки t.me нет). UNION страхует от

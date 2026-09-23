@@ -1,66 +1,21 @@
 <?php
 use SkazResidents\View;
-/** @var array $households @var array $stats @var string $q */
-
-// Ссылка на VK: значение в таблице — «vk.com/xxx» или «id123»; приводим к полному URL.
-$vkUrl = static function (string $v): string {
-    $v = trim($v);
-    if ($v === '') { return ''; }
-    if (preg_match('~^https?://~i', $v)) { return $v; }
-    return 'https://' . ltrim($v, '/');
-};
-$plural = static fn(int $n, string $a, string $b, string $c): string =>
-    plural_ru($n, $a, $b, $c);
-// Слова имени в нижнем регистре (для сличения ФИО жителя с именем Telegram-профиля).
-$nameTokens = static function (string $s): array {
-    $out = [];
-    foreach (preg_split('~[\s]+~u', mb_strtolower(trim($s))) as $t) { if ($t !== '') { $out[] = $t; } }
-    return $out;
-};
-// Оценка совпадения ФИО жителя ($res) с именем Telegram-профиля ($tg). Эвристика:
-// точное слово = 2, совпадение по началу слова (≥3 симв.: Бобков/Бобкова, Александр/
-// Саш — нет, Алекс/Александр — да) = 1. Чем выше, тем вероятнее это тот самый человек.
-$nameScore = static function (array $res, array $tg): int {
-    $s = 0;
-    foreach ($tg as $t) {
-        $best = 0;
-        foreach ($res as $r) {
-            if ($r === $t) { $best = 2; break; }
-            if (mb_strlen($r) >= 3 && mb_strlen($t) >= 3
-                && (mb_strpos($r, $t) === 0 || mb_strpos($t, $r) === 0)) { $best = 1; }
-        }
-        $s += $best;
-    }
-    return $s;
-};
+/**
+ * Справочник «Наши соседи»: поляны → поместья → жители.
+ *
+ * $lazy — ленивый режим: отдаём только заголовки полян, поместья подгружаются
+ * по клику с /poselenie/sosedi/polyana. Включается для мини-приложения MAX,
+ * где разметка всего поселения разом (тысячи узлов) заметно тормозит webview.
+ * При поиске лениться нечему: там и так раскрыто и найденного мало.
+ *
+ * @var array $glades @var array $stats @var string $q @var bool $lazy
+ */
 // Имя поляны без номера: «(1) Обережная» -> «Обережная». Иначе — как есть.
 $gladeName = static function (string $g): string {
     $g = trim($g);
     if (preg_match('~^\(\d+\)\s*(.+)$~u', $g, $m)) { return trim($m[1]); }
     return $g !== '' ? $g : 'Без поляны';
 };
-// Группируем поместья по полянам, сохраняя порядок появления. Ключ нормализуем
-// (регистр + пробелы), чтобы варианты написания одной поляны из разных таблиц
-// («ЛюбоДарье»/«Любодарье») не двоились; отображаем первое встреченное написание.
-$byGlade = [];
-foreach ($households as $h) {
-    $key = mb_strtolower(preg_replace('~\s+~u', ' ', trim($h['glade'])));
-    if (!isset($byGlade[$key])) { $byGlade[$key] = ['name' => $h['glade'], 'hhs' => []]; }
-    $byGlade[$key]['hhs'][] = $h;
-}
-// Внутри поляны участки — по номеру (первое число из «Уч.»; без числа — в конец).
-$plotNum = static function (string $p): int {
-    return preg_match('~\d+~', trim($p), $m) ? (int) $m[0] : 9999;
-};
-foreach ($byGlade as &$grp) {
-    usort($grp['hhs'], static fn(array $a, array $b): int => $plotNum((string) $a['plot']) <=> $plotNum((string) $b['plot']));
-}
-unset($grp);
-// Сортируем поляны по номеру в названии «(N) …» (без номера — в конец).
-$gladeNum = static function (string $g): int {
-    return preg_match('~^\((\d+)\)~u', trim($g), $m) ? (int) $m[1] : 999;
-};
-uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=> $gladeNum($b['name']));
 ?>
 <a class="res-back" href="/poselenie/app">← На главную</a>
 <div class="tool-head">
@@ -68,155 +23,25 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
 </div>
 <p class="res-meta">Справочник для жителей поселения</p>
 
-<?php if (!$households): ?>
+<?php if (!$glades): ?>
     <p class="res-meta tool-empty">
         <?= $q !== '' ? 'Ничего не найдено. Попробуйте другой запрос.' : 'Справочник пока пуст.' ?>
     </p>
 <?php endif; ?>
 
 <div class="res-dir">
-    <?php foreach ($byGlade as $grp): ?>
-        <?php $hhs = $grp['hhs']; $gopen = $q !== ''; $gnum = $gladeNum($grp['name']); ?>
+    <?php foreach ($glades as $grp): ?>
+        <?php $gopen = $q !== ''; $gnum = $grp['num']; ?>
         <section class="res-glade<?= $gopen ? ' res-glade--open' : '' ?>">
             <button type="button" class="res-glade-head" aria-expanded="<?= $gopen ? 'true' : 'false' ?>">
                 <span class="res-glade-name">Поляна <?= View::e($gladeName($grp['name'])) ?> (<?= $gnum ?>)</span>
-                <span class="res-hh-count"><?= count($hhs) ?> <?= View::e($plural(count($hhs), 'участок', 'участка', 'участков')) ?></span>
+                <span class="res-hh-count"><?= $grp['count'] ?> <?= View::e(plural_ru($grp['count'], 'участок', 'участка', 'участков')) ?></span>
                 <span class="res-hh-chevron" aria-hidden="true"></span>
             </button>
-            <div class="res-glade-body">
-    <?php foreach ($hhs as $h): ?>
-        <?php if (empty($h['people'])): /* свободный участок — статичная плашка, без раскрытия */ ?>
-        <section class="res-hh res-hh--free">
-            <div class="res-hh-head res-hh-head--static">
-                <span class="res-hh-title">
-                    <b class="res-hh-name"><?= View::e(($h['head_name'] || $h['estate_name'] !== '') ? \SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['head_name']) : 'Свободный участок') ?></b>
-                    <span class="res-hh-meta"><?php if ($h['plot'] !== ''): ?>участок <?= $gnum ?>-<?= View::e($h['plot']) ?><?php endif; ?></span>
-                </span>
-            </div>
-        </section>
-        <?php continue; endif; ?>
-        <?php $open = $q !== ''; ?>
-        <section class="res-hh<?= $open ? ' res-hh--open' : '' ?>">
-            <button type="button" class="res-hh-head" aria-expanded="<?= $open ? 'true' : 'false' ?>">
-                <span class="res-hh-title">
-                    <b class="res-hh-name"><?= View::e(\SkazResidents\HouseholdName::title((string) $h['estate_name'], $h['head_name'])) ?></b>
-                    <span class="res-hh-meta">
-                        <?php $mp = []; if ($h['plot'] !== '') { $mp[] = 'участок ' . $gnum . '-' . $h['plot']; } ?>
-                        <?= View::e(implode(' · ', $mp)) ?>
-                    </span>
-                </span>
-                <span class="res-hh-count"><?= count($h['people']) ?> <?= View::e($plural(count($h['people']), 'житель', 'жителя', 'жителей')) ?></span>
-                <span class="res-hh-chevron" aria-hidden="true"></span>
-            </button>
-            <ul class="res-people">
-                <?php
-                // «Tg» рядом с жителем: сопоставляем каждый подключённый аккаунт семьи
-                // (по его Telegram-имени) с самым похожим по ФИО жителем. Эвристика
-                // допускает неполное совпадение (Бобков/Бобкова, Алекс/Александр).
-                // Один житель — один аккаунт (жадно), чтобы супруги с общей фамилией
-                // не «слиплись» на одном человеке.
-                $tgByPerson = []; $tgUsed = [];
-                foreach (($h['accounts'] ?? []) as $acc) {
-                    $accUser = trim((string) ($acc['tg_username'] ?? ''));
-                    $accTokens = $nameTokens((string) ($acc['tg_name'] ?? ''));
-                    if ($accUser === '' || !$accTokens) { continue; }
-                    $bestId = 0; $bestScore = 0;
-                    foreach ($h['people'] as $pp) {
-                        $pid = (int) $pp['id'];
-                        if (isset($tgUsed[$pid])) { continue; }
-                        $sc = $nameScore($nameTokens((string) $pp['full_name']), $accTokens);
-                        if ($sc > $bestScore) { $bestScore = $sc; $bestId = $pid; }
-                    }
-                    if ($bestId > 0 && $bestScore > 0) { $tgByPerson[$bestId] = $accUser; $tgUsed[$bestId] = true; }
-                }
-                ?>
-                <?php foreach ($h['people'] as $p): ?>
-                    <li class="res-person">
-                        <div class="res-person-main">
-                            <b><?= View::e($p['full_name']) ?></b>
-                            <?php if ($p['birth_raw'] !== ''): ?><span class="res-meta">р. <?= View::e($p['birth_raw']) ?></span><?php endif; ?>
-                        </div>
-                        <?php if (!empty($p['skills'])): ?>
-                            <div class="res-person-skills"><?= View::e($p['skills']) ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($p['community_role'])): ?>
-                            <div class="res-meta">Для поселения: <?= View::e($p['community_role']) ?></div>
-                        <?php endif; ?>
-                        <?php
-                        $where = $p['residence'] !== '' ? $p['residence'] : '';
-                        if ($where === '' && $p['moved_text'] !== '') { $where = 'переехали ' . $p['moved_text']; }
-                        ?>
-                        <?php if ($p['hometown'] !== '' || $where !== ''): ?>
-                            <div class="res-meta">
-                                <?php if ($p['hometown'] !== ''): ?>родом из <?= View::e($p['hometown']) ?><?php endif; ?>
-                                <?php if ($where !== ''): ?><?= $p['hometown'] !== '' ? ' · ' : '' ?><?= View::e($where) ?><?php endif; ?>
-                            </div>
-                        <?php endif; ?>
-                        <div class="res-person-contacts">
-                            <?php if ($p['phone'] !== ''): ?>
-                                <a href="tel:<?= View::e(preg_replace('~[^\d+]~', '', $p['phone'])) ?>"><?= View::e($p['phone']) ?></a>
-                            <?php endif; ?>
-                            <?php if ($p['email'] !== ''): ?>
-                                <a href="mailto:<?= View::e($p['email']) ?>"><?= View::e($p['email']) ?></a>
-                            <?php endif; ?>
-                            <?php if ($p['vk'] !== ''): ?>
-                                <a href="<?= View::e($vkUrl($p['vk'])) ?>" target="_blank" rel="noopener">VK</a>
-                            <?php endif; ?>
-                            <?php if (isset($tgByPerson[(int) $p['id']])): ?>
-                                <a href="https://t.me/<?= View::e($tgByPerson[(int) $p['id']]) ?>" target="_blank" rel="noopener" class="js-tg-link">Tg</a>
-                            <?php endif; ?>
-                        </div>
-                        <?php if (!empty($p['images'])): ?>
-                            <div class="photo-preview">
-                                <?php foreach ($p['images'] as $img): ?>
-                                    <?php $u = entry_image_url($img['path']); ?>
-                                    <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($p['full_name']) ?>" loading="lazy">
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </li>
-                <?php endforeach; ?>
-                <?php if (!empty($h['cars'])): ?>
-                    <li class="res-person res-cars">
-                        <div class="res-meta"><b>Автомобили поместья:</b></div>
-                        <?php foreach ($h['cars'] as $car): ?>
-                            <div class="res-asset">
-                                <span class="res-asset-name"><?= View::e($car['title']) ?><?php if ($car['plate'] !== ''): ?> (<?= View::e($car['plate']) ?>)<?php endif; ?></span>
-                                <?php if (!empty($car['note'])): ?><span class="res-meta"><?= View::e($car['note']) ?></span><?php endif; ?>
-                                <?php if (!empty($car['images'])): ?>
-                                    <div class="photo-preview">
-                                        <?php foreach ($car['images'] as $img): ?>
-                                            <?php $u = entry_image_url($img['path']); ?>
-                                            <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($car['title']) ?>" loading="lazy">
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </li>
+            <div class="res-glade-body"<?= $lazy ? ' data-glade="' . View::e($grp['key']) . '"' : '' ?>>
+                <?php if (!$lazy): ?>
+                    <?php $hhs = $grp['hhs']; $open = $q !== ''; require __DIR__ . '/_glade_body.php'; ?>
                 <?php endif; ?>
-                <?php if (!empty($h['pets'])): ?>
-                    <li class="res-person res-pets">
-                        <div class="res-meta"><b>Питомцы поместья:</b></div>
-                        <?php foreach ($h['pets'] as $pet): ?>
-                            <div class="res-asset">
-                                <span class="res-asset-name"><?= View::e($pet['name']) ?><?php if ($pet['kind'] !== ''): ?> (<?= View::e($pet['kind']) ?>)<?php endif; ?></span>
-                                <?php if (!empty($pet['note'])): ?><span class="res-meta"><?= View::e($pet['note']) ?></span><?php endif; ?>
-                                <?php if (!empty($pet['images'])): ?>
-                                    <div class="photo-preview">
-                                        <?php foreach ($pet['images'] as $img): ?>
-                                            <?php $u = entry_image_url($img['path']); ?>
-                                            <img class="photo-thumb js-photo-full" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" data-full="<?= View::e($u) ?>" alt="<?= View::e($pet['name']) ?>" loading="lazy">
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </li>
-                <?php endif; ?>
-            </ul>
-        </section>
-    <?php endforeach; ?>
             </div>
         </section>
     <?php endforeach; ?>
@@ -229,41 +54,78 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
 <script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 (function () {
-  function bind(headSel, boxSel, openCls) {
-    Array.prototype.forEach.call(document.querySelectorAll(headSel), function (btn) {
-      btn.addEventListener('click', function () {
-        var open = btn.closest(boxSel).classList.toggle(openCls);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-    });
-  }
-  bind('.res-glade-head', '.res-glade', 'res-glade--open'); // поляна -> поместья
-  bind('.res-hh-head', '.res-hh', 'res-hh--open');          // поместье -> жители
+  var dir = document.querySelector('.res-dir');
+  if (!dir) { return; }
 
-  // Лайтбокс: миниатюра фото питомца раскрывается на полный размер поверх страницы.
-  // В Telegram Mini App обычная ссылка target=_blank не открывается — поэтому свой оверлей.
+  // Обработчики вешаем на весь справочник, а не на каждую кнопку: поместья
+  // поляны могут приехать позже (ленивый режим), и подписывать их отдельно
+  // пришлось бы после каждой загрузки.
+  function toggle(btn, boxSel, openCls) {
+    var open = btn.closest(boxSel).classList.toggle(openCls);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    return open;
+  }
+
+  /**
+   * Поместья поляны по требованию. data-glade остаётся до конца загрузки и
+   * снимается только при успехе: иначе повторное раскрытие ничего бы не
+   * дозагрузило, и поляна осталась бы навсегда пустой после первой же
+   * неудачной попытки.
+   */
+  function load(body) {
+    var key = body.getAttribute('data-glade');
+    if (!key || body.classList.contains('res-glade-body--loading')) { return; }
+    body.classList.add('res-glade-body--loading');
+    body.innerHTML = '<p class="res-meta">Открываем поляну…</p>';
+    fetch('/poselenie/sosedi/polyana?p=' + encodeURIComponent(key), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.text(); })
+      .then(function (html) {
+        body.innerHTML = html;
+        body.removeAttribute('data-glade');
+      })
+      .catch(function () {
+        body.innerHTML = '<p class="res-meta">Не удалось открыть поляну. Проверьте связь и попробуйте снова.</p>';
+      })
+      .then(function () { body.classList.remove('res-glade-body--loading'); });
+  }
+
+  dir.addEventListener('click', function (e) {
+    var gh = e.target.closest('.res-glade-head');
+    if (gh && dir.contains(gh)) {
+      var body = gh.closest('.res-glade').querySelector('.res-glade-body');
+      if (toggle(gh, '.res-glade', 'res-glade--open') && body && body.hasAttribute('data-glade')) { load(body); }
+      return;
+    }
+    var hh = e.target.closest('.res-hh-head');
+    if (hh && dir.contains(hh)) { toggle(hh, '.res-hh', 'res-hh--open'); }
+  });
+
+  // Лайтбокс: миниатюра фото раскрывается на полный размер поверх страницы.
+  // В мини-приложении обычная ссылка target=_blank не открывается — поэтому свой оверлей.
   var lb = document.getElementById('photoLightbox');
   var lbImg = lb && lb.querySelector('.res-lightbox-img');
   if (lb && lbImg) {
-    function closeLb() { lb.hidden = true; lbImg.removeAttribute('src'); }
-    Array.prototype.forEach.call(document.querySelectorAll('.js-photo-full'), function (img) {
-      img.addEventListener('click', function () {
-        lbImg.src = img.getAttribute('data-full') || img.src;
-        lb.hidden = false;
-      });
+    var closeLb = function () { lb.hidden = true; lbImg.removeAttribute('src'); };
+    dir.addEventListener('click', function (e) {
+      var img = e.target.closest('.js-photo-full');
+      if (!img || !dir.contains(img)) { return; }
+      lbImg.src = img.getAttribute('data-full') || img.src;
+      lb.hidden = false;
     });
     lb.addEventListener('click', closeLb);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lb.hidden) { closeLb(); } });
   }
 
   // Внутри Telegram Mini App ссылку t.me/username надо открывать через openTelegramLink
-  // (обычная ссылка target=_blank в webview не открывается). Вне Telegram — обычный переход.
-  // SDK ждём асинхронно: аккордеоны и лайтбокс выше работают сразу, не дожидаясь
-  // telegram.org, а если он недоступен — ссылки остаются обычными.
+  // (обычная ссылка target=_blank в webview не открывается). Вне Telegram SkazTg сразу
+  // отдаёт null и в сеть не ходит — ссылки остаются обычными.
   SkazTg.ensure(function (wa) {
     if (!wa || !wa.initData || !wa.openTelegramLink) { return; }
-    Array.prototype.forEach.call(document.querySelectorAll('.js-tg-link'), function (a) {
-      a.addEventListener('click', function (e) { e.preventDefault(); wa.openTelegramLink(a.href); });
+    dir.addEventListener('click', function (e) {
+      var a = e.target.closest('.js-tg-link');
+      if (!a || !dir.contains(a)) { return; }
+      e.preventDefault();
+      wa.openTelegramLink(a.href);
     });
   });
 })();

@@ -12,6 +12,10 @@
 <?php endif; ?>
 <p><a class="res-btn res-btn--ghost" href="/poselenie/tg">Я вступил(а) — проверить снова</a></p>
 
+<?php /* Эти страницы существуют только для потока входа через Telegram: заявляем
+   платформу явно, иначе SkazTg не пойдёт за SDK (ссылка запуска с #tgWebAppData
+   до сюда не доживает — переход делается через location.replace). */ ?>
+<script>window.SkazPlatform = 'tg';</script>
 <script src="/poselenie/assets/tg-webapp.js?v=<?= asset_ver('assets/tg-webapp.js') ?>"></script>
 <script>
 // Внутри Telegram ссылку на группу открываем нативно, а не новой вкладкой браузера.

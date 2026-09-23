@@ -97,6 +97,7 @@ $router->get('/poselenie/yarmarka/{id}', [$product, 'show']);   // карточ�
 // Справочник «Соседи» — карточки поместий и жителей (только для вошедших, ПДн).
 $residents = new ResidentsController();
 $router->get('/poselenie/sosedi', [$residents, 'index']);
+$router->get('/poselenie/sosedi/polyana', [$residents, 'glade']);  // фрагмент: поместья поляны (ленивый режим MAX)
 
 // «Моё поместье» — личный кабинет семьи (правит только своё поместье).
 $profile = new ProfileController();

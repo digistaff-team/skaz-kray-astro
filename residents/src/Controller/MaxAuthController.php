@@ -67,6 +67,7 @@ final class MaxAuthController
         }
 
         Auth::login($family);
+        Auth::setPlatform('max');
         echo json_encode(['ok' => true, 'redirect' => $redirect]);
     }
 

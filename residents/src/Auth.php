@@ -22,6 +22,24 @@ final class Auth
         $_SESSION['family_name'] = $family['name'];
     }
 
+    /**
+     * Как открыт портал в этой сессии: tg (Mini App Telegram), max (мини-приложение
+     * MAX) или web (браузер, вход по паролю). Нужно клиенту: SDK мессенджера имеет
+     * смысл тянуть только «своему», а запрос к чужому — это в лучшем случае
+     * лишний коннект, в худшем — ожидание до системного таймаута (telegram.org у
+     * части операторов не отказывает, а молчит). См. assets/tg-webapp.js.
+     */
+    public static function setPlatform(string $platform): void
+    {
+        $_SESSION['platform'] = in_array($platform, ['tg', 'max', 'web'], true) ? $platform : 'web';
+    }
+
+    /** tg|max|web, либо '' — платформа неизвестна (сессия от прошлых версий). */
+    public static function platform(): string
+    {
+        return (string) ($_SESSION['platform'] ?? '');
+    }
+
     public static function logout(): void
     {
         $_SESSION = [];

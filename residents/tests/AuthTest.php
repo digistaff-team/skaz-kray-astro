@@ -26,6 +26,23 @@ final class AuthTest extends TestCase
         $this->assertFalse(Auth::isAdmin());
     }
 
+    public function test_platform_is_remembered_and_whitelisted(): void
+    {
+        // Пусто, пока не входили: сессии прошлых версий признака не имеют, и
+        // клиент в этом случае опознаёт мессенджер сам (см. assets/tg-webapp.js).
+        $this->assertSame('', Auth::platform());
+
+        Auth::setPlatform('max');
+        $this->assertSame('max', Auth::platform());
+
+        Auth::setPlatform('tg');
+        $this->assertSame('tg', Auth::platform());
+
+        // Значение уезжает в разметку — что угодно принимать нельзя.
+        Auth::setPlatform('<script>');
+        $this->assertSame('web', Auth::platform());
+    }
+
     public function test_admin_is_superset_of_editor(): void
     {
         $_SESSION['role'] = 'admin';

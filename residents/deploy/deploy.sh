@@ -17,6 +17,9 @@ DRY=""
 # Что не уезжает и что не считается «лишним» при чистке. Один список на все шаги:
 # упаковку, сверку с сервером и удаление. Сортировка обеих сторон — в LC_ALL=C,
 # иначе разные локали дадут разный порядок и comm сочтёт совпадающие файлы лишними.
+# В той же локали обязан работать и сам comm: порядок он проверяет по правилам
+# своего окружения, и в чужой ругается «input is not in sorted order», а дальше
+# сравнивает уже неверно — вплоть до того, что нужный файл попадёт в «лишние».
 SKIP="-path ./vendor -o -path ./tests -o -path ./public/uploads -o -path ./.phpunit.cache"
 SKIP="$SKIP -o -path ./.git -o -path ./config/config.php -o -path ./config/.env"
 # Резервные копии рядом с конфигом (config.php.bak-…) — не наши файлы, но сносить их нельзя.
@@ -29,7 +32,7 @@ COUNT="$(printf '%s\n' "$LIST" | grep -c . || true)"
 
 # Файлы, которые на сервере есть, а в проекте их уже нет (аналог rsync --delete).
 REMOTE="$(ssh "$SERVER" "cd $DEST 2>/dev/null && find . \\( $SKIP \\) -prune -o -type f -print | LC_ALL=C sort" || true)"
-STALE="$(comm -23 <(printf '%s\n' "$REMOTE") <(printf '%s\n' "$LIST") || true)"
+STALE="$(LC_ALL=C comm -23 <(printf '%s\n' "$REMOTE") <(printf '%s\n' "$LIST") || true)"
 STALE_COUNT="$(printf '%s\n' "$STALE" | grep -c . || true)"
 
 # Страховка от массового удаления: если «лишних» больше десятой части проекта,

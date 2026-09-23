@@ -66,11 +66,15 @@
 
 ```bash
 cd /c/Projects
-npx create-video@latest --blank skaz-video
+npx create-video@latest --yes --blank --no-tailwind skaz-video
 ```
 
 Ожидается: появилась папка `skaz-video` с `package.json`, `remotion.config.ts`,
 `src/Root.tsx`, `src/index.ts`.
+
+Без `--yes` команда зависает на вопросе про TailwindCSS. Флаг `--no-tailwind` в
+версии 4.0.527 не действует — Tailwind всё равно ставится и убирается отдельно
+в задаче 2.
 
 - [ ] **Step 2: Поставить зависимости и убедиться, что Studio открывается**
 

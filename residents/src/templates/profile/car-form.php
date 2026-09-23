@@ -8,6 +8,7 @@ $action = $isEdit
     : '/poselenie/moye-pomestie/avto/novyy';
 $val = static fn(string $k): string => View::e((string) ($c[$k] ?? ''));
 ?>
+<?php $backFallback = '/poselenie/moye-pomestie'; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Изменить автомобиль' : 'Новый автомобиль' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>

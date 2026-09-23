@@ -1,8 +1,7 @@
 <?php use SkazResidents\{Csrf, View}; ?>
+<?php $backFallback = '/poselenie/moderation'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Разделы приложения</h1>
 <p class="res-meta">Управление сайтом — только для администратора. Выключенный раздел исчезает из плиток на главной и из меню. «Наше поместье» — базовый раздел, его выключить нельзя.</p>
-
-<p><a href="/poselenie/moderation">← К модерации</a></p>
 
 <div class="res-card">
     <?php foreach ($sections as $key => $label): $on = !in_array($key, $disabled, true); ?>

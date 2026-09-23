@@ -1,4 +1,5 @@
 <?php use SkazResidents\{Csrf, View}; ?>
+<?php $backFallback = '/poselenie/poezdki'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Предложить поездку</h1>
 <form class="res-form" method="post" action="/poselenie/poezdki/novaya">
     <?= Csrf::field() ?>

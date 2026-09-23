@@ -4,10 +4,7 @@ $isEdit = !empty($book['id']);
 $action = $isEdit ? '/poselenie/knigi/' . (int) $book['id'] . '/redaktirovat' : '/poselenie/knigi/novaya';
 $uploadsUrl = rtrim((string) Config::get('uploads_url'), '/');
 ?>
-<div class="tool-back-row">
-    <?php $backFallback = $isEdit ? '/poselenie/knigi/' . (int) $book['id'] : '/poselenie/knigi'; require __DIR__ . '/../partials/back.php'; ?>
-    <a class="res-back" href="/poselenie/app">На главную</a>
-</div>
+<?php $backFallback = $isEdit ? '/poselenie/knigi/' . (int) $book['id'] : '/poselenie/knigi'; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Редактирование книги' : 'Поделиться книгой' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>

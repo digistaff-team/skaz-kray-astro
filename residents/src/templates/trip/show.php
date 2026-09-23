@@ -3,7 +3,7 @@ use SkazResidents\{Csrf, View};
 $tripLabel = fn(string $s) => ['active' => 'актуальна', 'done' => 'состоялась', 'cancelled' => 'отменена'][$s] ?? $s;
 $bkLabel = fn(string $s) => ['requested' => 'ожидает подтверждения', 'confirmed' => 'подтверждена', 'declined' => 'отклонена', 'cancelled' => 'отменена'][$s] ?? $s;
 ?>
-<p class="res-meta"><a href="/poselenie/poezdki">← Ко всем поездкам</a></p>
+<?php $backFallback = '/poselenie/poezdki'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-show-head">
     <h1><?= View::e($trip['origin']) ?> <span class="trip-arrow">→</span> <?= View::e($trip['destination']) ?></h1>
     <span class="tool-st <?= $trip['status'] === 'active' ? 'tool-st--free' : ($trip['status'] === 'done' ? 'tool-st--loan' : 'tool-st--maint') ?>"><?= $tripLabel($trip['status']) ?></span>

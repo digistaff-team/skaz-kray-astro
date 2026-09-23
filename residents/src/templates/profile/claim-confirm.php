@@ -7,6 +7,7 @@ $gladeName = static function (string $g): string {
 $h = $household;
 $occupied = $occupied ?? false;
 ?>
+<?php $backFallback = '/poselenie/moye-pomestie/vybor'; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $occupied ? 'Присоединиться к семье?' : 'Это ваше поместье?' ?></h1>
 <div class="prof-card">
     <b class="prof-name"><?= $h['estate_name'] !== '' ? 'Поместье ' . View::e($h['estate_name']) : 'Поместье' ?></b>

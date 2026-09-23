@@ -1,5 +1,5 @@
 <?php use SkazResidents\View; /** @var array $products */ ?>
-<a class="res-back" href="/poselenie/app">← На главную</a>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-head">
     <h1>Товары и услуги соседей</h1>
     <div class="tool-head-actions">

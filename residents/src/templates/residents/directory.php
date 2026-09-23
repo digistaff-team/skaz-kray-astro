@@ -17,7 +17,7 @@ $gladeName = static function (string $g): string {
     return $g !== '' ? $g : 'Без поляны';
 };
 ?>
-<a class="res-back" href="/poselenie/app">← На главную</a>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-head">
     <h1>Наши соседи</h1>
 </div>

@@ -2,6 +2,7 @@
 $isEdit = !empty($entry['id']);
 $action = $isEdit ? '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat' : '/poselenie/dnevnik/novaya';
 ?>
+<?php $backFallback = $isEdit ? '/poselenie/dnevniki/' . (int) $entry['id'] : '/poselenie/dnevniki'; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Редактирование записи' : 'Новая запись в дневнике' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>

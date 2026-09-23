@@ -2,6 +2,7 @@
 use SkazResidents\{Csrf, View};
 /** @var array $household @var array $errors */
 ?>
+<?php $backFallback = '/poselenie/moye-pomestie'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Название поместья</h1>
 <form class="res-form" method="post" action="/poselenie/moye-pomestie/nazvanie">
     <?= Csrf::field() ?>

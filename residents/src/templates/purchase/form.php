@@ -10,10 +10,7 @@ $num = static fn(string $k): string => ($purchase[$k] ?? null) !== null ? View::
 $curCat  = (string) ($purchase['category'] ?? '');
 $curUnit = (string) ($purchase['unit'] ?? 'кг');
 ?>
-<div class="tool-back-row">
-    <?php $backFallback = $cancelUrl; require __DIR__ . '/../partials/back.php'; ?>
-    <a class="res-back" href="/poselenie/app">На главную</a>
-</div>
+<?php $backFallback = $cancelUrl; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Редактирование закупки' : 'Новая закупка' ?></h1>
 <p class="res-meta">Одна закупка — один товар. Если берёте цемент и доски, откройте две: так соседям понятно, к чему они присоединяются.</p>
 

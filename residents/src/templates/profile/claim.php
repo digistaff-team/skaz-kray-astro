@@ -29,6 +29,7 @@ foreach ($byGlade as &$grp) {
 unset($grp);
 uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=> $gladeNum($b['name']));
 ?>
+<?php $backFallback = '/poselenie/moye-pomestie'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Выберите ваше поместье</h1>
 <p class="res-meta">Найдите своё поместье в списке и привяжите его к себе по фамилии — после этого вы сможете проверить и исправить данные в профиле своего поместья. Привязка делается один раз.</p>
 

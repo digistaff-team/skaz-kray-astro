@@ -1,6 +1,7 @@
 <?php use SkazResidents\View; use SkazResidents\Controller\PublicController;
 $u = PublicController::uploadsUrl();
 ?>
+<?php $backFallback = '/poselenie/dnevniki'; require __DIR__ . '/../partials/back.php'; ?>
 <article>
     <h1>
         <?= View::e($entry['title']) ?>
@@ -11,5 +12,4 @@ $u = PublicController::uploadsUrl();
         <img class="res-card" src="<?= View::e(entry_image_url($img['path'])) ?>" alt="">
     <?php endforeach; ?>
     <div><?= nl2br(View::e($entry['body'])) ?></div>
-    <p><a href="/poselenie/dnevniki">← Ко всем дневникам</a></p>
 </article>

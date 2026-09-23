@@ -1,4 +1,5 @@
 <?php use SkazResidents\{Csrf, View, Auth}; ?>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Модерация</h1>
 
 <?php if (Auth::isAdmin()): ?><p><a class="res-btn res-btn--ghost" href="/poselenie/moderation/razdely">Разделы приложения</a></p><?php endif; ?>

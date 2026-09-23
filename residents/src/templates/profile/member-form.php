@@ -11,6 +11,7 @@ $err = static function (string $k) use ($errors): string {
     return isset($errors[$k]) ? '<div class="res-flash res-flash--error">' . View::e($errors[$k]) . '</div>' : '';
 };
 ?>
+<?php $backFallback = '/poselenie/moye-pomestie'; require __DIR__ . '/../partials/back.php'; ?>
 <h1><?= $isEdit ? 'Изменить данные жителя' : 'Новый житель' ?></h1>
 <form class="res-form" method="post" action="<?= $action ?>" enctype="multipart/form-data">
     <?= Csrf::field() ?>

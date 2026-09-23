@@ -4,6 +4,7 @@ $tripLabel = fn(string $s) => ['active' => 'актуальна', 'done' => 'со
 $bkLabel = fn(string $s) => ['requested' => 'ожидает подтверждения', 'confirmed' => 'подтверждена', 'declined' => 'отклонена', 'cancelled' => 'отменена'][$s] ?? $s;
 $tripCls = fn(string $s) => 'tool-st--' . ($s === 'active' ? 'free' : ($s === 'done' ? 'loan' : 'maint'));
 ?>
+<?php $backFallback = '/poselenie/poezdki'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Мои поездки</h1>
 <p class="res-meta"><a class="res-btn" href="/poselenie/poezdki/novaya">+ Предложить поездку</a> <a class="res-btn res-btn--ghost" href="/poselenie/poezdki">Все поездки</a></p>
 

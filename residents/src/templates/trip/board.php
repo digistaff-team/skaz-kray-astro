@@ -1,4 +1,5 @@
 <?php use SkazResidents\View; ?>
+<?php $backFallback = '/poselenie/app'; require __DIR__ . '/../partials/back.php'; ?>
 <div class="tool-head">
     <h1>Совместные поездки</h1>
     <div class="tool-head-actions">

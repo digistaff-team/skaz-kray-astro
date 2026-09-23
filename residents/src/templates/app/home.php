@@ -12,6 +12,12 @@
     </div>
   </div>
 
+  <?php
+    // Блок дневников — единственная ссылка на раздел с главной (плитки у него
+    // нет), поэтому он подчиняется тому же выключателю разделов: иначе при
+    // выключенных дневниках он вёл бы на редирект обратно сюда.
+  ?>
+  <?php if (Sections::isEnabled('dnevniki')): ?>
   <?php $d = $dash['diary']; ?>
   <?php if ($d['count'] > 0): ?>
     <a class="app-diary" href="/poselenie/dnevniki">
@@ -34,17 +40,23 @@
       </a>
     <?php endforeach; ?>
   <?php endif; ?>
+  <?php endif; ?>
 
+  <?php
+    // Порядок плиток слева направо, сверху вниз — это раскладка по умолчанию:
+    // житель может переставить их длинным нажатием, и тогда его порядок лежит в
+    // localStorage и перекрывает этот. Плитки «Дневники поместий» здесь нет
+    // намеренно — на дневники уже ведёт широкий блок над сеткой.
+  ?>
   <div class="app-grid" id="appGrid">
     <?php if (Sections::isEnabled('sosedi')): ?><a class="app-tile" href="/poselenie/sosedi"><b>Наши<br>соседи</b><span>справочник поселения</span></a><?php endif; ?>
     <a class="app-tile" href="/poselenie/moye-pomestie"><b>Наше<br>поместье</b><span>личный кабинет семьи</span></a>
     <?php if (Sections::isEnabled('knigi')): ?><a class="app-tile" href="/poselenie/knigi"><b>Книги</b><span>на полке <?= (int) $dash['counts']['books'] ?></span></a><?php endif; ?>
-    <?php if (Sections::isEnabled('dnevniki')): ?><a class="app-tile" href="/poselenie/dnevniki"><b>Дневники<br>поместий</b><span>лента поселения</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('instrumenty')): ?><a class="app-tile" href="/poselenie/instrumenty"><b>Инструменты</b><span>свободно <?= (int) $dash['counts']['toolsFree'] ?></span></a><?php endif; ?>
-    <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
     <?php if (Sections::isEnabled('obshchiy-dom')): ?><a class="app-tile" href="/poselenie/obshchiy-dom"><b>Общий дом</b><span>бронирование и отчёт</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('yarmarka')): ?><a class="app-tile" href="/poselenie/yarmarka"><b>Ярмарка</b><span>рынок поселения</span></a><?php endif; ?>
     <?php if (Sections::isEnabled('zakupki')): ?><?php $bc = (int) ($dash['counts']['purchases'] ?? 0); ?><a class="app-tile" href="/poselenie/zakupki"><b>Закупки</b><span><?= $bc > 0 ? $bc . ' ' . View::e(plural_ru($bc, 'сбор идёт', 'сбора идёт', 'сборов идёт')) : 'оптом вскладчину' ?></span></a><?php endif; ?>
+    <?php if (Sections::isEnabled('poezdki')): ?><a class="app-tile" href="/poselenie/poezdki"><b>Поездки</b><span><?= (int) $dash['counts']['trips'] ?> <?= View::e(plural_ru((int) $dash['counts']['trips'], 'поездка', 'поездки', 'поездок')) ?></span></a><?php endif; ?>
   </div>
 
   <div class="app-offline-banner" id="appOffline">

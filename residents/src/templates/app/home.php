@@ -83,7 +83,13 @@
 (function () {
   var grid = document.getElementById('appGrid');
   if (!grid) return;
-  var KEY = 'poselenie_tile_order_v1';
+  // Версия в ключе — способ разом сбросить порядок у всех: сохранённая
+  // раскладка лежит на устройстве и перекрывает разметку, так что новый
+  // порядок по умолчанию сам по себе тем, кто переставлял плитки, не
+  // достался бы. Бумп ключа = все снова видят умолчание. Прошлую запись
+  // подчищаем, чтобы в хранилище не копился мусор от старых версий.
+  var KEY = 'poselenie_tile_order_v2';
+  try { localStorage.removeItem('poselenie_tile_order_v1'); } catch (e) {}
   var hrefOf = function (t) { return t.getAttribute('data-href') || t.getAttribute('href') || ''; };
   var keyOf = function (t) { try { return new URL(hrefOf(t), location.origin).pathname; } catch (e) { return hrefOf(t); } };
 

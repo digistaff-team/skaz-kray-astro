@@ -83,13 +83,26 @@ npm run dev
 Ожидается: открывается Remotion Studio в браузере с демо-композицией. Закрыть
 по Ctrl+C после проверки.
 
-- [ ] **Step 3: Добавить vitest**
+- [ ] **Step 3: Поставить скиллы Remotion в проект**
+
+Плагин Claude Code с теми же скиллами на машине не установился (проверено
+`claude plugin list` 2026-09-23), поэтому берём их проектной командой:
+
+```bash
+cd /c/Projects/skaz-video
+npx remotion skills add
+```
+
+Ожидается: в проекте появилась папка со скиллами Remotion. Перезапустить
+Claude Code, чтобы он их подхватил.
+
+- [ ] **Step 4: Добавить vitest**
 
 ```bash
 npm install -D vitest
 ```
 
-- [ ] **Step 4: Прописать команды в `package.json`**
+- [ ] **Step 5: Прописать команды в `package.json`**
 
 В разделе `"scripts"` должно быть ровно это (остальные строки шаблона не трогать):
 
@@ -102,7 +115,7 @@ npm install -D vitest
 }
 ```
 
-- [ ] **Step 5: Записать `.gitignore`**
+- [ ] **Step 6: Записать `.gitignore`**
 
 ```
 node_modules/
@@ -112,7 +125,7 @@ out/
 
 Папка `public/shots/` в git входит — кадры должны пережить пересъёмку интерфейса.
 
-- [ ] **Step 6: Первый коммит**
+- [ ] **Step 7: Первый коммит**
 
 ```bash
 cd /c/Projects/skaz-video

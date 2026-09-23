@@ -35,7 +35,7 @@ final class AppHomeTilesTest extends TestCase
 
     private function render(): string
     {
-        $dash = (new AppDashboard())->build(1, '2026-09-23');
+        $dash = (new AppDashboard())->build(1);
         $me = 'Поместье «АгудариЯ»';
         $savedAt = '10:00';
         ob_start();

@@ -2,20 +2,22 @@
 declare(strict_types=1);
 namespace SkazResidents\Service;
 
-use SkazResidents\Repository\{ToolRepository, BookRepository, TripRepository, DiaryRepository, PurchaseRepository};
+use SkazResidents\Repository\{DiaryRepository, PurchaseRepository};
 
 /**
- * Данные мобильного лаунчера /poselenie/app: статус дневника семьи и счётчики
- * разделов жителей. Только чтение. $today — параметром (тестируемо).
+ * Данные мобильного лаунчера /poselenie/app: статус дневника семьи и счётчик
+ * закупок. Только чтение.
  * Совет-специфики (собрание, задачи совета) в лаунчере больше нет — она живёт
  * в разделе совета (/sovet).
+ *
+ * Счётчиков у книг, инструментов и поездок здесь нет намеренно: на плитках
+ * постоянные подписи, а не числа («0 поездок» на пустом разделе читался как
+ * поломка). Каждый такой счётчик тянул из БД весь каталог раздела ради одного
+ * count(), то есть три лишних выборки на каждое открытие главной.
  */
 final class AppDashboard
 {
     public function __construct(
-        private ToolRepository $tools = new ToolRepository(),
-        private BookRepository $books = new BookRepository(),
-        private TripRepository $trips = new TripRepository(),
         private DiaryRepository $diary = new DiaryRepository(),
         private PurchaseRepository $purchases = new PurchaseRepository()
     ) {}
@@ -34,8 +36,12 @@ final class AppDashboard
         }
     }
 
-    /** @return array<string,mixed> */
-    public function build(int $familyId, string $today): array
+    /**
+     * Дата больше не нужна: её спрашивал только счётчик ближайших поездок.
+     *
+     * @return array<string,mixed>
+     */
+    public function build(int $familyId): array
     {
         $entries = $this->diary->listByFamily($familyId);
         usort($entries, static fn($a, $b) => (int) $b['id'] <=> (int) $a['id']);
@@ -57,9 +63,6 @@ final class AppDashboard
             ],
             'otherDiaries' => $others,
             'counts' => [
-                'toolsFree' => count($this->tools->listCatalog('', '', 'available')),
-                'books'     => count($this->books->listCatalog('', '', '')),
-                'trips'     => count($this->trips->listUpcoming($today)),
                 'purchases' => $this->collectingPurchases(),
             ],
         ];

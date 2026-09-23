@@ -32,7 +32,7 @@ final class AppController
         $estate = trim((string) $household['estate_name']);
         $me = $estate !== '' ? ('Поместье «' . $estate . '»') : Auth::name();
         View::render('app/home', [
-            'dash'    => $this->dashboard->build(Auth::id(), date('Y-m-d')),
+            'dash'    => $this->dashboard->build(Auth::id()),
             'me'      => $me,
             'savedAt' => date('H:i'),
         ], 'Приложение', 'app/layout');

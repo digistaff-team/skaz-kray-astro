@@ -57,13 +57,14 @@ final class AppHomeTilesTest extends TestCase
         $this->assertSame(self::EXPECTED, $this->tiles($this->render()));
     }
 
-    public function test_static_captions_on_books_and_tools(): void
+    public function test_static_captions_on_tiles(): void
     {
-        // У книг и инструментов подпись постоянная, а не счётчик: пустая полка
-        // с «на полке 0» выглядела так, будто раздел не работает.
+        // Подпись постоянная, а не счётчик: «на полке 0» и «свободно 0» на пустом
+        // разделе выглядели так, будто он не работает.
         $html = $this->render();
         $this->assertStringContainsString('<b>Книги</b><span>библиотека поселения</span>', $html);
         $this->assertStringContainsString('<b>Инструменты</b><span>арсенал поселения</span>', $html);
+        $this->assertStringContainsString('<b>Поездки</b><span>попутчики и доставка</span>', $html);
         $this->assertStringNotContainsString('на полке', $html);
         $this->assertStringNotContainsString('свободно', $html);
     }

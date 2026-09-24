@@ -22,6 +22,7 @@ use SkazResidents\Controller\PurchaseController;
 use SkazResidents\Controller\PurchaseOrderController;
 use SkazResidents\Controller\TripController;
 use SkazResidents\Controller\TripBookingController;
+use SkazResidents\Controller\TasksController;
 use SkazResidents\Controller\TgAuthController;
 use SkazResidents\Controller\MaxAuthController;
 use SkazResidents\Controller\Council\AuthController as CouncilAuthController;
@@ -222,6 +223,7 @@ $router->get('/poselenie/byudzhet', [$budget, 'index']);
 // Мобильный PWA: лаунчер, офлайн-страница, manifest и service worker.
 $app = new AppController();
 $router->get('/poselenie/app', [$app, 'home']);
+$router->get('/poselenie/dela', [new TasksController(), 'index']);   // «Мои дела»
 $router->get('/poselenie/offline', [$app, 'offline']);
 // Панель «Уровень воды в Шебше» — фрагмент для модалки на главной приложения.
 $waterLevel = new WaterLevelController();

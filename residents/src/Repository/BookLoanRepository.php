@@ -135,6 +135,28 @@ final class BookLoanRepository
         return $st->fetchAll();
     }
 
+    /**
+     * Взятые семьёй книги с прошедшим сроком возврата — для «Моих дел».
+     * Узким запросом: список дел считается на каждой странице. «Прошёл» —
+     * строго до сегодня: в сам день срока ещё не просрочено.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listOverdueForBorrower(int $borrowerId, string $today): array
+    {
+        $st = $this->db->prepare(
+            "SELECT l.id, l.due_date, b.title AS book_title, o.name AS owner_name
+             FROM book_loans l
+             JOIN books b    ON b.id = l.book_id
+             JOIN families o ON o.id = b.family_id
+             WHERE l.borrower_id = ? AND l.status = 'on_loan'
+               AND l.due_date IS NOT NULL AND l.due_date < ?
+             ORDER BY l.due_date ASC"
+        );
+        $st->execute([$borrowerId, $today]);
+        return $st->fetchAll();
+    }
+
     /** История броней конкретной книги. @return array<int,array<string,mixed>> */
     public function historyForBook(int $bookId): array
     {

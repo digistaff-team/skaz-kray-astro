@@ -136,6 +136,28 @@ final class ToolLoanRepository
         return $st->fetchAll();
     }
 
+    /**
+     * Взятые семьёй инструменты с прошедшим сроком возврата — для «Моих дел».
+     * Узким запросом: список дел считается на каждой странице. «Прошёл» —
+     * строго до сегодня: в сам день срока ещё не просрочено.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listOverdueForBorrower(int $borrowerId, string $today): array
+    {
+        $st = $this->db->prepare(
+            "SELECT l.id, l.due_date, t.name AS tool_name, o.name AS owner_name
+             FROM tool_loans l
+             JOIN tools t    ON t.id = l.tool_id
+             JOIN families o ON o.id = t.family_id
+             WHERE l.borrower_id = ? AND l.status = 'on_loan'
+               AND l.due_date IS NOT NULL AND l.due_date < ?
+             ORDER BY l.due_date ASC"
+        );
+        $st->execute([$borrowerId, $today]);
+        return $st->fetchAll();
+    }
+
     /** История займов конкретного инструмента. @return array<int,array<string,mixed>> */
     public function historyForTool(int $toolId): array
     {

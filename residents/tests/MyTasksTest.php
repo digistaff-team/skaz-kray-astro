@@ -192,4 +192,55 @@ final class MyTasksTest extends TestCase
         $diary->update($id, 'Как копали пруд', 'текст', 'public', self::NOW);
         $this->assertSame([], $this->kinds());
     }
+
+    public function test_overdue_borrowed_tool_is_urgent_from_the_next_day(): void
+    {
+        $tool = (new ToolRepository())->create($this->neighbour, 'Пила', 'Сад', null, null, null, self::NOW);
+        $loans = new ToolLoanRepository();
+        $loan = $loans->create($tool, $this->me, null, self::TODAY, self::NOW);
+        $loans->give($loan, self::NOW);
+
+        // В сам день срока — ещё не дело (источник рабочий — это видно ниже, на следующий день).
+        $this->assertSame([], $this->kinds());
+
+        $t = $this->tasks(false, '2026-09-25');
+        $this->assertSame(['tool_overdue'], array_column($t, 'kind'));
+        $this->assertTrue($t[0]['urgent']);
+        $this->assertSame('Пора вернуть «Пила»', $t[0]['title']);
+        $this->assertSame('Семья Руденко · срок был 24 сентября 2026', $t[0]['detail']);
+        $this->assertSame('/poselenie/instrumenty/moi', $t[0]['link']);
+
+        $loans->markReturned($loan, 'ok', null, self::NOW);
+        $this->assertSame([], $this->kinds(false, '2026-09-25'));
+    }
+
+    public function test_overdue_borrowed_book_is_urgent(): void
+    {
+        $book = (new BookRepository())->create($this->neighbour, 'Звенящие кедры', 'В. Мегре', 'Проза', null, null, self::NOW);
+        $loans = new BookLoanRepository();
+        $loan = $loans->create($book, $this->me, null, '2026-09-10', self::NOW);
+        $loans->give($loan, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['book_overdue'], array_column($t, 'kind'));
+        $this->assertTrue($t[0]['urgent']);
+        $this->assertSame('Пора вернуть книгу «Звенящие кедры»', $t[0]['title']);
+        $this->assertSame('Семья Руденко · срок был 10 сентября 2026', $t[0]['detail']);
+        $this->assertSame('/poselenie/knigi/moi', $t[0]['link']);
+    }
+
+    public function test_urgent_first_then_longest_waiting(): void
+    {
+        $tools = new ToolRepository();
+        $loans = new ToolLoanRepository();
+        $loans->create($tools->create($this->me, 'Новая', 'x', null, null, null, self::NOW), $this->neighbour, null, null, '2026-09-22 10:00:00');
+        $loans->create($tools->create($this->me, 'Старая', 'x', null, null, null, self::NOW), $this->neighbour, null, null, '2026-09-10 10:00:00');
+        $borrowed = $loans->create($tools->create($this->neighbour, 'Чужая', 'x', null, null, null, self::NOW), $this->me, null, '2026-09-23', self::NOW);
+        $loans->give($borrowed, self::NOW);
+
+        $this->assertSame(
+            ['Пора вернуть «Чужая»', 'Заявка на «Старая»', 'Заявка на «Новая»'],
+            array_column($this->tasks(), 'title')
+        );
+    }
 }

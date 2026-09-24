@@ -77,6 +77,8 @@ final class MyTasks
             ...$this->collect('poezdki',     fn(): array => $this->tripBookings($familyId, $today)),
             ...$this->collect('yarmarka',    fn(): array => $this->rejectedProducts($familyId)),
             ...$this->collect('dnevniki',    fn(): array => $this->rejectedDiary($familyId)),
+            ...$this->collect('instrumenty', fn(): array => $this->overdueTools($familyId, $today)),
+            ...$this->collect('knigi',       fn(): array => $this->overdueBooks($familyId, $today)),
         ];
         return self::sort($tasks);
     }
@@ -166,6 +168,37 @@ final class MyTasks
             $out[] = self::task('diary_rejected', 'Запись «' . $e['title'] . '» не прошла проверку',
                 self::reason($e['reject_reason'] ?? null),
                 '/poselenie/dnevnik/' . (int) $e['id'] . '/redaktirovat', (string) $e['updated_at']);
+        }
+        return $out;
+    }
+
+    /**
+     * Взятое у соседа, у которого прошёл желаемый срок, — срочное дело. Отбор
+     * в запросе: «прошёл» — со следующего дня после срока.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function overdueTools(int $me, string $today): array
+    {
+        $out = [];
+        foreach ($this->toolLoans->listOverdueForBorrower($me, $today) as $l) {
+            $due = (string) $l['due_date'];
+            $out[] = self::task('tool_overdue', 'Пора вернуть «' . $l['tool_name'] . '»',
+                $l['owner_name'] . ' · срок был ' . ru_date($due),
+                '/poselenie/instrumenty/moi', $due, true);
+        }
+        return $out;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private function overdueBooks(int $me, string $today): array
+    {
+        $out = [];
+        foreach ($this->bookLoans->listOverdueForBorrower($me, $today) as $l) {
+            $due = (string) $l['due_date'];
+            $out[] = self::task('book_overdue', 'Пора вернуть книгу «' . $l['book_title'] . '»',
+                $l['owner_name'] . ' · срок был ' . ru_date($due),
+                '/poselenie/knigi/moi', $due, true);
         }
         return $out;
     }

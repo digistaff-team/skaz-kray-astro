@@ -148,8 +148,9 @@ final class MyTasksTest extends TestCase
         $trips->setStatus($cancelled, 'cancelled');
         $bookings->create($past, $this->neighbour, 1, null, self::NOW);
         $bookings->create($cancelled, $this->neighbour, 1, null, self::NOW);
-        // Контроль: бронь в действующей будущей поездке источник видит — значит, отсутствие остальных не случайно.
-        $open = $trips->create($this->me, 'Д', 'Е', '2026-10-10', null, 3, null, self::NOW);
+        // Контроль — поездка сегодня: она ещё не прошла, и бронь в ней должна быть делом.
+        // Заодно видно, что источник работает и отсутствие остальных не случайно.
+        $open = $trips->create($this->me, 'Д', 'Е', self::TODAY, null, 3, null, self::NOW);
         $bookings->create($open, $this->neighbour, 1, null, self::NOW);
 
         $this->assertSame(['Бронь в поездке Д → Е'], array_column($this->tasks(), 'title'));

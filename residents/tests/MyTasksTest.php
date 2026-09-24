@@ -70,9 +70,11 @@ final class MyTasksTest extends TestCase
     {
         $tool = (new ToolRepository())->create($this->me, 'Дрель', 'Электро', null, null, null, self::NOW);
         (new ToolLoanRepository())->create($tool, $this->neighbour, null, null, self::NOW);
+        // Источник работает — иначе проверка ниже прошла бы впустую: сбои источников глотаются.
+        $this->assertSame(['tool_request'], $this->kinds());
+
         (new SectionSettingsRepository())->setEnabled('instrumenty', false, self::NOW);
         Sections::reset();
-
         $this->assertSame([], $this->kinds());
     }
 
@@ -91,5 +93,17 @@ final class MyTasksTest extends TestCase
         $this->assertCount(1, MyTasks::forCurrent());
         MyTasks::reset();
         $this->assertCount(2, MyTasks::forCurrent());
+    }
+
+    public function test_for_current_recomputes_when_resident_changes(): void
+    {
+        $_SESSION['family_id'] = $this->me;
+        $tool = (new ToolRepository())->create($this->me, 'Дрель', 'x', null, null, null, self::NOW);
+        (new ToolLoanRepository())->create($tool, $this->neighbour, null, null, self::NOW);
+        $this->assertCount(1, MyTasks::forCurrent());
+
+        // Другой житель в том же процессе не должен увидеть чужие дела.
+        $_SESSION['family_id'] = $this->neighbour;
+        $this->assertSame([], MyTasks::forCurrent());
     }
 }

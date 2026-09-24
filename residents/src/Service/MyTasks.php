@@ -19,11 +19,14 @@ use SkazResidents\Repository\{
  *
  * Дело — массив ['kind', 'title', 'detail', 'link', 'date', 'urgent'].
  * date — момент, с которого дело ждёт; по нему сортируем.
+ * title и detail — обычный текст с именами и названиями из базы: при выводе экранировать.
  */
 final class MyTasks
 {
     /** Результат для вошедшего жителя на время запроса — см. forCurrent(). */
     private static ?array $current = null;
+    /** Для кого посчитан $current: сменился житель в том же запросе — считаем заново. */
+    private static ?int $currentFor = null;
 
     public function __construct(
         private ToolLoanRepository $toolLoans = new ToolLoanRepository(),
@@ -45,15 +48,16 @@ final class MyTasks
      */
     public static function forCurrent(): array
     {
-        if (self::$current !== null) { return self::$current; }
         $id = Auth::id();
         if ($id === null) { return []; }
+        if (self::$current !== null && self::$currentFor === $id) { return self::$current; }
         try {
             self::$current = (new self())->build($id, Auth::isEditor(), date('Y-m-d'));
         } catch (\Throwable $e) {
-            error_log('MyTasks: ' . $e->getMessage());
+            error_log('MyTasks: ' . self::describe($e));
             self::$current = [];
         }
+        self::$currentFor = $id;
         return self::$current;
     }
 
@@ -61,6 +65,7 @@ final class MyTasks
     public static function reset(): void
     {
         self::$current = null;
+        self::$currentFor = null;
     }
 
     /** @return array<int,array<string,mixed>> */
@@ -81,11 +86,11 @@ final class MyTasks
      */
     private function collect(?string $section, callable $source): array
     {
-        if ($section !== null && !Sections::isEnabled($section)) { return []; }
         try {
+            if ($section !== null && !Sections::isEnabled($section)) { return []; }
             return $source();
         } catch (\Throwable $e) {
-            error_log('MyTasks (' . ($section ?? 'moderation') . '): ' . $e->getMessage());
+            error_log('MyTasks (' . ($section ?? 'moderation') . '): ' . self::describe($e));
             return [];
         }
     }
@@ -126,5 +131,11 @@ final class MyTasks
     private static function withDue(string $who, ?string $due): string
     {
         return ($due ?? '') !== '' ? $who . ' · до ' . ru_date($due) : $who;
+    }
+
+    /** «RuntimeException: сообщение (MyTasks.php:42)» — чтобы по логу было видно, где упало. */
+    private static function describe(\Throwable $e): string
+    {
+        return get_class($e) . ': ' . $e->getMessage() . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')';
     }
 }

@@ -39,7 +39,13 @@
         <?php else: ?>
             <a href="/dnevniki-pomestiy/">Дневники поместий</a>
         <?php endif; ?>
-        <a href="/yarmarka/">Ярмарка</a>
+        <?php /* Вошедшему — внутренняя ярмарка: на публичной /yarmarka/ только товары
+                 «на сайте», объявлений «только соседям» там нет. */ ?>
+        <?php if (Auth::id() !== null): ?>
+            <?php if (Sections::isEnabled('yarmarka')): ?><a href="/poselenie/yarmarka">Ярмарка</a><?php endif; ?>
+        <?php else: ?>
+            <a href="/yarmarka/">Ярмарка</a>
+        <?php endif; ?>
         <?php if (Sections::isEnabled('instrumenty')): ?><a href="/poselenie/instrumenty">Инструменты</a><?php endif; ?>
         <?php if (Sections::isEnabled('knigi')): ?><a href="/poselenie/knigi">Книги</a><?php endif; ?>
         <?php if (Sections::isEnabled('poezdki')): ?><a href="/poselenie/poezdki">Поездки</a><?php endif; ?>

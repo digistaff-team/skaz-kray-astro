@@ -14,6 +14,24 @@ final class FamilyRepositoryTest extends TestCase
         $this->repo = new FamilyRepository();
     }
 
+    public function test_moderators_are_active_editors_and_admins(): void
+    {
+        $pdo = \SkazResidents\Database::pdo();
+        $make = function (string $email, string $name, string $status, string $role) use ($pdo): int {
+            $id = $this->repo->createPending($email, 'H', $name);
+            $pdo->prepare('UPDATE families SET status = ?, role = ? WHERE id = ?')->execute([$status, $role, $id]);
+            return $id;
+        };
+        $editor   = $make('ed@skaz-kray.ru', 'Редактор', 'active', 'editor');
+        $admin    = $make('adm@skaz-kray.ru', 'Админ', 'active', 'admin');
+        $make('res@skaz-kray.ru', 'Житель', 'active', 'resident');
+        $make('off@skaz-kray.ru', 'Бывший редактор', 'blocked', 'editor');
+
+        $ids = array_map(static fn(array $f): int => (int) $f['id'], $this->repo->listModerators());
+        sort($ids);
+        $this->assertSame([$editor, $admin], $ids);
+    }
+
     public function test_create_pending_and_find_by_email(): void
     {
         $id = $this->repo->createPending('semya@skaz-kray.ru', 'HASH', 'Поместье Ивановых');

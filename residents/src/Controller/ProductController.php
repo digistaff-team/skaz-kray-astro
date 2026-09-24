@@ -4,7 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{ProductRepository, ImageRepository, FamilyRepository, HouseholdProfileRepository};
-use SkazResidents\Service\{CatalogAnnounce, AfterResponse};
+use SkazResidents\Service\{CatalogAnnounce, AfterResponse, ModerationNotify};
 
 final class ProductController
 {
@@ -142,6 +142,10 @@ final class ProductController
             }
             $this->handleUploads($id);
         }, 'Ярмарка');
+        // Модераторам — после загрузки фото, чтобы они открыли объявление уже целым.
+        if (ModerationNotify::entersQueue(null, $data['visibility'])) {
+            ModerationNotify::queued('объявление', $data['title'], Auth::name(), Auth::id());
+        }
     }
 
     /** Приписка к сообщению: фото грузятся уже после редиректа, карточка секунду-другую без них. */
@@ -190,6 +194,9 @@ final class ProductController
         header('Location: /poselenie/yarmarka/moya');
         $productId = (int) $product['id'];
         AfterResponse::run(fn() => $this->handleUploads($productId), 'Ярмарка');
+        if (ModerationNotify::entersQueue((string) $product['status'], $data['visibility'])) {
+            ModerationNotify::queued('объявление', $data['title'], Auth::name(), Auth::id());
+        }
     }
 
     public function delete(array $params): void

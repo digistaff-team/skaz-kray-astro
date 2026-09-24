@@ -142,6 +142,20 @@ final class FamilyRepository
     }
 
     /** @return array<int,array<string,mixed>> */
+    /**
+     * Модераторы — активные редакторы и админ: им уходят уведомления о новом на
+     * проверке (ModerationNotify). Только нужные для отправки поля.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listModerators(): array
+    {
+        return $this->db->query(
+            "SELECT id, name, email FROM families
+             WHERE status = 'active' AND role IN ('editor', 'admin') ORDER BY id"
+        )->fetchAll();
+    }
+
     public function listByStatus(string $status): array
     {
         $st = $this->db->prepare(

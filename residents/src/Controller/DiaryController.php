@@ -4,7 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{DiaryRepository, ImageRepository};
-use SkazResidents\Service\CatalogAnnounce;
+use SkazResidents\Service\{CatalogAnnounce, ModerationNotify};
 
 final class DiaryController
 {
@@ -91,6 +91,11 @@ final class DiaryController
         if ($data['visibility'] === 'residents') {
             CatalogAnnounce::diary($id, $data['title'], Auth::name());
         }
+        // Модераторам — если вещь встала в очередь (ModerationNotify: только после
+        // header(), отправка сразу завершает ответ).
+        if (ModerationNotify::entersQueue(null, $data['visibility'])) {
+            ModerationNotify::queued('запись дневника', $data['title'], Auth::name(), Auth::id());
+        }
     }
 
     public function showEdit(array $params): void
@@ -126,6 +131,11 @@ final class DiaryController
             default     => 'Изменения отправлены на проверку редактору сайта.',
         });
         header('Location: /poselenie/dnevniki');
+        // Модераторам — если вещь встала в очередь (ModerationNotify: только после
+        // header(), отправка сразу завершает ответ).
+        if (ModerationNotify::entersQueue((string) $entry['status'], $data['visibility'])) {
+            ModerationNotify::queued('запись дневника', $data['title'], Auth::name(), Auth::id());
+        }
     }
 
     public function delete(array $params): void

@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Database};
 use SkazResidents\Repository\FamilyRepository;
+use SkazResidents\Service\ModerationNotify;
 
 final class AuthController
 {
@@ -45,9 +46,12 @@ final class AuthController
             return;
         }
 
-        $this->families->createPending($email, Auth::hash($pass), $name);
+        $id = $this->families->createPending($email, Auth::hash($pass), $name);
         Flash::set('success', 'Заявка отправлена. После одобрения редактором вы сможете войти.');
         header('Location: /poselenie/vhod');
+        // Модераторам — о новой заявке. Автор пустой: «кто» — это и есть название
+        // семьи, а почту заявителя в Telegram не кладём.
+        ModerationNotify::queued('заявка на вход', $name, '', $id);
     }
 
     public function showLogin(): void

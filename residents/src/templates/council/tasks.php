@@ -100,7 +100,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <button class="sovet-del-ico" type="submit" form="del-<?= $id ?>" title="Удалить задачу" aria-label="Удалить задачу" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
         </summary>
 
-        <form id="del-<?= $id ?>" method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
+        <form id="del-<?= $id ?>" method="post" action="/sovet/zadachi/<?= $id ?>/udalit" data-confirm="Удалить задачу?">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
         </form>
 
@@ -124,7 +124,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <div class="res-meta">Фото (× — удалить):</div>
             <div class="photo-preview">
                 <?php foreach ($t['photos'] as $img): ?>
-                    <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+                    <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" data-confirm="Удалить это фото?">
                         <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
                         <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy">
                         <button type="submit" class="photo-del" title="Удалить фото">×</button>
@@ -243,7 +243,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
                     <button class="sovet-arch-ico" type="submit" title="Вернуть в работу" aria-label="Вернуть в работу"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg></button>
                 </form>
-                <form method="post" action="/sovet/zadachi/<?= $id ?>/udalit" onsubmit="return confirm('Удалить задачу?');">
+                <form method="post" action="/sovet/zadachi/<?= $id ?>/udalit" data-confirm="Удалить задачу?">
                     <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
                     <button class="sovet-arch-ico sovet-arch-ico--del" type="submit" title="Удалить" aria-label="Удалить"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
                 </form>
@@ -251,7 +251,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <?php if (!empty($t['photos'])): ?>
                 <div class="photo-preview sovet-arch-photos">
                     <?php foreach ($t['photos'] as $img): ?>
-                        <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+                        <form class="photo-uploaded" method="post" action="/sovet/zadachi/<?= $id ?>/foto/<?= (int) $img['id'] ?>/udalit" data-confirm="Удалить это фото?">
                             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
                             <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="" loading="lazy">
                             <button type="submit" class="photo-del" title="Удалить фото">×</button>

@@ -27,7 +27,7 @@ $tripCls = fn(string $s) => 'tool-st--' . ($s === 'active' ? 'free' : ($s === 'd
                         <?= Csrf::field() ?><button class="res-link-btn" type="submit">Отменить</button>
                     </form>
                 <?php endif; ?>
-                <form method="post" action="/poselenie/poezdki/<?= $id ?>/udalit" onsubmit="return confirm('Удалить поездку?')">
+                <form method="post" action="/poselenie/poezdki/<?= $id ?>/udalit" data-confirm="Удалить поездку?">
                     <?= Csrf::field() ?><button class="res-link-btn sovet-danger" type="submit">Удалить</button>
                 </form>
             </div>

@@ -127,7 +127,7 @@ $editCats = $editable ? ['income' => $incomeCats ?? [], 'expense' => $expenseCat
                                 <label>Описание <input type="text" name="note" value="<?= View::e($op['note']) ?>" maxlength="300"></label>
                                 <button type="submit" class="res-btn">Сохранить</button>
                             </form>
-                            <form method="post" action="<?= View::e($basePath) ?>/operaciya/<?= (int) $op['id'] ?>/udalit" onsubmit="return confirm('Удалить операцию?')" style="margin-top:.5rem">
+                            <form method="post" action="<?= View::e($basePath) ?>/operaciya/<?= (int) $op['id'] ?>/udalit" data-confirm="Удалить операцию?" style="margin-top:.5rem">
                                 <?= Csrf::field() ?>
                                 <input type="hidden" name="mesyac" value="<?= View::e($report['selectedYm']) ?>">
                                 <button type="submit" class="res-link-btn sovet-danger">Удалить операцию</button>

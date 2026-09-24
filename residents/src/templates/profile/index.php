@@ -47,7 +47,7 @@ $h = $household;
                 <b class="prof-name"><?= View::e($m['full_name']) ?></b>
                 <span class="prof-actions">
                     <a class="res-link res-icon" href="/poselenie/moye-pomestie/zhitel/<?= (int) $m['id'] ?>/redaktirovat" title="Изменить" aria-label="Изменить"><?= $pencil ?></a>
-                    <form method="post" action="/poselenie/moye-pomestie/zhitel/<?= (int) $m['id'] ?>/udalit" onsubmit="return confirm('Удалить <?= View::e(addslashes($m['full_name'])) ?> из поместья?')">
+                    <form method="post" action="/poselenie/moye-pomestie/zhitel/<?= (int) $m['id'] ?>/udalit" data-confirm="Удалить <?= View::e($m['full_name']) ?> из поместья?">
                         <?= Csrf::field() ?><button type="submit" class="res-link res-link--danger res-icon" title="Удалить" aria-label="Удалить"><?= $trash ?></button>
                     </form>
                 </span>
@@ -85,7 +85,7 @@ $h = $household;
                 <b class="prof-name"><?= View::e($c['title']) ?><?php if ($c['plate'] !== ''): ?> · <?= View::e($c['plate']) ?><?php endif; ?></b>
                 <span class="prof-actions">
                     <a class="res-link res-icon" href="/poselenie/moye-pomestie/avto/<?= (int) $c['id'] ?>/redaktirovat" title="Изменить" aria-label="Изменить"><?= $pencil ?></a>
-                    <form method="post" action="/poselenie/moye-pomestie/avto/<?= (int) $c['id'] ?>/udalit" onsubmit="return confirm('Удалить автомобиль?')">
+                    <form method="post" action="/poselenie/moye-pomestie/avto/<?= (int) $c['id'] ?>/udalit" data-confirm="Удалить автомобиль?">
                         <?= Csrf::field() ?><button type="submit" class="res-link res-link--danger res-icon" title="Удалить" aria-label="Удалить"><?= $trash ?></button>
                     </form>
                 </span>
@@ -112,7 +112,7 @@ $h = $household;
                 <b class="prof-name"><?= View::e($pet['name']) ?><?php if ($pet['kind'] !== ''): ?> · <?= View::e($pet['kind']) ?><?php endif; ?></b>
                 <span class="prof-actions">
                     <a class="res-link res-icon" href="/poselenie/moye-pomestie/pitomec/<?= (int) $pet['id'] ?>/redaktirovat" title="Изменить" aria-label="Изменить"><?= $pencil ?></a>
-                    <form method="post" action="/poselenie/moye-pomestie/pitomec/<?= (int) $pet['id'] ?>/udalit" onsubmit="return confirm('Удалить питомца?')">
+                    <form method="post" action="/poselenie/moye-pomestie/pitomec/<?= (int) $pet['id'] ?>/udalit" data-confirm="Удалить питомца?">
                         <?= Csrf::field() ?><button type="submit" class="res-link res-link--danger res-icon" title="Удалить" aria-label="Удалить"><?= $trash ?></button>
                     </form>
                 </span>

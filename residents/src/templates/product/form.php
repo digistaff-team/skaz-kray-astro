@@ -56,7 +56,7 @@ $cancelUrl = $isEdit ? '/poselenie/yarmarka/moya' : '/poselenie/yarmarka';
     <div class="res-meta" style="margin-top:1rem">Уже загружено (нажмите ×, чтобы удалить):</div>
     <div class="photo-preview">
         <?php foreach ($images as $img): ?>
-            <form class="photo-uploaded" method="post" action="/poselenie/yarmarka/<?= (int) $product['id'] ?>/foto/<?= (int) $img['id'] ?>/udalit" onsubmit="return confirm('Удалить это фото?')">
+            <form class="photo-uploaded" method="post" action="/poselenie/yarmarka/<?= (int) $product['id'] ?>/foto/<?= (int) $img['id'] ?>/udalit" data-confirm="Удалить это фото?">
                 <?= Csrf::field() ?>
                 <img class="photo-thumb" src="<?= View::e(entry_image_thumb($img['path'], 240)) ?>" alt="">
                 <button type="submit" class="photo-del" title="Удалить фото">×</button>

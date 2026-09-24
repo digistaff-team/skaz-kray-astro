@@ -28,7 +28,7 @@ $loanLabel = fn(string $s) => ['requested' => 'ожидает решения', '
                         <?= Csrf::field() ?><button class="res-link-btn" type="submit"><?= $t['status'] === 'hidden' ? 'Показать' : 'Скрыть' ?></button>
                     </form>
                 <?php endif; ?>
-                <form method="post" action="/poselenie/instrumenty/<?= $id ?>/udalit" onsubmit="return confirm('Удалить инструмент?')">
+                <form method="post" action="/poselenie/instrumenty/<?= $id ?>/udalit" data-confirm="Удалить инструмент?">
                     <?= Csrf::field() ?><button class="res-link-btn sovet-danger" type="submit">Удалить</button>
                 </form>
             </div>

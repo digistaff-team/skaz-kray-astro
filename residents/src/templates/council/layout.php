@@ -66,6 +66,7 @@
 </main>
 <footer class="res-footer">
 </footer>
+<?php require __DIR__ . '/../partials/confirm.php'; ?>
 <?php require __DIR__ . '/../partials/photo-shrink.php'; ?>
 <?php require __DIR__ . '/../partials/submit-guard.php'; ?>
 </body>

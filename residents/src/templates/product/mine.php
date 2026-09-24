@@ -26,7 +26,7 @@
         <p class="res-meta"><?= View::e(product_price_label($p['price'] ?? null, $p['unit'] ?? null)) ?></p>
         <div class="cab-item-actions">
             <a class="res-btn res-btn--ghost" href="/poselenie/yarmarka/<?= (int) $p['id'] ?>/redaktirovat">Изменить</a>
-            <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" onsubmit="return confirm('Удалить?')">
+            <form method="post" action="/poselenie/yarmarka/<?= (int) $p['id'] ?>/udalit" data-confirm="Удалить?">
                 <?= Csrf::field() ?>
                 <button type="submit" class="res-btn res-btn--muted">Удалить</button>
             </form>

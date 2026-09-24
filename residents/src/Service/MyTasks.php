@@ -82,6 +82,9 @@ final class MyTasks
             ...$this->collect('zakupki',     fn(): array => $this->purchasesAsOrganizer($familyId, $today)),
             ...$this->collect('zakupki',     fn(): array => $this->purchasesAsParticipant($familyId)),
         ];
+        if ($isEditor) {
+            $tasks = [...$tasks, ...$this->collect(null, fn(): array => $this->moderationQueue())];
+        }
         return self::sort($tasks);
     }
 
@@ -254,6 +257,29 @@ final class MyTasks
                 '/poselenie/zakupki/' . (int) $p['id'], (string) $p['updated_at']);
         }
         return $out;
+    }
+
+    /**
+     * Сводка очереди модерации — одной строкой, только редактору и админу.
+     * В пояснении — только непустые части. Очередь маленькая, поэтому считаем
+     * через существующие listPending(), без отдельных запросов-счётчиков.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function moderationQueue(): array
+    {
+        $parts = array_filter([
+            'заявки на вход' => count($this->families->listByStatus('pending')),
+            'записи'         => count($this->diary->listPending()),
+            'объявления'     => count($this->products->listPending()),
+        ]);
+        $total = array_sum($parts);
+        if ($total === 0) { return []; }
+        $detail = implode(' · ', array_map(
+            static fn(string $what, int $n): string => $what . ': ' . $n,
+            array_keys($parts), $parts
+        ));
+        return [self::task('moderation', 'На проверке: ' . $total, $detail, '/poselenie/moderation', '')];
     }
 
     /**

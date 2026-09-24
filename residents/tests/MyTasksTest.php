@@ -305,4 +305,47 @@ final class MyTasksTest extends TestCase
         $pickups = array_filter($t, static fn(array $x): bool => $x['kind'] === 'purchase_pickup');
         $this->assertSame(['Привезли «Сыр» — заберите'], array_column($pickups, 'title'));
     }
+
+    public function test_moderation_queue_is_for_editors_only_and_goes_last(): void
+    {
+        (new ProductRepository())->create($this->neighbour, 'Яйца', 'Домашние', '120', '@n', self::NOW);  // «на сайте» → на проверку
+        (new DiaryRepository())->create($this->neighbour, 'Запись', 'текст', 'public', self::NOW);
+        $tool = (new ToolRepository())->create($this->me, 'Дрель', 'Электро', null, null, null, self::NOW);
+        (new ToolLoanRepository())->create($tool, $this->neighbour, null, null, self::NOW);
+
+        $this->assertSame(['tool_request'], $this->kinds(false));
+
+        // Обе семьи из setUp созданы как «pending» — это и есть две заявки на вход.
+        $t = $this->tasks(true);
+        $this->assertSame(['tool_request', 'moderation'], array_column($t, 'kind'));
+        $this->assertSame('На проверке: 4', $t[1]['title']);
+        $this->assertSame('заявки на вход: 2 · записи: 1 · объявления: 1', $t[1]['detail']);
+        $this->assertSame('/poselenie/moderation', $t[1]['link']);
+    }
+
+    public function test_empty_moderation_queue_is_not_a_task(): void
+    {
+        $fam = new FamilyRepository();
+        $fam->approve($this->me, self::NOW);
+        $fam->approve($this->neighbour, self::NOW);
+        $this->assertSame([], $this->kinds(true));
+
+        // Контроль: появилось что проверять — строка есть, значит, источник рабочий.
+        (new ProductRepository())->create($this->neighbour, 'Яйца', 'Домашние', '120', '@n', self::NOW);
+        $t = $this->tasks(true);
+        $this->assertSame(['moderation'], array_column($t, 'kind'));
+        $this->assertSame('объявления: 1', $t[0]['detail']);
+    }
+
+    public function test_broken_source_does_not_hide_the_rest(): void
+    {
+        $tool = (new ToolRepository())->create($this->me, 'Дрель', 'Электро', null, null, null, self::NOW);
+        (new ToolLoanRepository())->create($tool, $this->neighbour, null, null, self::NOW);
+        (new PurchaseRepository())->create($this->me, 'Мёд', null, 'кг', '450', null, '2026-09-20', null, null, null, self::NOW);
+        // Контроль: пока всё цело, видны оба дела.
+        $this->assertEqualsCanonicalizing(['tool_request', 'purchase_deadline'], $this->kinds());
+
+        Database::pdo()->exec('DROP TABLE purchase_orders');   // источники закупок падают
+        $this->assertSame(['tool_request'], $this->kinds());
+    }
 }

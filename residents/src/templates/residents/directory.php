@@ -23,6 +23,17 @@ $gladeName = static function (string $g): string {
 </div>
 <p class="res-meta">Справочник для жителей поселения</p>
 
+<form class="tool-filters" method="get" action="/poselenie/sosedi" role="search">
+    <input type="search" name="q" value="<?= View::e($q) ?>" placeholder="Имя, фамилия, навык, поляна или город" aria-label="Поиск по соседям" enterkeyhint="search">
+    <button class="res-btn" type="submit">Найти</button>
+    <?php if ($q !== ''): ?><a class="res-btn res-btn--ghost" href="/poselenie/sosedi">Сбросить</a><?php endif; ?>
+</form>
+
+<?php if ($q !== '' && $glades): ?>
+    <?php $found = array_sum(array_column($glades, 'count')); ?>
+    <p class="res-meta">Найдено: <?= $found ?> <?= View::e(plural_ru($found, 'поместье', 'поместья', 'поместий')) ?></p>
+<?php endif; ?>
+
 <?php if (!$glades): ?>
     <p class="res-meta tool-empty">
         <?= $q !== '' ? 'Ничего не найдено. Попробуйте другой запрос.' : 'Справочник пока пуст.' ?>

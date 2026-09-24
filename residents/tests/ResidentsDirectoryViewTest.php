@@ -100,4 +100,23 @@ final class ResidentsDirectoryViewTest extends TestCase
         $this->assertStringContainsString('res-hh--free', $fragment);
         $this->assertStringNotContainsString('Вишняков Андрей', $fragment);
     }
+
+    public function test_page_has_search_form(): void
+    {
+        $html = $this->render('directory', ['glades' => $this->glades(false), 'stats' => [], 'q' => '', 'lazy' => false]);
+        $this->assertStringContainsString('name="q"', $html);
+        $this->assertStringNotContainsString('Сбросить', $html);   // сбрасывать нечего
+    }
+
+    public function test_search_keeps_query_and_offers_reset(): void
+    {
+        $glades = $this->repo->gladeGroups('дизайн');
+        foreach ($glades as &$g) { $g['count'] = count($g['hhs']); }
+        unset($g);
+        $html = $this->render('directory', ['glades' => $glades, 'stats' => [], 'q' => '<дизайн>', 'lazy' => false]);
+        $this->assertStringContainsString('value="&lt;дизайн&gt;"', $html);   // запрос экранирован
+        $this->assertStringContainsString('Сбросить', $html);
+        $this->assertStringContainsString('Найдено: 1 поместье', $html);
+        $this->assertStringContainsString('res-hh--open', $html);           // найденное сразу раскрыто
+    }
 }

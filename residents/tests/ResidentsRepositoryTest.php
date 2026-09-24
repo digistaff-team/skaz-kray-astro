@@ -107,6 +107,34 @@ final class ResidentsRepositoryTest extends TestCase
         $this->assertSame([], $this->repo->grouped('кузнечное дело'));
     }
 
+    /** Заголовок поместья («Поместье Вишняковых») виден всем — по нему и ищем. */
+    public function test_search_by_household_title_finds_unclaimed_plate(): void
+    {
+        $pdo = Database::pdo();
+        $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort) VALUES
+            (3, '(2) Родная', '6', '', NULL, 2)");
+        $pdo->exec("INSERT INTO residents (household_id, full_name, skills, sort) VALUES
+            (3, 'Бобков Иван', 'кузнечное дело', 0)");
+
+        $groups = $this->repo->grouped('Бобковых');
+        $this->assertCount(1, $groups);
+        $this->assertSame([], $groups[0]['people']);   // находим плашку, но жителей не раскрываем
+    }
+
+    /** Скрытых жителей непривязанного поместья поиск не выдаёт — ни по имени, ни по навыку. */
+    public function test_search_does_not_reveal_hidden_residents(): void
+    {
+        $pdo = Database::pdo();
+        $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort) VALUES
+            (3, '(2) Родная', '6', 'Свободное', NULL, 2)");
+        $pdo->exec("INSERT INTO residents (household_id, full_name, skills, hometown, sort) VALUES
+            (3, 'Кто-то Тамже', 'кузнечное дело', 'Тверь', 0)");
+
+        $this->assertSame([], $this->repo->grouped('Тамже'));
+        $this->assertSame([], $this->repo->grouped('кузнечное'));
+        $this->assertSame([], $this->repo->grouped('Тверь'));
+    }
+
     public function test_glade_groups_sorts_glades_and_plots(): void
     {
         $groups = $this->repo->gladeGroups();

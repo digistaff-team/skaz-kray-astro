@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Repository;
 
-use SkazResidents\Database;
+use SkazResidents\{Database, HouseholdName};
 use PDO;
 
 /**
@@ -215,10 +215,19 @@ final class ResidentsRepository
         return $out;
     }
 
-    /** Совпадает ли поместье с поисковым запросом (по себе или любому жителю). */
+    /**
+     * Совпадает ли поместье с поисковым запросом (по себе или любому жителю).
+     * Ищем только по тому, что страница и так покажет: заголовок поместья
+     * («Поместье Вишняковых») виден у любой плашки, а жители — лишь у
+     * привязанных (у остальных people к этому моменту уже пуст).
+     */
     private function matches(array $household, string $needle): bool
     {
-        $hay = [$household['glade'], $household['estate_name']];
+        $hay = [
+            $household['glade'],
+            $household['estate_name'],
+            HouseholdName::title((string) $household['estate_name'], $household['head_name']),
+        ];
         foreach ($household['people'] as $p) {
             $hay[] = $p['full_name'];
             $hay[] = $p['skills'];

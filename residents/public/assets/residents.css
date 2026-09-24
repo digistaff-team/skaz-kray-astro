@@ -424,6 +424,20 @@ body.map-open { overflow: hidden; }
 .app-diary--other { background: #fff; border: 1px solid #e6e4d8; }
 .app-diary--other b { color: #036844; }
 
+/* «Мои дела»: блок на главной — заметнее блока дневника, это то, что ждёт ответа. */
+.app-tasks { margin-bottom: 14px; background: #008757; color: #fff; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
+.app-tasks b { font-weight: 700; font-size: 15px; }
+.app-tasks span { font-size: 14px; opacity: .92; }
+/* Список на странице «Мои дела»; срочные («пора вернуть») — тёплым цветом. */
+.task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.task-item { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; color: var(--ink); text-decoration: none; }
+.task-item b { color: var(--green); }
+.task-item span { font-size: .9rem; color: #6b6b60; }
+.task-item--urgent { border-color: #d9822b; background: #fdf4ea; }
+.task-item--urgent b { color: #a4540f; }
+/* Число дел рядом с пунктом меню. */
+.res-nav-count { display: inline-block; min-width: 1.4em; padding: 0 .4em; border-radius: 999px; background: #008757; color: #fff; font-size: .78rem; line-height: 1.4; text-align: center; }
+
 .app-sec-label { padding: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .app-grid { padding: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .app-tile { min-height: 104px; background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; text-decoration: none; color: var(--ink); }

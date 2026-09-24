@@ -117,4 +117,13 @@ final class AppHomeTilesTest extends TestCase
     {
         $this->assertStringNotContainsString('app-tasks', $this->render([]));
     }
+
+    public function test_tasks_block_escapes_titles(): void
+    {
+        $html = $this->render([['kind' => 'tool_request', 'title' => 'Заявка на «<b>x</b>»', 'detail' => '',
+            'link' => '/poselenie/instrumenty/moi', 'date' => '', 'urgent' => false]]);
+        $this->assertStringContainsString('Ждут вас: 1 дело', $html);
+        $this->assertStringNotContainsString('<b>x</b>', $html);
+        $this->assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $html);
+    }
 }

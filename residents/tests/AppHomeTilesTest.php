@@ -33,7 +33,8 @@ final class AppHomeTilesTest extends TestCase
         );
     }
 
-    private function render(): string
+    /** @param array<int,array<string,mixed>> $tasks */
+    private function render(array $tasks = []): string
     {
         $dash = (new AppDashboard())->build(1);
         $me = 'Поместье «АгудариЯ»';
@@ -96,5 +97,24 @@ final class AppHomeTilesTest extends TestCase
         (new SectionSettingsRepository())->setEnabled('dnevniki', false, '2026-09-23 10:00:00');
         Sections::reset();
         $this->assertStringNotContainsString('app-diary', $this->render());
+    }
+
+    public function test_tasks_block_shows_count_and_first_two_titles(): void
+    {
+        $task = static fn(string $title): array => ['kind' => 'tool_request', 'title' => $title, 'detail' => '',
+            'link' => '/poselenie/instrumenty/moi', 'date' => '', 'urgent' => false];
+        $html = $this->render([$task('Заявка на «Дрель»'), $task('Заявка на «Пилу»'), $task('Заявка на «Лопату»')]);
+
+        $this->assertStringContainsString('<a class="app-tasks" href="/poselenie/dela">', $html);
+        $this->assertStringContainsString('Ждут вас: 3 дела', $html);
+        $this->assertStringContainsString('Заявка на «Дрель» · Заявка на «Пилу»', $html);
+        $this->assertStringNotContainsString('Лопату', $html);
+        // Блок стоит первым — над дневником.
+        $this->assertLessThan(strpos($html, 'class="app-diary"'), strpos($html, 'class="app-tasks"'));
+    }
+
+    public function test_no_tasks_no_block(): void
+    {
+        $this->assertStringNotContainsString('app-tasks', $this->render([]));
     }
 }

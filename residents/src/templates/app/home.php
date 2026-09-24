@@ -12,6 +12,14 @@
     </div>
   </div>
 
+  <?php $tasks = $tasks ?? []; ?>
+  <?php if ($tasks): /* «Мои дела» — только когда есть что делать; нет дел — блока нет. */ ?>
+    <a class="app-tasks" href="/poselenie/dela">
+      <b>Ждут вас: <?= count($tasks) ?> <?= View::e(plural_ru(count($tasks), 'дело', 'дела', 'дел')) ?></b>
+      <span><?= View::e(implode(' · ', array_map(static fn(array $t): string => (string) $t['title'], array_slice($tasks, 0, 2)))) ?></span>
+    </a>
+  <?php endif; ?>
+
   <?php
     // Блок дневников — единственная ссылка на раздел с главной (плитки у него
     // нет), поэтому он подчиняется тому же выключателю разделов: иначе при

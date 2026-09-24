@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, View};
 use SkazResidents\Service\AppDashboard;
+use SkazResidents\Service\MyTasks;
 use SkazResidents\Repository\HouseholdProfileRepository;
 
 /**
@@ -35,6 +36,7 @@ final class AppController
             'dash'    => $this->dashboard->build(Auth::id()),
             'me'      => $me,
             'savedAt' => date('H:i'),
+            'tasks'   => MyTasks::forCurrent(),
         ], 'Приложение', 'app/layout');
     }
 

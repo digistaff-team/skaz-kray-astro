@@ -79,6 +79,8 @@ final class MyTasks
             ...$this->collect('dnevniki',    fn(): array => $this->rejectedDiary($familyId)),
             ...$this->collect('instrumenty', fn(): array => $this->overdueTools($familyId, $today)),
             ...$this->collect('knigi',       fn(): array => $this->overdueBooks($familyId, $today)),
+            ...$this->collect('zakupki',     fn(): array => $this->purchasesAsOrganizer($familyId, $today)),
+            ...$this->collect('zakupki',     fn(): array => $this->purchasesAsParticipant($familyId)),
         ];
         return self::sort($tasks);
     }
@@ -199,6 +201,51 @@ final class MyTasks
             $out[] = self::task('book_overdue', 'Пора вернуть книгу «' . $l['book_title'] . '»',
                 $l['owner_name'] . ' · срок был ' . ru_date($due),
                 '/poselenie/knigi/moi', $due, true);
+        }
+        return $out;
+    }
+
+    /**
+     * Открытые закупки, которые ведёт житель: сбор закончился, а закупка всё ещё
+     * «идёт сбор»; привезли, а у кого-то не отмечена оплата.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function purchasesAsOrganizer(int $me, string $today): array
+    {
+        $out = [];
+        foreach ($this->purchases->listOpenByOrganizer($me) as $p) {
+            $link = '/poselenie/zakupki/' . (int) $p['id'];
+            $deadline = (string) ($p['deadline'] ?? '');
+            if ($p['status'] === 'collecting' && $deadline !== '' && $deadline < $today) {
+                $out[] = self::task('purchase_deadline', 'Сбор по закупке «' . $p['title'] . '» закончился',
+                    'Оформите заказ или продлите срок · срок был ' . ru_date($deadline), $link, $deadline);
+            }
+            $unpaid = (int) ($p['unpaid_count'] ?? 0);
+            if ($p['status'] === 'arrived' && $unpaid > 0) {
+                $out[] = self::task('purchase_unpaid', 'Отметьте оплату: «' . $p['title'] . '»',
+                    'Не отмечено у ' . $unpaid . ' ' . plural_ru($unpaid, 'участника', 'участников', 'участников'),
+                    $link, (string) $p['updated_at']);
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Чужие закупки, где житель участник: привезли — забрать. Закрывается той же
+     * отметкой оплаты, что и дело организатора: иначе забравший всё житель видел
+     * бы дело, пока закупку не переведут в «завершена».
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function purchasesAsParticipant(int $me): array
+    {
+        $out = [];
+        foreach ($this->purchases->listArrivedUnpaidForParticipant($me) as $p) {
+            $pickup = trim((string) ($p['pickup'] ?? ''));
+            $out[] = self::task('purchase_pickup', 'Привезли «' . $p['title'] . '» — заберите',
+                $pickup !== '' ? 'Где забрать: ' . $pickup : 'Уточните у организатора: ' . $p['organizer_name'],
+                '/poselenie/zakupki/' . (int) $p['id'], (string) $p['updated_at']);
         }
         return $out;
     }

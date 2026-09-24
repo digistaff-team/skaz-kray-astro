@@ -243,4 +243,63 @@ final class MyTasksTest extends TestCase
             array_column($this->tasks(), 'title')
         );
     }
+
+    public function test_organizer_is_asked_to_order_after_deadline(): void
+    {
+        $purchases = new PurchaseRepository();
+        $id = $purchases->create($this->me, 'Мёд', null, 'кг', '450', null, '2026-09-20', null, 'Общий дом', null, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['purchase_deadline'], array_column($t, 'kind'));
+        $this->assertSame('Сбор по закупке «Мёд» закончился', $t[0]['title']);
+        $this->assertSame('Оформите заказ или продлите срок · срок был 20 сентября 2026', $t[0]['detail']);
+        $this->assertSame('/poselenie/zakupki/' . $id, $t[0]['link']);
+
+        $purchases->setStatus($id, 'ordered', self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_arrived_purchase_is_closed_for_both_sides_by_one_payment_mark(): void
+    {
+        $purchases = new PurchaseRepository();
+        $orders = new PurchaseOrderRepository();
+        $id = $purchases->create($this->neighbour, 'Мёд', null, 'кг', '450', null, null, null, 'Общий дом', null, self::NOW);
+        $mine = $orders->place($id, $this->me, '3', null, self::NOW);
+        $purchases->setStatus($id, 'arrived', self::NOW);
+
+        // Участнику — забрать.
+        $t = $this->tasks();
+        $this->assertSame(['purchase_pickup'], array_column($t, 'kind'));
+        $this->assertSame('Привезли «Мёд» — заберите', $t[0]['title']);
+        $this->assertSame('Где забрать: Общий дом', $t[0]['detail']);
+
+        // Организатору — отметить оплату.
+        $org = $this->tasks(false, self::TODAY, $this->neighbour);
+        $this->assertSame(['purchase_unpaid'], array_column($org, 'kind'));
+        $this->assertSame('Отметьте оплату: «Мёд»', $org[0]['title']);
+        $this->assertSame('Не отмечено у 1 участника', $org[0]['detail']);
+
+        // Одна отметка оплаты закрывает оба дела.
+        $orders->setPaid($mine, true, self::NOW);
+        $this->assertSame([], $this->kinds());
+        $this->assertSame([], $this->kinds(false, self::TODAY, $this->neighbour));
+    }
+
+    public function test_organizer_is_not_asked_to_pick_up_own_purchase(): void
+    {
+        $purchases = new PurchaseRepository();
+        $orders = new PurchaseOrderRepository();
+        $own = $purchases->create($this->me, 'Мёд', null, 'кг', '450', null, null, null, 'Общий дом', null, self::NOW);
+        $orders->place($own, $this->me, '2', null, self::NOW);
+        $purchases->setStatus($own, 'arrived', self::NOW);
+        // Контроль: в чужой привезённой закупке «забрать» есть — значит, источник участника работает.
+        $theirs = $purchases->create($this->neighbour, 'Сыр', null, 'кг', '900', null, null, null, 'Поляна', null, self::NOW);
+        $orders->place($theirs, $this->me, '1', null, self::NOW);
+        $purchases->setStatus($theirs, 'arrived', self::NOW);
+
+        $t = $this->tasks();
+        $this->assertEqualsCanonicalizing(['purchase_unpaid', 'purchase_pickup'], array_column($t, 'kind'));
+        $pickups = array_filter($t, static fn(array $x): bool => $x['kind'] === 'purchase_pickup');
+        $this->assertSame(['Привезли «Сыр» — заберите'], array_column($pickups, 'title'));
+    }
 }

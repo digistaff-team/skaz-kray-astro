@@ -142,6 +142,45 @@ final class PurchaseRepository
         return array_map([$this, 'withProgress'], $st->fetchAll());
     }
 
+    /**
+     * Открытые закупки организатора — «идёт сбор» и «привезли» — для «Моих дел».
+     * Узким запросом: список дел считается на каждой странице, завершённые и
+     * отменённые закупки ему не нужны.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listOpenByOrganizer(int $familyId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT p.*, ' . self::TOTALS . '
+             FROM purchases p
+             WHERE p.organizer_id = ? AND p.status IN (\'collecting\', \'arrived\')
+             ORDER BY p.id'
+        );
+        $st->execute([$familyId]);
+        return array_map([$this, 'withProgress'], $st->fetchAll());
+    }
+
+    /**
+     * Чужие привезённые закупки, где у семьи заказ без отметки оплаты, — «забрать».
+     * Своя закупка сюда не попадает: организатору «забрать у себя» не нужно.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listArrivedUnpaidForParticipant(int $familyId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT p.id, p.title, p.pickup, p.updated_at, f.name AS organizer_name
+             FROM purchases p
+             JOIN families f         ON f.id = p.organizer_id
+             JOIN purchase_orders my ON my.purchase_id = p.id AND my.family_id = ?
+             WHERE p.status = \'arrived\' AND my.paid_at IS NULL AND p.organizer_id <> ?
+             ORDER BY p.id'
+        );
+        $st->execute([$familyId, $familyId]);
+        return $st->fetchAll();
+    }
+
     /** Сколько закупок сейчас собирают пул — для плитки приложения. */
     public function countCollecting(): int
     {

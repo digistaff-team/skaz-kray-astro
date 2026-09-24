@@ -129,6 +129,15 @@ final class WaterLevelTest extends TestCase
         $this->assertNull($panel['chart'], 'по одной точке линию не построить');
     }
 
+    public function test_measured_time_is_shown_in_moscow_time(): void
+    {
+        // Замеры хранятся по UTC, жители читают время по Москве: 12:00 UTC → 15:00.
+        $now = '2026-09-18 12:00:00';
+        $this->repo->save($now, -1049.0, -8.0);
+
+        $this->assertSame('15:00', $this->svc->panel($now)['measuredAt']);
+    }
+
     public function test_panel_builds_chart_from_history(): void
     {
         foreach (['2026-09-15 10:00:00' => -1100.0, '2026-09-16 10:00:00' => -1080.0, '2026-09-17 10:00:00' => -1060.0] as $at => $cm) {

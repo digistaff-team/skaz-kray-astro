@@ -102,7 +102,11 @@ final class WaterLevelImport
         return [$hour, $level, $change];
     }
 
-    /** ISO-время архива (UTC) → час в зоне сервера, 'Y-m-d H:00:00'. */
+    /**
+     * ISO-время архива → час по UTC, 'Y-m-d H:00:00'. Именно по UTC, а не в поясе
+     * приложения (Москва): метка часа — первичный ключ истории, и повторный импорт
+     * с другим поясом положил бы старые моменты поверх чужих часов.
+     */
     private function hourOf(string $iso): ?string
     {
         if ($iso === '') { return null; }
@@ -111,7 +115,7 @@ final class WaterLevelImport
         } catch (\Exception) {
             return null;
         }
-        $dt->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+        $dt->setTimezone(new \DateTimeZone('UTC'));
         return $dt->format('Y-m-d H') . ':00:00';
     }
 }

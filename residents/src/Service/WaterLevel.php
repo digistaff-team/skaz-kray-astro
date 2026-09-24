@@ -256,13 +256,14 @@ final class WaterLevel
     }
 
     /**
-     * 'Y-m-d H:i:s' (зона сервера, как во всех таблицах проекта) → 'HH:MM' по Москве:
-     * жители читают время по МСК, а сервер живёт в UTC.
+     * 'Y-m-d H:i:s' по UTC (так хранятся замеры) → 'HH:MM' по Москве. Метку читаем
+     * явно как UTC: пояс приложения — Москва, и без этого время замера показалось
+     * бы на три часа раньше настоящего.
      */
     private function mskTime(string $stamp): string
     {
         try {
-            $dt = new \DateTime($stamp);
+            $dt = new \DateTime($stamp, new \DateTimeZone('UTC'));
             $dt->setTimezone(new \DateTimeZone('Europe/Moscow'));
             return $dt->format('H:i');
         } catch (\Exception) {

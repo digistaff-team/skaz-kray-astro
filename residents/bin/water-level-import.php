@@ -21,6 +21,7 @@ declare(strict_types=1);
  */
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../src/timezone.php';   // время приложения — Москва (UTC+3)
 
 use SkazResidents\{Config, Database, Env};
 use SkazResidents\Service\WaterLevelImport;

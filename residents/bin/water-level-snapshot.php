@@ -21,6 +21,7 @@ declare(strict_types=1);
  */
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../src/timezone.php';   // время приложения — Москва (UTC+3)
 
 use SkazResidents\{Config, Database, Env};
 use SkazResidents\Service\{WaterAlert, WaterLevel};
@@ -32,9 +33,11 @@ Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
 Database::connect(Config::get('db'));
 
-$now   = date('Y-m-d H:i:s');
+// Замеры хранятся по UTC (src/timezone.php): пояс приложения — Москва, но метка
+// часа — первичный ключ истории, и сдвигать её нельзя.
+$now   = gmdate('Y-m-d H:i:s');
 $water = new WaterLevel();
-$stamp = fn(string $msg): string => '[' . $now . '] ' . $msg;
+$stamp = fn(string $msg): string => '[' . $now . ' UTC] ' . $msg;
 
 if ($dryRun) {
     $data = $water->probe();

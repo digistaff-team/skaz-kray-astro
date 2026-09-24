@@ -29,6 +29,17 @@ final class WaterLevelImportTest extends TestCase
         return ['created_at' => $at, 'water_level' => $level, 'change_24h' => $change];
     }
 
+    public function test_archive_hours_are_stored_in_utc_whatever_the_app_timezone(): void
+    {
+        // Приложение живёт по Москве, а метка часа замера — первичный ключ, и
+        // повторная запись того же часа перезаписывает строку. Если бы импорт
+        // переводил время в пояс приложения, повторный импорт архива клал бы
+        // старые моменты под новыми метками поверх других часов.
+        $this->import->import([$this->record('2026-05-31T14:29:25.100Z', -93.62)]);
+        $this->assertTrue($this->history->has('2026-05-31 14:00:00'), 'замер 14:29 UTC — под часом 14:00 UTC');
+        $this->assertFalse($this->history->has('2026-05-31 17:00:00'), 'не под московским 17:00');
+    }
+
     public function test_imports_records_rounded_to_hours(): void
     {
         $res = $this->import->import([

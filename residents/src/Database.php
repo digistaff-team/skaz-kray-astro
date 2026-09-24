@@ -23,6 +23,13 @@ final class Database
                 $opts[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci";
             }
             self::$pdo = new PDO($cfg['dsn'], $cfg['user'], $cfg['pass'], $opts);
+            // Сессию MySQL — в пояс приложения (src/timezone.php): часть created_at
+            // ставит сама база (DEFAULT CURRENT_TIMESTAMP), и по часам сервера (UTC)
+            // они легли бы на три часа раньше соседних, проставленных PHP. Сдвиг
+            // числом, а не именем пояса: таблиц поясов в MySQL может не быть.
+            if (self::$pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                self::$pdo->exec("SET time_zone = '" . date('P') . "'");
+            }
         }
         return self::$pdo;
     }

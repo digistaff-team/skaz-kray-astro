@@ -22,7 +22,8 @@ final class WaterLevelController
         Auth::requireLogin();
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store');   // замер живёт час, кешировать фрагмент нечего
-        $water = $this->water->panel(date('Y-m-d H:i:s'));
+        // По UTC, как хранятся замеры (src/timezone.php): приложение живёт по Москве.
+        $water = $this->water->panel(gmdate('Y-m-d H:i:s'));
         require __DIR__ . '/../templates/partials/water_panel.php';
     }
 }

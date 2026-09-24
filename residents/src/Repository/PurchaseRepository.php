@@ -28,7 +28,8 @@ final class PurchaseRepository
     private const TOTALS = '
         (SELECT COALESCE(SUM(o.qty), 0) FROM purchase_orders o WHERE o.purchase_id = p.id) AS collected_qty,
         (SELECT COUNT(*) FROM purchase_orders o WHERE o.purchase_id = p.id) AS participants,
-        (SELECT COALESCE(SUM(o.qty), 0) FROM purchase_orders o WHERE o.purchase_id = p.id AND o.paid_at IS NOT NULL) AS paid_qty';
+        (SELECT COALESCE(SUM(o.qty), 0) FROM purchase_orders o WHERE o.purchase_id = p.id AND o.paid_at IS NOT NULL) AS paid_qty,
+        (SELECT COUNT(*) FROM purchase_orders o WHERE o.purchase_id = p.id AND o.paid_at IS NULL) AS unpaid_count';
 
     private PDO $db;
 

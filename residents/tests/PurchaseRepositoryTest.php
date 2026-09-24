@@ -172,4 +172,16 @@ final class PurchaseRepositoryTest extends TestCase
         $this->assertNull($this->purchases->findById($id));
         $this->assertSame([], $this->orders->listFor($id));
     }
+
+    public function test_totals_count_orders_without_payment(): void
+    {
+        // «Мои дела» просят организатора отметить оплату, пока есть неоплаченные.
+        $id = $this->newPurchase();
+        $paid = $this->orders->place($id, $this->organizer, '2', null, self::NOW);
+        $this->orders->place($id, $this->neighbour, '3', null, self::NOW);
+        $this->orders->setPaid($paid, true, self::NOW);
+
+        $p = $this->purchases->listByOrganizer($this->organizer)[0];
+        $this->assertSame(1, (int) $p['unpaid_count']);
+    }
 }

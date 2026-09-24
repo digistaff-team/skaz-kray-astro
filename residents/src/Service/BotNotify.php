@@ -10,8 +10,9 @@ use SkazResidents\Repository\FamilyRepository;
  * мини-приложения, отправка в группу жителей и лично семье, и — главное —
  * выполнение всего этого ПОСЛЕ ответа пользователю.
  *
- * Пользуются: {@see CatalogAnnounce} (анонсы новинок в группу) и
- * {@see LoanNotify} (личные уведомления участникам проката).
+ * Пользуются: {@see CatalogAnnounce} (анонсы новинок в группу) и личные
+ * уведомления разделов через {@see personal()} — книги ({@see LoanNotify}),
+ * инструменты, поездки, модерация.
  */
 final class BotNotify
 {
@@ -19,6 +20,33 @@ final class BotNotify
     public static function afterResponse(callable $fn): void
     {
         AfterResponse::run($fn, 'BotNotify');
+    }
+
+    /**
+     * Личное уведомление семье: строки текста и ссылка в приложение.
+     *
+     * Внимание к порядку: {@see AfterResponse} не откладывает работу, а тут же
+     * завершает ответ и закрывает сессию. Звать ТОЛЬКО после Flash::set() и
+     * header('Location: …'), иначе редирект и сообщение до браузера не дойдут.
+     *
+     * @param array<int,string> $lines
+     */
+    public static function personal(int $familyId, array $lines, string $linkLabel, string $path): void
+    {
+        self::afterResponse(static function () use ($familyId, $lines, $linkLabel, $path): void {
+            self::toFamily($familyId, static fn(string $base): string => self::personalText($lines, $linkLabel, $base, $path));
+        });
+    }
+
+    /**
+     * Текст личного уведомления: строки, пустая строка и ссылка — диплинк
+     * мини-приложения своей платформы. Отдельно от отправки — для тестов.
+     *
+     * @param array<int,string> $lines
+     */
+    public static function personalText(array $lines, string $linkLabel, string $base, string $path): string
+    {
+        return implode("\n", [...$lines, '', $linkLabel . self::deepLink($base, $path)]);
     }
 
     /**

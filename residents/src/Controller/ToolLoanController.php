@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer};
 use SkazResidents\Repository\{ToolRepository, ToolLoanRepository};
+use SkazResidents\Service\BotNotify;
 
 /**
  * Жизненный цикл займа инструмента (P2P):
@@ -11,7 +12,10 @@ use SkazResidents\Repository\{ToolRepository, ToolLoanRepository};
  *  - владелец выдаёт (give: заявка→на руках, инструмент→on_loan) или отклоняет (decline);
  *  - владелец принимает возврат (returnLoan) с проверкой состояния (ok/broken):
  *    ok → инструмент available, broken → maintenance.
- * Уведомления по email — fail-open.
+ *
+ * Уведомления — письмом и ботом в личку, оба fail-open. Бот обязателен: у жителей
+ * из Telegram и MAX почты нет, и одним письмом заявка до них не доходила вовсе.
+ * Бота зовём последним — {@see BotNotify::personal()} сразу завершает ответ.
  */
 final class ToolLoanController
 {
@@ -54,6 +58,11 @@ final class ToolLoanController
         );
         Flash::set('success', 'Заявка отправлена владельцу. Он получит уведомление.');
         header('Location: /poselenie/instrumenty/' . $toolId);
+
+        $lines = ['🔧 Заявка на инструмент', '', '«' . $tool['name'] . '»', 'Житель: ' . Auth::name()];
+        if ($due) { $lines[] = 'Желаемый срок: до ' . ru_date($due); }
+        if ($message !== '') { $lines[] = 'Сообщение: ' . $message; }
+        BotNotify::personal((int) $tool['family_id'], $lines, 'Одобрить или отклонить: ', '/poselenie/instrumenty/moi');
     }
 
     public function cancel(array $params): void
@@ -78,12 +87,18 @@ final class ToolLoanController
         }
         $this->loans->give((int) $loan['id'], date('Y-m-d H:i:s'));
         $this->tools->setStatus((int) $loan['tool_id'], 'on_loan');
+        $owner = family_contact((string) $loan['owner_name'], $loan['owner_tg'] ?? null, (string) $loan['owner_email']);
         $this->mail($loan['borrower_email'],
             'Инструмент «' . $loan['tool_name'] . '» выдан — Сказочный Край',
-            "Здравствуйте!\n\nВладелец одобрил вашу заявку на «{$loan['tool_name']}».\nКонтакт владельца: {$loan['owner_email']} ({$loan['owner_name']}).\n\nДоговоритесь о передаче. После возврата владелец отметит инструмент возвращённым."
+            "Здравствуйте!\n\nВладелец одобрил вашу заявку на «{$loan['tool_name']}».\nКонтакт владельца: {$owner}.\n\nДоговоритесь о передаче. После возврата владелец отметит инструмент возвращённым."
         );
         Flash::set('success', 'Инструмент отмечен выданным.');
         header('Location: /poselenie/instrumenty/moi');
+
+        BotNotify::personal((int) $loan['borrower_id'], [
+            '✅ Заявка одобрена', '', '«' . $loan['tool_name'] . '»', 'Владелец: ' . $owner,
+            'Договоритесь о передаче. После возврата владелец отметит инструмент возвращённым.',
+        ], 'Мои инструменты: ', '/poselenie/instrumenty/moi');
     }
 
     public function decline(array $params): void
@@ -101,6 +116,10 @@ final class ToolLoanController
         );
         Flash::set('info', 'Заявка отклонена.');
         header('Location: /poselenie/instrumenty/moi');
+
+        BotNotify::personal((int) $loan['borrower_id'], [
+            '🚫 Заявка отклонена', '', '«' . $loan['tool_name'] . '»', 'Владелец не смог дать инструмент сейчас.',
+        ], 'Каталог инструментов: ', '/poselenie/instrumenty');
     }
 
     public function returnLoan(array $params): void

@@ -21,9 +21,26 @@ final class Mailer
         return implode("\r\n", $headers) . "\r\n\r\n" . $body;
     }
 
-    /** Отправка через SMTP. Бросает RuntimeException при сбое; вызывающий ловит (fail-open). */
+    /**
+     * Можно ли на этот адрес вообще что-то доставить. У жителей, вошедших через
+     * Telegram или MAX, адрес служебный — tg<id>@telegram.local / max<id>@max.local
+     * (FamilyRepository::createTelegramFamily): колонка обязательная, а почты у
+     * них нет. Такие адреса нельзя ни отправлять, ни показывать как «контакт».
+     */
+    public static function isDeliverable(string $to): bool
+    {
+        return filter_var($to, FILTER_VALIDATE_EMAIL) !== false
+            && !preg_match('~@(telegram|max)\.local$~i', $to);
+    }
+
+    /**
+     * Отправка через SMTP. Бросает RuntimeException при сбое; вызывающий ловит (fail-open).
+     * На служебный адрес не отправляет вовсе: иначе это был бы SMTP-запрос, который
+     * заставляет жителя ждать ответа, а письмо всё равно никуда не придёт.
+     */
     public static function send(string $to, string $subject, string $body): void
     {
+        if (!self::isDeliverable($to)) { return; }
         $cfg = Config::get('smtp');
         $message = self::buildMessage($cfg['from'], $cfg['from_name'], $to, $subject, $body);
 

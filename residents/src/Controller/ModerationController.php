@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, View, Config, Mailer, Sections};
-use SkazResidents\Service\CatalogAnnounce;
+use SkazResidents\Service\{BotNotify, CatalogAnnounce};
 use SkazResidents\Repository\{FamilyRepository, DiaryRepository, ProductRepository, SectionSettingsRepository, ImageRepository};
 
 final class ModerationController
@@ -118,6 +118,10 @@ final class ModerationController
             Flash::set('success', 'Запись опубликована.');
         }
         header('Location: /poselenie/moderation');
+        if ($entry) {
+            $this->botOwner((int) $entry['family_id'], '📔 Запись опубликована', (string) $entry['title'], null,
+                'Открыть: ', '/poselenie/dnevniki/' . (int) $entry['id']);
+        }
         if ($firstPublish) {
             $owner = $this->families->findById((int) $entry['family_id']);
             CatalogAnnounce::diary((int) $entry['id'], (string) $entry['title'], $owner['name'] ?? null);
@@ -136,6 +140,10 @@ final class ModerationController
             Flash::set('info', 'Запись отклонена.');
         }
         header('Location: /poselenie/moderation');
+        if ($entry) {
+            $this->botOwner((int) $entry['family_id'], '🚫 Запись не прошла проверку', (string) $entry['title'], $reason,
+                'Исправить: ', '/poselenie/dnevnik/' . (int) $entry['id'] . '/redaktirovat');
+        }
     }
 
     public function approveProduct(): void
@@ -150,6 +158,10 @@ final class ModerationController
             Flash::set('success', 'Товар опубликован.');
         }
         header('Location: /poselenie/moderation');
+        if ($p) {
+            $this->botOwner((int) $p['family_id'], '🛒 Объявление опубликовано', (string) $p['title'], null,
+                'Открыть: ', '/poselenie/yarmarka/' . (int) $p['id']);
+        }
         if ($firstPublish) {
             CatalogAnnounce::product((int) $p['id'], (string) $p['title'], $p['price'] ?? null, $p['unit'] ?? null);
         }
@@ -167,6 +179,10 @@ final class ModerationController
             Flash::set('info', 'Товар отклонён.');
         }
         header('Location: /poselenie/moderation');
+        if ($p) {
+            $this->botOwner((int) $p['family_id'], '🚫 Объявление не прошло проверку', (string) $p['title'], $reason,
+                'Исправить: ', '/poselenie/yarmarka/' . (int) $p['id'] . '/redaktirovat');
+        }
     }
 
     private function guard(): void
@@ -191,6 +207,21 @@ final class ModerationController
         $body = "Здравствуйте!\n\nВаш товар/услуга «{$product['title']}» $verb.";
         if ($reason) { $body .= "\nПричина: $reason\nВы можете исправить и отправить снова в личном кабинете."; }
         $this->mail($family['email'], "Ярмарка: объявление $verb — Сказочный Край", $body);
+    }
+
+    /**
+     * Решение модерации — автору ботом в личку, вдобавок к письму: у жителей из
+     * Telegram и MAX почты нет, и об отказе они раньше не узнавали вовсе.
+     * Зовётся после header() — {@see BotNotify::personal()} сразу завершает ответ.
+     */
+    private function botOwner(int $familyId, string $head, string $title, ?string $reason, string $label, string $path): void
+    {
+        $lines = [$head, '', '«' . $title . '»'];
+        if ($reason !== null && $reason !== '') {
+            $lines[] = 'Причина: ' . $reason;
+            $lines[] = 'Исправьте и отправьте снова — проверим ещё раз.';
+        }
+        BotNotify::personal($familyId, $lines, $label, $path);
     }
 
     private function mail(string $to, string $subject, string $body): void

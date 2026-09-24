@@ -171,6 +171,20 @@ function contact_telegram(string $text): ?string
 }
 
 /**
+ * Как связаться с семьёй — строка для уведомлений «выдано», «подтверждено»:
+ * «Иван Петров (Telegram: @ivan)», «Иван Петров (почта: ivan@mail.ru)» или
+ * просто имя. Служебный адрес жителя из мессенджера (…@telegram.local) сюда не
+ * попадает никогда: раньше он уходил в письма как «контакт владельца».
+ */
+function family_contact(string $name, ?string $tgUsername, string $email): string
+{
+    $tg = ltrim(trim((string) $tgUsername), '@');
+    if ($tg !== '') { return $name . ' (Telegram: @' . $tg . ')'; }
+    if (\SkazResidents\Mailer::isDeliverable($email)) { return $name . ' (почта: ' . $email . ')'; }
+    return $name;
+}
+
+/**
  * Цена товара Ярмарки для показа: «500 ₽ за кг.», «500 ₽» или «по договорённости».
  * Цена — свободный текст, единица без цены смысла не имеет и не показывается.
  */

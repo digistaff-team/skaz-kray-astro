@@ -42,7 +42,7 @@ final class TripBookingRepository
         $st = $this->db->prepare(
             'SELECT b.*, t.origin, t.destination, t.trip_date, t.trip_time,
                     t.driver_id AS driver_id, t.seats_free AS trip_seats_free,
-                    d.name AS driver_name, d.email AS driver_email,
+                    d.name AS driver_name, d.email AS driver_email, d.telegram_username AS driver_tg,
                     p.name AS passenger_name, p.email AS passenger_email
              FROM trip_bookings b
              JOIN trips t     ON t.id = b.trip_id

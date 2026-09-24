@@ -53,11 +53,7 @@ final class LoanNotify
     /** Собрать текст и отправить лично семье (после ответа пользователю). */
     private static function send(int $familyId, array $lines, string $linkLabel, string $path): void
     {
-        BotNotify::afterResponse(static function () use ($familyId, $lines, $linkLabel, $path): void {
-            BotNotify::toFamily($familyId, static function (string $base) use ($lines, $linkLabel, $path): string {
-                return implode("\n", [...$lines, '', $linkLabel . BotNotify::deepLink($base, $path)]);
-            });
-        });
+        BotNotify::personal($familyId, $lines, $linkLabel, $path);
     }
 
     /** "2026-10-12" → "12 октября 2026" (ru_date из bootstrap; в CLI — как есть). */

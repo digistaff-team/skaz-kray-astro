@@ -44,7 +44,7 @@ final class ToolLoanRepository
     {
         $st = $this->db->prepare(
             'SELECT l.*, t.name AS tool_name, t.family_id AS owner_id,
-                    o.name AS owner_name, o.email AS owner_email,
+                    o.name AS owner_name, o.email AS owner_email, o.telegram_username AS owner_tg,
                     b.name AS borrower_name, b.email AS borrower_email
              FROM tool_loans l
              JOIN tools t    ON t.id = l.tool_id

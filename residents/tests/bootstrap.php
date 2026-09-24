@@ -22,5 +22,9 @@ function make_test_db(): \PDO
     $sql = file_get_contents(__DIR__ . '/schema.sqlite.sql');
     $pdo->exec($sql);
     Database::set($pdo);
+    // Свежая база — свежие кеши на время «запроса»: иначе тест мог бы унаследовать
+    // от предыдущего выключенные разделы или запомненный список «Моих дел».
+    \SkazResidents\Sections::reset();
+    \SkazResidents\Service\MyTasks::reset();
     return $pdo;
 }

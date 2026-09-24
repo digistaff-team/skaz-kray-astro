@@ -141,12 +141,16 @@ final class MyTasks
         return $out;
     }
 
-    /** @return array<int,array<string,mixed>> */
+    /**
+     * Отклонённое модератором. Дата — момент отправки на проверку: reject()
+     * updated_at не трогает. Для «дольше ждёт» это честно — ждёт с отправки.
+     *
+     * @return array<int,array<string,mixed>>
+     */
     private function rejectedProducts(int $me): array
     {
         $out = [];
-        foreach ($this->products->listByFamily($me) as $p) {
-            if ($p['status'] !== 'rejected') { continue; }
+        foreach ($this->products->listRejectedByFamily($me) as $p) {
             $out[] = self::task('product_rejected', 'Объявление «' . $p['title'] . '» не прошло проверку',
                 self::reason($p['reject_reason'] ?? null),
                 '/poselenie/yarmarka/' . (int) $p['id'] . '/redaktirovat', (string) $p['updated_at']);
@@ -158,8 +162,7 @@ final class MyTasks
     private function rejectedDiary(int $me): array
     {
         $out = [];
-        foreach ($this->diary->listByFamily($me) as $e) {
-            if ($e['status'] !== 'rejected') { continue; }
+        foreach ($this->diary->listRejectedByFamily($me) as $e) {
             $out[] = self::task('diary_rejected', 'Запись «' . $e['title'] . '» не прошла проверку',
                 self::reason($e['reject_reason'] ?? null),
                 '/poselenie/dnevnik/' . (int) $e['id'] . '/redaktirovat', (string) $e['updated_at']);
@@ -195,7 +198,8 @@ final class MyTasks
 
     /**
      * Причина отказа модератора; без неё — что делать дальше. «Без указания
-     * причины» пишет сама модерация, когда поле оставили пустым.
+     * причины» пишет сама модерация (ModerationController::rejectEntry/rejectProduct),
+     * когда поле оставили пустым.
      */
     private static function reason(?string $reason): string
     {

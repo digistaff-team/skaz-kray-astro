@@ -162,6 +162,10 @@ final class MyTasksTest extends TestCase
         $id = $products->create($this->me, 'Мёд', 'Майский', '500', '@me', self::NOW);
         $products->reject($id, 'Нет цены за единицу');
 
+        // Чужое отклонённое объявление — не моё дело.
+        $theirs = $products->create($this->neighbour, 'Яйца', 'Домашние', '120', '@n', self::NOW);
+        $products->reject($theirs, 'Нет фото');
+
         $t = $this->tasks();
         $this->assertSame(['product_rejected'], array_column($t, 'kind'));
         $this->assertSame('Объявление «Мёд» не прошло проверку', $t[0]['title']);

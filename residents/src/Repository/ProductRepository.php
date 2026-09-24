@@ -138,6 +138,22 @@ final class ProductRepository
     }
 
     /**
+     * Отклонённые модератором объявления семьи — ровно то, что нужно «Моим делам»,
+     * без описаний: список дел считается на каждой странице.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listRejectedByFamily(int $familyId): array
+    {
+        $st = $this->db->prepare(
+            "SELECT id, title, reject_reason, updated_at FROM products
+             WHERE family_id = ? AND status = 'rejected' ORDER BY updated_at ASC"
+        );
+        $st->execute([$familyId]);
+        return $st->fetchAll();
+    }
+
+    /**
      * Товар с тем же названием, созданный этой же семьёй не раньше $since — след повторной
      * отправки формы (телефон не дождался ответа, житель нажал «Разместить» ещё раз).
      */

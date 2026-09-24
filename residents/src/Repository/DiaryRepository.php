@@ -181,6 +181,22 @@ final class DiaryRepository
         return $st->fetchAll();
     }
 
+    /**
+     * Отклонённые модератором записи дневника семьи — ровно то, что нужно «Моим делам»,
+     * без описаний: список дел считается на каждой странице.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listRejectedByFamily(int $familyId): array
+    {
+        $st = $this->db->prepare(
+            "SELECT id, title, reject_reason, updated_at FROM diary_entries
+             WHERE family_id = ? AND status = 'rejected' ORDER BY updated_at ASC"
+        );
+        $st->execute([$familyId]);
+        return $st->fetchAll();
+    }
+
     /** @return array<int,array<string,mixed>> Все ожидающие модерации, с именем семьи. */
     public function listPending(): array
     {

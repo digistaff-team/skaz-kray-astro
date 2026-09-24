@@ -1,6 +1,7 @@
 ---
 title: 'Еноты в поместье: как защититься и не навредить'
 date: '2026-09-24 12:00:00'
+cover: /images/posts/enoty-v-pomeste-cover.jpg
 categories:
   - kopilka-znanij
   - stati

@@ -106,4 +106,52 @@ final class MyTasksTest extends TestCase
         $_SESSION['family_id'] = $this->neighbour;
         $this->assertSame([], MyTasks::forCurrent());
     }
+
+    public function test_request_for_my_book_waits_until_decided(): void
+    {
+        $book = (new BookRepository())->create($this->me, 'Анастасия', 'В. Мегре', 'Проза', null, null, self::NOW);
+        $loans = new BookLoanRepository();
+        $loan = $loans->create($book, $this->neighbour, null, null, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['book_request'], array_column($t, 'kind'));
+        $this->assertSame('Бронь книги «Анастасия»', $t[0]['title']);
+        $this->assertSame('Семья Руденко', $t[0]['detail']);
+        $this->assertSame('/poselenie/knigi/moi', $t[0]['link']);
+
+        $loans->decline($loan, self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_booking_on_my_trip_waits_until_decided(): void
+    {
+        $trip = (new TripRepository())->create($this->me, 'Терем', 'Краснодар', '2026-09-30', '09:00', 3, null, self::NOW);
+        $bookings = new TripBookingRepository();
+        $b = $bookings->create($trip, $this->neighbour, 2, null, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['trip_booking'], array_column($t, 'kind'));
+        $this->assertSame('Бронь в поездке Терем → Краснодар', $t[0]['title']);
+        $this->assertSame('Семья Руденко, мест: 2 · 30 сентября 2026', $t[0]['detail']);
+        $this->assertSame('/poselenie/poezdki/moi', $t[0]['link']);
+
+        $bookings->setStatus($b, 'confirmed', self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_booking_on_past_or_cancelled_trip_is_not_a_task(): void
+    {
+        $trips = new TripRepository();
+        $bookings = new TripBookingRepository();
+        $past = $trips->create($this->me, 'А', 'Б', '2026-09-01', null, 3, null, self::NOW);
+        $cancelled = $trips->create($this->me, 'В', 'Г', '2026-10-05', null, 3, null, self::NOW);
+        $trips->setStatus($cancelled, 'cancelled');
+        $bookings->create($past, $this->neighbour, 1, null, self::NOW);
+        $bookings->create($cancelled, $this->neighbour, 1, null, self::NOW);
+        // Контроль: бронь в действующей будущей поездке источник видит — значит, отсутствие остальных не случайно.
+        $open = $trips->create($this->me, 'Д', 'Е', '2026-10-10', null, 3, null, self::NOW);
+        $bookings->create($open, $this->neighbour, 1, null, self::NOW);
+
+        $this->assertSame(['Бронь в поездке Д → Е'], array_column($this->tasks(), 'title'));
+    }
 }

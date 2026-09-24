@@ -73,6 +73,8 @@ final class MyTasks
     {
         $tasks = [
             ...$this->collect('instrumenty', fn(): array => $this->toolRequests($familyId)),
+            ...$this->collect('knigi',       fn(): array => $this->bookRequests($familyId)),
+            ...$this->collect('poezdki',     fn(): array => $this->tripBookings($familyId, $today)),
         ];
         return self::sort($tasks);
     }
@@ -103,6 +105,36 @@ final class MyTasks
             $out[] = self::task('tool_request', 'Заявка на «' . $l['tool_name'] . '»',
                 self::withDue((string) $l['borrower_name'], $l['due_date'] ?? null),
                 '/poselenie/instrumenty/moi', (string) $l['requested_at']);
+        }
+        return $out;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private function bookRequests(int $me): array
+    {
+        $out = [];
+        foreach ($this->bookLoans->listIncoming($me, ['requested']) as $l) {
+            $out[] = self::task('book_request', 'Бронь книги «' . $l['book_title'] . '»',
+                self::withDue((string) $l['borrower_name'], $l['due_date'] ?? null),
+                '/poselenie/knigi/moi', (string) $l['requested_at']);
+        }
+        return $out;
+    }
+
+    /**
+     * Брони в поездках жителя. Отмена поездки брони не гасит, поэтому
+     * отсекаем по статусу самой поездки и по её дате.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function tripBookings(int $me, string $today): array
+    {
+        $out = [];
+        foreach ($this->bookings->listIncoming($me, ['requested']) as $b) {
+            if (($b['trip_status'] ?? '') !== 'active' || (string) $b['trip_date'] < $today) { continue; }
+            $out[] = self::task('trip_booking', 'Бронь в поездке ' . $b['origin'] . ' → ' . $b['destination'],
+                $b['passenger_name'] . ', мест: ' . (int) $b['seats'] . ' · ' . ru_date((string) $b['trip_date']),
+                '/poselenie/poezdki/moi', (string) $b['created_at']);
         }
         return $out;
     }

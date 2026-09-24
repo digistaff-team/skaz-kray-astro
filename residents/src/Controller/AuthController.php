@@ -132,14 +132,12 @@ final class AuthController
             $expires = date('Y-m-d H:i:s', time() + $ttl);
             $token = $this->resets->create((int) $family['id'], $expires);
             $link = Config::get('base_url') . '/poselenie/sbros?token=' . $token;
-            try {
-                \SkazResidents\Mailer::send(
-                    $email, 'Восстановление пароля — Сказочный Край',
-                    "Здравствуйте!\n\nЧтобы задать новый пароль, перейдите по ссылке (действует час):\n$link\n\nЕсли вы не запрашивали сброс — просто игнорируйте письмо."
-                );
-            } catch (\Throwable $e) {
-                error_log('reset mail failed: ' . $e->getMessage());
-            }
+            // После ответа: иначе для существующей почты страница открывалась бы
+            // заметно дольше (SMTP), и по задержке было бы видно, что адрес есть.
+            \SkazResidents\Mailer::later(
+                $email, 'Восстановление пароля — Сказочный Край',
+                "Здравствуйте!\n\nЧтобы задать новый пароль, перейдите по ссылке (действует час):\n$link\n\nЕсли вы не запрашивали сброс — просто игнорируйте письмо."
+            );
         }
         View::render('auth/forgot', ['sent' => true], 'Восстановление пароля');
     }

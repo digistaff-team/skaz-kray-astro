@@ -87,14 +87,11 @@ final class AuthController
             $expires = date('Y-m-d H:i:s', time() + $ttl);
             $token   = $this->resets->create((int) $member['id'], $expires);
             $link    = Config::get('base_url') . '/sovet/sbros?token=' . $token;
-            try {
-                Mailer::send(
-                    $email, 'Восстановление пароля — Попечительский совет',
-                    "Здравствуйте!\n\nЧтобы задать новый пароль для входа в раздел Попечительского совета, перейдите по ссылке (действует час):\n$link\n\nЕсли вы не запрашивали сброс — просто игнорируйте письмо."
-                );
-            } catch (\Throwable $e) {
-                error_log('council reset mail failed: ' . $e->getMessage());
-            }
+            // После ответа: по задержке SMTP было бы видно, что такой адрес есть.
+            Mailer::later(
+                $email, 'Восстановление пароля — Попечительский совет',
+                "Здравствуйте!\n\nЧтобы задать новый пароль для входа в раздел Попечительского совета, перейдите по ссылке (действует час):\n$link\n\nЕсли вы не запрашивали сброс — просто игнорируйте письмо."
+            );
         }
         View::render('council/auth/forgot', ['sent' => true], 'Восстановление пароля', self::LAYOUT);
     }

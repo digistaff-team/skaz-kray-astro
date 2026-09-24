@@ -6,6 +6,36 @@ use SkazResidents\Mailer;
 
 final class MailerTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        Mailer::flushLater();   // очередь писем не должна переживать тест
+        \SkazResidents\Config::set([]);
+    }
+
+    public function test_later_queues_instead_of_sending(): void
+    {
+        // Настроек SMTP нет: будь это отправка, она бы упала. Очередь — просто список.
+        Mailer::later('semya@skaz-kray.ru', 'Тема', 'Тело');
+        Mailer::later('ivan@mail.ru', 'Тема 2', 'Тело 2');
+        $this->assertSame(['semya@skaz-kray.ru', 'ivan@mail.ru'], array_column(Mailer::queued(), 'to'));
+        $this->assertSame(['Тема', 'Тема 2'], array_column(Mailer::queued(), 'subject'));
+    }
+
+    public function test_flush_drains_the_queue_and_never_throws(): void
+    {
+        // Почтовый сервер недоступен (закрытый порт): send() бросит — flushLater()
+        // обязан это проглотить (в лог) и всё равно опустошить очередь.
+        \SkazResidents\Config::set(['smtp' => [
+            'host' => '127.0.0.1', 'port' => 9, 'secure' => '', 'user' => 'x', 'pass' => 'x',
+            'from' => 'noreply@skaz-kray.ru', 'from_name' => 'Сказочный Край',
+        ]]);
+        Mailer::later('semya@skaz-kray.ru', 'Тема', 'Тело');
+        Mailer::later('tg1@telegram.local', 'Тема', 'Тело');   // служебный адрес — пропускается молча
+
+        Mailer::flushLater();
+        $this->assertSame([], Mailer::queued());
+    }
+
     public function test_build_message_has_utf8_subject_and_body(): void
     {
         $msg = Mailer::buildMessage(

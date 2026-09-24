@@ -4,6 +4,56 @@ namespace SkazResidents;
 
 final class Mailer
 {
+    /** @var array<int,array{to:string,subject:string,body:string}> письма до конца запроса */
+    private static array $later = [];
+    private static bool $flushRegistered = false;
+
+    /**
+     * Отправить письмо после ответа пользователю. SMTP (таймаут 15 с) больше не
+     * держит нажатую кнопку, а у восстановления пароля пропадает разница во
+     * времени ответа, по которой было видно, что адрес зарегистрирован.
+     *
+     * Письмо встаёт в очередь; её выгружает flushLater() в конце запроса. Места
+     * вызова можно не переставлять: в отличие от AfterResponse, ответ тут не
+     * завершается сразу, и звать later() можно и до header().
+     */
+    public static function later(string $to, string $subject, string $body): void
+    {
+        self::$later[] = ['to' => $to, 'subject' => $subject, 'body' => $body];
+        if (!self::$flushRegistered) {
+            self::$flushRegistered = true;
+            register_shutdown_function([self::class, 'flushLater']);
+        }
+    }
+
+    /** @return array<int,array{to:string,subject:string,body:string}> письма в очереди (для тестов) */
+    public static function queued(): array
+    {
+        return self::$later;
+    }
+
+    /**
+     * Выгрузить очередь: сохранить сессию (флеш не потеряется, пока браузер идёт
+     * по редиректу), отдать ответ и только потом слать. Сбой одного письма — в
+     * лог, остальные уходят. Никогда не бросает: зовётся из shutdown-функции.
+     */
+    public static function flushLater(): void
+    {
+        if (!self::$later) { return; }
+        $queue = self::$later;
+        self::$later = [];
+        if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+        if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }   // в CLI его нет
+        ignore_user_abort(true);
+        foreach ($queue as $m) {
+            try {
+                self::send($m['to'], $m['subject'], $m['body']);
+            } catch (\Throwable $e) {
+                error_log('Mailer::later: письмо «' . $m['subject'] . '» на ' . $m['to'] . ' не ушло: ' . $e->getMessage());
+            }
+        }
+    }
+
     /** Собирает RFC-822 сообщение (заголовки + тело). Отдельно для тестируемости. */
     public static function buildMessage(
         string $from, string $fromName, string $to, string $subject, string $body
@@ -42,6 +92,7 @@ final class Mailer
     {
         if (!self::isDeliverable($to)) { return; }
         $cfg = Config::get('smtp');
+        if (!is_array($cfg)) { throw new \RuntimeException('SMTP не настроен: нет раздела smtp в config.php'); }
         $message = self::buildMessage($cfg['from'], $cfg['from_name'], $to, $subject, $body);
 
         $transport = ($cfg['secure'] === 'ssl' ? 'ssl://' : '') . $cfg['host'];

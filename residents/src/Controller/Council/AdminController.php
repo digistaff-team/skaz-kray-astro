@@ -55,14 +55,11 @@ final class AdminController
         $password = $this->generatePassword();
         $this->members->create($email, Auth::hash($password), $name, $role);
 
-        try {
-            Mailer::send(
-                $email, 'Доступ в раздел Попечительского совета — Сказочный Край',
-                "Здравствуйте, {$name}!\n\nВам открыт доступ в раздел Попечительского совета на сайте.\n\nВход: " . Config::get('base_url') . "/sovet/vhod\nEmail: {$email}\nВременный пароль: {$password}\n\nПосле входа смените пароль в разделе «Пароль». Если письмо пришло по ошибке — просто игнорируйте его."
-            );
-        } catch (\Throwable $e) {
-            error_log('council invite mail failed: ' . $e->getMessage());
-        }
+        // После ответа: админ и так видит пароль на экране, ждать SMTP ему незачем.
+        Mailer::later(
+            $email, 'Доступ в раздел Попечительского совета — Сказочный Край',
+            "Здравствуйте, {$name}!\n\nВам открыт доступ в раздел Попечительского совета на сайте.\n\nВход: " . Config::get('base_url') . "/sovet/vhod\nEmail: {$email}\nВременный пароль: {$password}\n\nПосле входа смените пароль в разделе «Пароль». Если письмо пришло по ошибке — просто игнорируйте его."
+        );
 
         Flash::set('success', "Член совета «{$name}» добавлен. Пароль: {$password} — передайте его лично (также отправлен на email).");
         header('Location: /sovet/upravlenie');

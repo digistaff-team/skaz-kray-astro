@@ -224,9 +224,9 @@ final class ModerationController
         BotNotify::personal($familyId, $lines, $label, $path);
     }
 
+    /** Письмо — после ответа (Mailer::later): SMTP не держит нажатую кнопку. */
     private function mail(string $to, string $subject, string $body): void
     {
-        try { Mailer::send($to, $subject, $body); }
-        catch (\Throwable $e) { error_log('moderation mail failed: ' . $e->getMessage()); }
+        Mailer::later($to, $subject, $body);
     }
 }

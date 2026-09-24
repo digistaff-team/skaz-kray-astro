@@ -156,9 +156,9 @@ final class ToolLoanController
         return true;
     }
 
+    /** Письмо — после ответа (Mailer::later): SMTP не держит нажатую кнопку. */
     private function mail(string $to, string $subject, string $body): void
     {
-        try { Mailer::send($to, $subject, $body); }
-        catch (\Throwable $e) { error_log('tool loan mail failed: ' . $e->getMessage()); }
+        Mailer::later($to, $subject, $body);
     }
 }

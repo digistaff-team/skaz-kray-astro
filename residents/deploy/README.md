@@ -35,6 +35,30 @@ UPDATE families SET status='active', role='editor' WHERE email='<email реда�
 nginx -t && systemctl reload nginx
 ```
 
+## 4a. PHP-FPM: лимиты на загрузку фото
+Дефолты Debian режут снимки с телефона: `upload_max_filesize = 2M` при том, что
+`Upload::saveImage` рассчитан на 5 МБ. Такой файл PHP отбрасывает молча
+(`UPLOAD_ERR_INI_SIZE`) — карточка товара сохраняется, а фото к ней не появляется
+никогда. А если тело перевалит за `post_max_size`, PHP выбросит его целиком вместе
+с `_csrf`, и житель получит страницу «Файлы слишком тяжёлые» (см. `Csrf::guard()`).
+
+В `/etc/php/8.3/fpm/php.ini`:
+```
+upload_max_filesize = 8M
+post_max_size = 32M
+```
+```
+systemctl reload php8.3-fpm
+php8.3 -c /etc/php/8.3/fpm/php.ini -r 'echo ini_get("upload_max_filesize"), " / ", ini_get("post_max_size"), PHP_EOL;'
+```
+Лимит в тексте ошибки берётся из `ini_get('post_max_size')` — менять его в коде не нужно.
+
+Снимки ужимаются до 1600 px ещё на телефоне (`templates/partials/photo-shrink.php`),
+так что до этих потолков доходят только HEIC и браузеры без `createImageBitmap` —
+серверные лимиты остаются страховкой, а не основным путём.
+
+`client_max_body_size` в nginx уже 200M (`nginx.conf`), то есть узкое место — именно php.ini.
+
 ## 5. Автодеплой статики не конфликтует
 Приложение живёт в `/var/www/skaz-residents/`, вне докрута статики
 (`/var/www/new.skaz-kray.ru/html`). `skaz-kray-autodeploy.sh` его не трогает —

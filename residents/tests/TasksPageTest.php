@@ -36,11 +36,13 @@ final class TasksPageTest extends TestCase
         $this->assertStringNotContainsString('task-item', $html);
     }
 
-    public function test_titles_are_escaped(): void
+    public function test_title_and_detail_are_escaped(): void
     {
-        $html = $this->render([['kind' => 'tool_request', 'title' => 'Заявка на «<b>x</b>»', 'detail' => '',
-            'link' => '/poselenie/instrumenty/moi', 'date' => '', 'urgent' => false]]);
+        $html = $this->render([['kind' => 'product_rejected', 'title' => 'Объявление «<b>x</b>»',
+            'detail' => 'Причина: <i>y</i>', 'link' => '/poselenie/yarmarka/1/redaktirovat', 'date' => '', 'urgent' => false]]);
         $this->assertStringNotContainsString('<b>x</b>', $html);
         $this->assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $html);
+        $this->assertStringNotContainsString('<i>y</i>', $html);
+        $this->assertStringContainsString('&lt;i&gt;y&lt;/i&gt;', $html);
     }
 }

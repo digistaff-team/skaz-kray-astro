@@ -105,7 +105,7 @@ final class ProductController
     public function create(): void
     {
         $this->requireHousehold('yarmarka');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         [$data, $errors] = $this->validate();
         if ($errors) {
             View::render('product/form', ['product' => $data, 'images' => [], 'units' => self::UNITS, 'errors' => $errors], 'Новый товар/услуга');
@@ -175,7 +175,7 @@ final class ProductController
     public function update(array $params): void
     {
         $this->requireHousehold('yarmarka');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $product = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -195,7 +195,7 @@ final class ProductController
     public function delete(array $params): void
     {
         $this->requireHousehold('yarmarka');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $product = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $product['id']);
         $this->images->deleteFor('product', (int) $product['id']);
@@ -208,7 +208,7 @@ final class ProductController
     public function deletePhoto(array $params): void
     {
         $this->requireHousehold('yarmarka');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $product = $this->ownedOr404((int) $params['id']);
         $imgId = (int) ($params['img'] ?? 0);
         foreach ($this->images->listFor('product', (int) $product['id']) as $img) {

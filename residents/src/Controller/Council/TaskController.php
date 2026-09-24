@@ -439,7 +439,7 @@ final class TaskController
     private function guard(): void
     {
         CouncilAuth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 
     private function back(): void

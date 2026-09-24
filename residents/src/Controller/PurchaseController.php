@@ -203,7 +203,7 @@ final class PurchaseController
 
     private function csrfOrDie(): void
     {
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 
     /** @return array{0:array<string,?string>,1:array<string,string>} */

@@ -146,6 +146,6 @@ final class AdminController
     private function guard(): void
     {
         CouncilAuth::requireAdmin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 }

@@ -69,7 +69,7 @@ final class DiaryController
     {
         $this->requireSection('dnevniki');
         Auth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -109,7 +109,7 @@ final class DiaryController
     {
         $this->requireSection('dnevniki');
         Auth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $entry = $this->ownedOr404((int) $params['id']);
 
         [$data, $errors] = $this->validate();
@@ -132,7 +132,7 @@ final class DiaryController
     {
         $this->requireSection('dnevniki');
         Auth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $entry = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $entry['id']);
         $this->images->deleteFor('entry', (int) $entry['id']);
@@ -146,7 +146,7 @@ final class DiaryController
     {
         $this->requireSection('dnevniki');
         Auth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $entry = $this->ownedOr404((int) $params['id']);
         $imgId = (int) ($params['img'] ?? 0);
         foreach ($this->images->listFor('entry', (int) $entry['id']) as $img) {

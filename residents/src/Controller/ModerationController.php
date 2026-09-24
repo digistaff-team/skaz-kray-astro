@@ -57,7 +57,7 @@ final class ModerationController
     public function toggleSection(): void
     {
         Auth::requireAdmin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $key = (string) ($_POST['key'] ?? '');
         if (isset(Sections::LIST[$key])) {
             $enable = ($_POST['enable'] ?? '') === '1';
@@ -172,7 +172,7 @@ final class ModerationController
     private function guard(): void
     {
         Auth::requireEditor();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 
     private function notifyOwnerDiary(array $entry, string $verb, ?string $reason): void

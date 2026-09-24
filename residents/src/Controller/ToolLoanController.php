@@ -126,7 +126,7 @@ final class ToolLoanController
     private function guard(): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 
     /** Проверяет, что текущий житель — владелец инструмента этого займа. */

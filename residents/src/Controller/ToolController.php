@@ -75,7 +75,7 @@ final class ToolController
     public function create(): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         [$data, $errors] = $this->validate();
         if ($errors) {
             View::render('tool/form', ['tool' => $data, 'images' => [], 'categories' => $this->tools->categoriesForForm(), 'errors' => $errors], 'Новый инструмент');
@@ -103,7 +103,7 @@ final class ToolController
     public function update(array $params): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $tool = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -130,7 +130,7 @@ final class ToolController
     public function delete(array $params): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $tool = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $tool['id']);
         $this->images->deleteFor('tool', (int) $tool['id']);
@@ -143,7 +143,7 @@ final class ToolController
     public function toggleHidden(array $params): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $tool = $this->ownedOr404((int) $params['id']);
         if ($tool['status'] === 'on_loan') {
             Flash::set('error', 'Нельзя скрыть инструмент, пока он на руках.');
@@ -158,7 +158,7 @@ final class ToolController
     public function toggleMaintenance(array $params): void
     {
         $this->requireHousehold('instrumenty');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $tool = $this->ownedOr404((int) $params['id']);
         if ($tool['status'] === 'on_loan') {
             Flash::set('error', 'Инструмент сейчас на руках.');

@@ -73,7 +73,7 @@ final class BookController
     public function create(): void
     {
         $this->guard();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         [$data, $errors] = $this->validate();
         if ($errors) {
             View::render('book/form', ['book' => $data, 'images' => [], 'genres' => $this->books->genresForForm(), 'errors' => $errors], 'Новая книга');
@@ -102,7 +102,7 @@ final class BookController
     public function update(array $params): void
     {
         $this->guard();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $book = $this->ownedOr404((int) $params['id']);
         [$data, $errors] = $this->validate();
         if ($errors) {
@@ -124,7 +124,7 @@ final class BookController
     public function delete(array $params): void
     {
         $this->guard();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $book = $this->ownedOr404((int) $params['id']);
         $this->deleteImageFiles((int) $book['id']);
         $this->images->deleteFor('book', (int) $book['id']);
@@ -137,7 +137,7 @@ final class BookController
     public function toggleHidden(array $params): void
     {
         $this->guard();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $book = $this->ownedOr404((int) $params['id']);
         if ($book['status'] === 'on_loan') {
             Flash::set('error', 'Нельзя скрыть книгу, пока она на руках.');
@@ -152,7 +152,7 @@ final class BookController
     public function toggleMaintenance(array $params): void
     {
         $this->guard();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $book = $this->ownedOr404((int) $params['id']);
         if ($book['status'] === 'on_loan') {
             Flash::set('error', 'Книга сейчас на руках.');

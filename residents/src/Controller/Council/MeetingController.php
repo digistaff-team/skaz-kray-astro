@@ -38,7 +38,7 @@ final class MeetingController
     public function save(): void
     {
         $this->requireEditor();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         $startsRaw     = trim($_POST['starts_at'] ?? '');
         $place         = trim($_POST['place'] ?? '');
@@ -109,7 +109,7 @@ final class MeetingController
     public function handoff(): void
     {
         $this->requireEditor();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         $newId  = (int) ($_POST['member_id'] ?? 0);
         $member = $newId > 0 ? $this->members->findById($newId) : null;

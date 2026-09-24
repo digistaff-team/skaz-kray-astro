@@ -71,7 +71,7 @@ final class TripController
     public function create(): void
     {
         $this->requireHousehold('poezdki');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         [$data, $errors] = $this->validate();
         if ($errors) {
             View::render('trip/form', ['trip' => $data, 'errors' => $errors], 'Новая поездка');
@@ -159,7 +159,7 @@ final class TripController
     private function guard(): void
     {
         $this->requireHousehold('poezdki');
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
     }
 
     private function ownedOr404(int $id): array

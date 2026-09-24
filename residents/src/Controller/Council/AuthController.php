@@ -27,7 +27,7 @@ final class AuthController
 
     public function login(): void
     {
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         $email = trim($_POST['email'] ?? '');
         $pass  = (string) ($_POST['password'] ?? '');
@@ -69,7 +69,7 @@ final class AuthController
 
     public function forgot(): void
     {
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         if ($this->throttled('cforgot:' . $ip)) {
@@ -109,7 +109,7 @@ final class AuthController
 
     public function reset(): void
     {
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
         $token = (string) ($_POST['token'] ?? '');
         $pass  = (string) ($_POST['password'] ?? '');
         $row = $this->resets->findValid($token, date('Y-m-d H:i:s'));
@@ -134,7 +134,7 @@ final class AuthController
     public function changePassword(): void
     {
         CouncilAuth::requireLogin();
-        if (!Csrf::check($_POST['_csrf'] ?? null)) { http_response_code(400); exit('Неверный токен формы.'); }
+        Csrf::guard();
 
         $id      = (int) CouncilAuth::id();
         $current = (string) ($_POST['current'] ?? '');

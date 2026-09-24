@@ -70,4 +70,14 @@ final class TripBookingRepositoryTest extends TestCase
         $this->assertCount(1, $this->bookings->listIncoming($this->driver, ['requested']));
         $this->assertCount(1, $this->bookings->listByPassenger($this->passenger));
     }
+
+    public function test_incoming_carries_trip_status(): void
+    {
+        // Отмена поездки брони не трогает — отличить их можно только по статусу поездки.
+        $this->bookings->create($this->tripId, $this->passenger, 1, null, '2026-08-29 10:00:00');
+        $this->trips->setStatus($this->tripId, 'cancelled');
+
+        $row = $this->bookings->listIncoming($this->driver, ['requested'])[0];
+        $this->assertSame('cancelled', $row['trip_status']);
+    }
 }

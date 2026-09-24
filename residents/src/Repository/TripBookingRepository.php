@@ -92,7 +92,7 @@ final class TripBookingRepository
     /** Входящие брони по всем поездкам водителя (для «Мои поездки»). @return array<int,array<string,mixed>> */
     public function listIncoming(int $driverId, array $statuses = []): array
     {
-        $sql = 'SELECT b.*, t.origin, t.destination, t.trip_date, t.trip_time, p.name AS passenger_name
+        $sql = 'SELECT b.*, t.origin, t.destination, t.trip_date, t.trip_time, t.status AS trip_status, p.name AS passenger_name
                 FROM trip_bookings b
                 JOIN trips t    ON t.id = b.trip_id
                 JOIN families p ON p.id = b.passenger_id

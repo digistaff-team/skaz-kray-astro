@@ -7,10 +7,16 @@ namespace SkazResidents\Controller;
  * Через PHP front-controller — чтобы не править nginx. sw.js — no-cache (браузер
  * должен получать свежую версию). Публичны (без ПДн). SW scope — / (единый PWA
  * на оба раздела: /poselenie и /sovet; заголовок Service-Worker-Allowed: /).
+ *
+ * Кеш SW держит только оформление приложения (/poselenie/assets/) и заглушку
+ * «Нет сети». Страницы и загруженные фото в него не кладём: это ПДн (соседи,
+ * бюджет Совета, лица, номера машин), а сессия живёт 30 дней и из неё почти
+ * не выходят — сохранённое лежало бы на устройстве бессрочно. Смена
+ * CACHE_VERSION стирает прежний кеш у всех при обновлении SW.
  */
 final class PwaController
 {
-    private const CACHE_VERSION = 'skazapp-v4';
+    private const CACHE_VERSION = 'skazapp-v5';   // v5: страницы больше не кешируем — v4 с ними стирается
 
     /** Общие поля манифеста; иконки берём текущие. */
     private function baseManifest(): array
@@ -74,7 +80,6 @@ final class PwaController
         echo <<<JS
 const CACHE = '{$v}';
 const PRECACHE = [
-  '/poselenie/app',
   '/poselenie/offline',
   '/poselenie/assets/residents.css',
   '/poselenie/assets/icons/icon-192.png',
@@ -88,6 +93,7 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
 
+// Прежние версии кеша удаляем целиком — в них могли остаться страницы с ПДн.
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
@@ -102,24 +108,21 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
   if (!(url.pathname.startsWith('/poselenie/') || url.pathname.startsWith('/sovet/'))) return; // вне scope
 
-  // Навигация: сеть-первым, при офлайне — кэш страницы, иначе офлайн-страница.
+  // Навигация: только сеть. Страницу не сохраняем (ПДн), без сети — заглушка.
   if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match(req).then((hit) => hit || caches.match('/poselenie/offline')))
-    );
+    e.respondWith(fetch(req).catch(() => caches.match('/poselenie/offline')));
     return;
   }
 
-  // Статика (css/шрифты/иконки): кэш-первым.
-  if (/\\.(css|woff2|png|jpg|svg)\$/.test(url.pathname)) {
+  // Оформление приложения (css/шрифты/иконки): кэш-первым. Только /poselenie/assets/ —
+  // загруженные жителями фото сюда не попадают.
+  if (url.pathname.startsWith('/poselenie/assets/') && /\.(css|woff2|png|jpg|svg)\$/.test(url.pathname)) {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
         return res;
       }))
     );

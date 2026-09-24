@@ -59,6 +59,8 @@ final class AuthController
     public function logout(): void
     {
         CouncilAuth::logout();
+        // Только кеш: куки не трогаем, вход жителя в той же сессии остаётся.
+        header('Clear-Site-Data: "cache"');
         header('Location: /sovet/vhod');
     }
 

@@ -40,9 +40,12 @@ final class AppController
         ], 'Приложение', 'app/layout');
     }
 
+    /**
+     * Заглушка «Нет сети». Без входа: её заранее сохраняет service worker, и
+     * под гардом без сессии в кеш легла бы страница входа. ПДн здесь нет.
+     */
     public function offline(): void
     {
-        Auth::requireLogin();
         View::render('app/offline', [], 'Нет сети');
     }
 }

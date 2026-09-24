@@ -249,6 +249,9 @@ final class MyTasksTest extends TestCase
         $purchases = new PurchaseRepository();
         $id = $purchases->create($this->me, 'Мёд', null, 'кг', '450', null, '2026-09-20', null, 'Общий дом', null, self::NOW);
 
+        // В сам день срока сбор ещё идёт — дела нет (источник рабочий: ниже, назавтра, оно есть).
+        $this->assertSame([], $this->kinds(false, '2026-09-20'));
+
         $t = $this->tasks();
         $this->assertSame(['purchase_deadline'], array_column($t, 'kind'));
         $this->assertSame('Сбор по закупке «Мёд» закончился', $t[0]['title']);

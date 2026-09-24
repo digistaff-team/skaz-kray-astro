@@ -155,4 +155,37 @@ final class MyTasksTest extends TestCase
 
         $this->assertSame(['Бронь в поездке Д → Е'], array_column($this->tasks(), 'title'));
     }
+
+    public function test_rejected_listing_waits_until_resubmitted(): void
+    {
+        $products = new ProductRepository();
+        $id = $products->create($this->me, 'Мёд', 'Майский', '500', '@me', self::NOW);
+        $products->reject($id, 'Нет цены за единицу');
+
+        $t = $this->tasks();
+        $this->assertSame(['product_rejected'], array_column($t, 'kind'));
+        $this->assertSame('Объявление «Мёд» не прошло проверку', $t[0]['title']);
+        $this->assertSame('Причина: Нет цены за единицу', $t[0]['detail']);
+        $this->assertSame('/poselenie/yarmarka/' . $id . '/redaktirovat', $t[0]['link']);
+
+        // Правка возвращает объявление на проверку — дело снято.
+        $products->update($id, 'Мёд', 'Майский', '500', '@me', self::NOW, 'public', 'кг.');
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_rejected_diary_entry_without_reason_says_what_to_do(): void
+    {
+        $diary = new DiaryRepository();
+        $id = $diary->create($this->me, 'Как копали пруд', 'текст', 'public', self::NOW);
+        $diary->reject($id, 'Без указания причины');   // так пишет модерация при пустой причине
+
+        $t = $this->tasks();
+        $this->assertSame(['diary_rejected'], array_column($t, 'kind'));
+        $this->assertSame('Запись «Как копали пруд» не прошла проверку', $t[0]['title']);
+        $this->assertSame('Исправьте и отправьте снова', $t[0]['detail']);
+        $this->assertSame('/poselenie/dnevnik/' . $id . '/redaktirovat', $t[0]['link']);
+
+        $diary->update($id, 'Как копали пруд', 'текст', 'public', self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
 }

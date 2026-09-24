@@ -75,6 +75,8 @@ final class MyTasks
             ...$this->collect('instrumenty', fn(): array => $this->toolRequests($familyId)),
             ...$this->collect('knigi',       fn(): array => $this->bookRequests($familyId)),
             ...$this->collect('poezdki',     fn(): array => $this->tripBookings($familyId, $today)),
+            ...$this->collect('yarmarka',    fn(): array => $this->rejectedProducts($familyId)),
+            ...$this->collect('dnevniki',    fn(): array => $this->rejectedDiary($familyId)),
         ];
         return self::sort($tasks);
     }
@@ -139,6 +141,32 @@ final class MyTasks
         return $out;
     }
 
+    /** @return array<int,array<string,mixed>> */
+    private function rejectedProducts(int $me): array
+    {
+        $out = [];
+        foreach ($this->products->listByFamily($me) as $p) {
+            if ($p['status'] !== 'rejected') { continue; }
+            $out[] = self::task('product_rejected', 'Объявление «' . $p['title'] . '» не прошло проверку',
+                self::reason($p['reject_reason'] ?? null),
+                '/poselenie/yarmarka/' . (int) $p['id'] . '/redaktirovat', (string) $p['updated_at']);
+        }
+        return $out;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private function rejectedDiary(int $me): array
+    {
+        $out = [];
+        foreach ($this->diary->listByFamily($me) as $e) {
+            if ($e['status'] !== 'rejected') { continue; }
+            $out[] = self::task('diary_rejected', 'Запись «' . $e['title'] . '» не прошла проверку',
+                self::reason($e['reject_reason'] ?? null),
+                '/poselenie/dnevnik/' . (int) $e['id'] . '/redaktirovat', (string) $e['updated_at']);
+        }
+        return $out;
+    }
+
     /**
      * Срочные — сверху; дальше кто дольше ждёт, тот выше; сводка модерации —
      * последней: это не одно дело, а счётчик очереди.
@@ -163,6 +191,18 @@ final class MyTasks
     private static function withDue(string $who, ?string $due): string
     {
         return ($due ?? '') !== '' ? $who . ' · до ' . ru_date($due) : $who;
+    }
+
+    /**
+     * Причина отказа модератора; без неё — что делать дальше. «Без указания
+     * причины» пишет сама модерация, когда поле оставили пустым.
+     */
+    private static function reason(?string $reason): string
+    {
+        $reason = trim((string) $reason);
+        return ($reason !== '' && $reason !== 'Без указания причины')
+            ? 'Причина: ' . $reason
+            : 'Исправьте и отправьте снова';
     }
 
     /** «RuntimeException: сообщение (MyTasks.php:42)» — чтобы по логу было видно, где упало. */

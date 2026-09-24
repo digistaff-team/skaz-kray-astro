@@ -24,6 +24,9 @@ SKIP="-path ./vendor -o -path ./tests -o -path ./public/uploads -o -path ./.phpu
 SKIP="$SKIP -o -path ./.git -o -path ./config/config.php -o -path ./config/.env"
 # Резервные копии рядом с конфигом (config.php.bak-…) — не наши файлы, но сносить их нельзя.
 SKIP="$SKIP -o -name *.bak -o -name *.bak-*"
+# Живые данные сервера: var/sessions — сессии жителей (src/bootstrap.php). Без этого
+# исключения каждая выкатка сочла бы их «лишними» и разлогинила всё поселение.
+SKIP="$SKIP -o -path ./var"
 
 cd "$SRC"
 LIST="$(eval "find . \\( $SKIP \\) -prune -o -type f -print" | LC_ALL=C sort)"
@@ -74,7 +77,8 @@ echo "Composer install (--no-dev) на сервере ..."
 ssh "$SERVER" "cd $DEST && { command -v composer >/dev/null && composer install --no-dev --optimize-autoloader; } || php8.3 /root/composer.phar install --no-dev --optimize-autoloader --no-interaction"
 
 # Архив приезжает с Windows, где владельца нет — вернуть его всему дереву.
+# Каталог сессий закрыт от чужих глаз: в сессии лежит, кто вошёл.
 echo "Права ..."
-ssh "$SERVER" "mkdir -p $DEST/public/uploads && chown -R www-data:www-data $DEST"
+ssh "$SERVER" "mkdir -p $DEST/public/uploads $DEST/var/sessions && chmod 700 $DEST/var/sessions && chown -R www-data:www-data $DEST"
 
 echo "Готово. Проверьте https://skaz-kray.ru/poselenie/vhod"

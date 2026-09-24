@@ -114,7 +114,15 @@
    * Декодируем вручную через decodeURIComponent, а не URLSearchParams:
    * последний трактует «+» как пробел, что испортило бы строку и сломало HMAC
    * на сервере.
+   *
+   * Параметры запуска есть только на первой странице: дальше Mini App ходит по
+   * обычным ссылкам и хеш теряется. Поэтому запоминаем строку в sessionStorage —
+   * она живёт ровно столько, сколько открыто мини-приложение. По ней житель
+   * входит заново, если сессия на сервере истекла (auth/login.php), и по ней же
+   * inTelegram() узнаёт Telegram на любой странице, а не только на первой.
    */
+  var STORE_KEY = 'skazTgInitData';
+
   function launchInitData() {
     var pick = function (src) {
       if (!src) { return ''; }
@@ -122,7 +130,13 @@
       if (!m) { return ''; }
       try { return decodeURIComponent(m[1]); } catch (e) { return ''; }
     };
-    return pick(w.location.hash) || pick(w.location.search);
+    var fresh = pick(w.location.hash) || pick(w.location.search);
+    try {
+      if (fresh) { w.sessionStorage.setItem(STORE_KEY, fresh); return fresh; }
+      return w.sessionStorage.getItem(STORE_KEY) || '';
+    } catch (e) {
+      return fresh;   // хранилище недоступно (приватный режим и т.п.) — как раньше
+    }
   }
 
   /** initData из SDK, а если его нет — из ссылки запуска. */
@@ -132,18 +146,24 @@
   }
 
   /**
-   * start_param (deep-link) из всех источников: SDK, query самой ссылки,
+   * start_param (deep-link) из всех источников: query самой ссылки, SDK,
    * hash-параметры запуска и поле start_param внутри initData.
+   *
+   * Query — первым: это указание именно для этого перехода. При повторном входе
+   * (auth/login.php) туда кладут страницу, где житель был, а SDK и initData
+   * помнят параметр исходного запуска — со старой ссылки из чата. При обычном
+   * запуске все источники и так совпадают.
    */
   function startParam(wa) {
-    if (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) {
-      return wa.initDataUnsafe.start_param;
-    }
     try {
       var qs = new URLSearchParams(w.location.search);
       var fromQuery = qs.get('startapp') || qs.get('tgWebAppStartParam');
       if (fromQuery) { return fromQuery; }
-
+    } catch (e) {}
+    if (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) {
+      return wa.initDataUnsafe.start_param;
+    }
+    try {
       var hs = new URLSearchParams(String(w.location.hash).replace(/^#/, ''));
       var fromHash = hs.get('tgWebAppStartParam');
       if (fromHash) { return fromHash; }

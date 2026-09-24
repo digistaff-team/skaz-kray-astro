@@ -3,3 +3,4 @@
 /config/config.php
 /config/.env
 /public/uploads/
+/var/

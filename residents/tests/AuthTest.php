@@ -53,4 +53,26 @@ final class AuthTest extends TestCase
         $this->assertFalse(Auth::isAdmin());
         $this->assertFalse(Auth::isEditor());
     }
+
+    public function test_next_accepts_only_portal_paths(): void
+    {
+        $this->assertSame('/poselenie/instrumenty/12', Auth::safeNext('/poselenie/instrumenty/12'));
+        $this->assertSame('/poselenie/poezdki?filter=soon', Auth::safeNext('/poselenie/poezdki?filter=soon'));
+    }
+
+    public function test_next_is_not_an_open_redirect(): void
+    {
+        // Всё, что могло бы увести с сайта или разорвать заголовок, — отбрасываем.
+        foreach ([
+            '',
+            'https://evil.example/poselenie/',
+            '//evil.example/poselenie/',
+            '/sovet',                                // чужой раздел — не наш вход
+            '/poselenie',                            // без завершающего «/» — не путь внутри портала
+            "/poselenie/app\r\nSet-Cookie: x=1",     // внедрение заголовка
+            '/poselenie/\\evil.example',              // обратный слеш браузеры читают как «/»
+        ] as $bad) {
+            $this->assertNull(Auth::safeNext($bad), 'Пропущено: ' . json_encode($bad));
+        }
+    }
 }

@@ -52,7 +52,11 @@ final class AuthController
 
     public function showLogin(): void
     {
-        View::render('auth/login', ['old' => [], 'error' => null], 'Вход для жителей');
+        View::render('auth/login', [
+            'old'   => [],
+            'error' => null,
+            'next'  => Auth::safeNext((string) ($_GET['next'] ?? '')),
+        ], 'Вход для жителей');
     }
 
     public function login(): void
@@ -92,7 +96,10 @@ final class AuthController
     public function logout(): void
     {
         Auth::logout();
-        header('Location: /poselenie/vhod');
+        // ?vyshli=1 — чтобы страница входа отличила «вышел сам» от «истекла
+        // сессия»: иначе в мини-приложении она тут же вошла бы обратно по
+        // сохранённой подписи запуска, и кнопка «Выход» ничего бы не делала.
+        header('Location: /poselenie/vhod?vyshli=1');
     }
 
     public function showForgot(): void

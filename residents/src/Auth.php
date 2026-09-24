@@ -74,9 +74,27 @@ final class Auth
     public static function requireLogin(): void
     {
         if (self::id() === null) {
-            header('Location: /poselenie/vhod');
+            // Запоминаем, куда житель шёл: после повторного входа через мессенджер
+            // его вернут туда же (auth/login.php). Только для GET — отправку формы
+            // после входа не повторить.
+            $next = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+                ? self::safeNext((string) ($_SERVER['REQUEST_URI'] ?? ''))
+                : null;
+            header('Location: /poselenie/vhod' . ($next !== null ? '?next=' . rawurlencode($next) : ''));
             exit;
         }
+    }
+
+    /**
+     * Адрес возврата после входа — только внутренний путь портала жителей.
+     * Всё прочее (чужой хост, «//evil», схема, выход из /poselenie/) — null:
+     * иначе ?next= стал бы открытым редиректом.
+     */
+    public static function safeNext(string $uri): ?string
+    {
+        if (!str_starts_with($uri, '/poselenie/') || str_contains($uri, '\\')) { return null; }
+        if (preg_match('~[\x00-\x1F]~', $uri)) { return null; }   // переводы строк и прочие управляющие
+        return $uri;
     }
 
     public static function requireEditor(): void

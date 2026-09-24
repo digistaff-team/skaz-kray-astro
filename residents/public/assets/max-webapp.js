@@ -72,7 +72,13 @@
    * initData из параметров запуска — без участия SDK. MAX кладёт их во фрагмент
    * ссылки как #WebAppData=<url-encoded>. Декодируем вручную (не URLSearchParams:
    * тот трактует «+» как пробел и испортил бы HMAC на сервере).
+   *
+   * Фрагмент есть только на первой странице — запоминаем строку в sessionStorage
+   * на время жизни мини-приложения, чтобы по ней войти заново, если сессия на
+   * сервере истекла (auth/login.php). Так же сделано в assets/tg-webapp.js.
    */
+  var STORE_KEY = 'skazMaxInitData';
+
   function launchInitData() {
     var pick = function (src) {
       if (!src) { return ''; }
@@ -80,7 +86,13 @@
       if (!m) { return ''; }
       try { return decodeURIComponent(m[1]); } catch (e) { return ''; }
     };
-    return pick(w.location.hash) || pick(w.location.search);
+    var fresh = pick(w.location.hash) || pick(w.location.search);
+    try {
+      if (fresh) { w.sessionStorage.setItem(STORE_KEY, fresh); return fresh; }
+      return w.sessionStorage.getItem(STORE_KEY) || '';
+    } catch (e) {
+      return fresh;
+    }
   }
 
   /** initData из SDK, а если его нет — из ссылки запуска. */
@@ -89,16 +101,20 @@
     return launchInitData();
   }
 
-  /** start_param (deep-link) из SDK, query запуска или поля внутри initData. */
+  /**
+   * start_param (deep-link) из query ссылки, SDK или поля внутри initData.
+   * Query — первым: при повторном входе там страница, где житель был, а SDK
+   * помнит параметр исходного запуска (см. то же в assets/tg-webapp.js).
+   */
   function startParam(wa) {
+    try {
+      var fromQuery = new URLSearchParams(w.location.search).get('startapp');
+      if (fromQuery) { return fromQuery; }
+    } catch (e) {}
     if (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) {
       return wa.initDataUnsafe.start_param;
     }
     try {
-      var qs = new URLSearchParams(w.location.search);
-      var fromQuery = qs.get('startapp');
-      if (fromQuery) { return fromQuery; }
-
       var raw = launchInitData();
       if (raw) {
         var sp = new URLSearchParams(raw).get('start_param');

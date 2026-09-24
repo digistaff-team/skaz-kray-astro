@@ -3,7 +3,8 @@ declare(strict_types=1);
 namespace SkazResidents\Tests;
 use PHPUnit\Framework\TestCase;
 use SkazResidents\Sections;
-use SkazResidents\Repository\SectionSettingsRepository;
+use SkazResidents\Service\MyTasks;
+use SkazResidents\Repository\{SectionSettingsRepository, FamilyRepository, ToolRepository, ToolLoanRepository};
 
 /**
  * Меню в шапке раздела жителей.
@@ -19,6 +20,7 @@ final class LayoutMenuTest extends TestCase
         $_SESSION = [];
         make_test_db();
         Sections::reset();
+        MyTasks::reset();   // дела запоминаются на запрос — между тестами их надо забывать
     }
 
     private function render(): string
@@ -62,5 +64,29 @@ final class LayoutMenuTest extends TestCase
         $menu = $this->menu($this->render());
         $this->assertNotContains('/poselenie/yarmarka', $menu);
         $this->assertNotContains('/yarmarka/', $menu);
+    }
+
+    public function test_resident_menu_shows_tasks_item_and_count_only_when_there_are_tasks(): void
+    {
+        $fam = new FamilyRepository();
+        $me = $fam->createPending('me@skaz-kray.ru', 'H', 'Я');
+        $nei = $fam->createPending('nei@skaz-kray.ru', 'H', 'Сосед');
+        $_SESSION['family_id'] = $me;
+
+        // Дел нет — пункт есть, числа нет.
+        $html = $this->render();
+        $this->assertContains('/poselenie/dela', $this->menu($html));
+        $this->assertStringNotContainsString('res-nav-count', $html);
+
+        // Появилась заявка — число показано; заодно видно, что пустота выше была не из-за сбоя.
+        $tool = (new ToolRepository())->create($me, 'Дрель', 'x', null, null, null, '2026-09-20 10:00:00');
+        (new ToolLoanRepository())->create($tool, $nei, null, null, '2026-09-20 10:00:00');
+        MyTasks::reset();
+        $this->assertStringContainsString('Мои дела <span class="res-nav-count">1</span>', $this->render());
+    }
+
+    public function test_guest_has_no_tasks_item(): void
+    {
+        $this->assertNotContains('/poselenie/dela', $this->menu($this->render()));
     }
 }

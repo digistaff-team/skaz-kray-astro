@@ -35,6 +35,12 @@
     <summary class="res-menu-btn" aria-label="Меню" title="Меню"><span class="res-menu-ico"></span></summary>
     <nav class="res-nav">
         <?php if (Auth::id() !== null): ?>
+            <?php /* Первым: это то, что ждёт ответа. Число — на всех страницах (MyTasks
+                     считает один раз за запрос и при сбое отдаёт пустой список). */ ?>
+            <?php $taskCount = count(\SkazResidents\Service\MyTasks::forCurrent()); ?>
+            <a href="/poselenie/dela">Мои дела<?php if ($taskCount > 0): ?> <span class="res-nav-count"><?= $taskCount ?></span><?php endif; ?></a>
+        <?php endif; ?>
+        <?php if (Auth::id() !== null): ?>
             <?php if (Sections::isEnabled('dnevniki')): ?><a href="/poselenie/dnevniki">Дневники поместий</a><?php endif; ?>
         <?php else: ?>
             <a href="/dnevniki-pomestiy/">Дневники поместий</a>

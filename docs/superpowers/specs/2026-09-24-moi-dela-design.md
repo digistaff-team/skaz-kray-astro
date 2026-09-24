@@ -89,18 +89,17 @@ Telegram и MAX почта служебная (`tg<id>@telegram.local`), а бо
   Для шапки — `MyTasks::forCurrent(): array`: считает для вошедшего жителя один
   раз за запрос и запоминает результат, так что главная, блок и меню берут один
   и тот же список.
-- **Методы в существующих репозиториях**, рядом с запросами своего раздела:
-  - `ToolLoanRepository::requestsForOwner(int $familyId)` и
-    `overdueForBorrower(int $familyId, string $today)`;
-  - то же в `BookLoanRepository`;
-  - `TripBookingRepository::requestsForDriver(int $familyId, string $today)`;
-  - `ProductRepository::rejectedByFamily(int $familyId)` и
-    `DiaryRepository::rejectedByFamily(int $familyId)`;
-  - `PurchaseRepository::overdueCollectingByOrganizer(int $familyId, string $today)`,
-    `arrivedUnpaidByOrganizer(int $familyId)` (с числом неоплаченных) и
-    `arrivedUnpaidForParticipant(int $familyId)`;
-  - счётчики очереди модерации — `DiaryRepository::countPending()`,
-    `ProductRepository::countPending()` и `FamilyRepository::countByStatus('pending')`.
+- **Источники — существующие выборки репозиториев**, отбор по статусу и дате
+  делает сборщик (уточнено при планировании: нужные запросы почти все уже есть):
+  - заявки на инструменты и книги — `listIncoming($familyId, ['requested'])`;
+  - просроченный возврат — `listByBorrower($familyId)` у тех же репозиториев;
+  - брони — `TripBookingRepository::listIncoming($familyId, ['requested'])`,
+    в выборку добавляется `t.status AS trip_status`;
+  - отклонённые — `listByFamily($familyId)` у ярмарки и дневников;
+  - закупки — `listByOrganizer()` и `listByParticipant()`, в общие итоги
+    `TOTALS` добавляется `unpaid_count`;
+  - очередь модерации — `count()` от `FamilyRepository::listByStatus('pending')`,
+    `DiaryRepository::listPending()` и `ProductRepository::listPending()`.
 - **`src/Controller/TasksController.php`**, маршрут `GET /poselenie/dela`,
   требует входа. Страница `src/templates/tasks/index.php` «Мои дела»: список
   дел; пусто — «Все дела сделаны» и ссылка на главную. Навигация — общий

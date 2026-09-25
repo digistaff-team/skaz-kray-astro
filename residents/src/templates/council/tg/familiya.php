@@ -1,6 +1,6 @@
 <?php use SkazResidents\View; ?>
 <h1>Вход в приложение</h1>
-<p class="res-meta">Введите, пожалуйста, Вашу фамилию.</p>
+<p class="res-meta">Введите, пожалуйста, Вашу фамилию и код привязки. Код выдаёт администратор совета — он действует 7 дней и нужен только при первом входе.</p>
 
 <?php if (!empty($error)): ?>
     <p class="res-flash res-flash--error"><?= View::e($error) ?></p>
@@ -13,16 +13,10 @@
             <input type="text" name="surname" maxlength="120" autocomplete="family-name"
                    value="<?= View::e($surname) ?>" required autofocus>
         </label>
-        <?php if (!empty($candidates)): ?>
-            <label>Уточните, кто вы
-                <select name="member_id" required>
-                    <option value="">— выберите —</option>
-                    <?php foreach ($candidates as $c): ?>
-                        <option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-        <?php endif; ?>
+        <label>Код привязки
+            <input type="text" name="code" maxlength="20" autocomplete="one-time-code"
+                   autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH" required>
+        </label>
         <button class="res-btn" type="submit">Войти</button>
     </form>
     <p id="sovet-claim-note" class="res-meta" style="margin-top:.8rem;"></p>

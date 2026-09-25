@@ -1,6 +1,6 @@
 <?php
 use SkazResidents\{View, Csrf};
-/** @var array $household @var array $members @var array $cars @var array $pets */
+/** @var array $household @var array $members @var array $cars @var array $pets @var array $joinRequests */
 $gladeName = static function (string $g): string {
     return preg_match('~^\(\d+\)\s*(.+)$~u', trim($g), $m) ? trim($m[1]) : $g;
 };
@@ -37,6 +37,39 @@ $h = $household;
 <p class="res-meta">
     Поляна <?= View::e($gladeName($h['glade'])) ?> (<?= $gladeNum($h['glade']) ?>)<?php if ($h['plot'] !== ''): ?>, участок <?= $gladeNum($h['glade']) ?>-<?= View::e($h['plot']) ?><?php endif; ?>
 </p>
+
+<?php if (!empty($joinRequests)): ?>
+    <div class="prof-sec-head"><h2>Заявки в совладельцы</h2></div>
+    <p class="res-meta">Принимайте только своих: совладелец видит и правит все данные поместья.</p>
+    <div class="prof-list">
+        <?php foreach ($joinRequests as $r): ?>
+            <div class="prof-card">
+                <b class="prof-name"><?= View::e($r['name']) ?></b>
+                <div class="prof-fields">
+                    <?php if ($r['surname'] !== ''): ?><span>Назвал фамилию: <?= View::e($r['surname']) ?></span><?php endif; ?>
+                    <?php if (!empty($r['telegram_username'])): ?><span>Telegram: <a href="https://t.me/<?= View::e($r['telegram_username']) ?>" target="_blank" rel="noopener">@<?= View::e($r['telegram_username']) ?></a></span><?php endif; ?>
+                    <span>Вход через <?= !empty($r['telegram_id']) ? 'Telegram' : (!empty($r['max_user_id']) ? 'MAX' : 'сайт') ?></span>
+                </div>
+                <div class="prof-estate-actions">
+                    <form method="post" action="/poselenie/moye-pomestie/zayavka/prinyat" data-confirm="Сделать «<?= View::e($r['name']) ?>» совладельцем поместья?">
+                        <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="mode" value="owner">
+                        <button class="res-btn" type="submit">Принять совладельцем</button>
+                    </form>
+                    <?php if (!empty($r['can_merge'])): ?>
+                        <form method="post" action="/poselenie/moye-pomestie/zayavka/prinyat" data-confirm="Это действительно вы сами вошли через MAX? Входы объединятся в один аккаунт.">
+                            <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $r['id'] ?>"><input type="hidden" name="mode" value="merge">
+                            <button class="res-btn res-btn--ghost" type="submit">Это я через MAX — объединить</button>
+                        </form>
+                    <?php endif; ?>
+                    <form method="post" action="/poselenie/moye-pomestie/zayavka/otklonit" data-confirm="Отклонить заявку?">
+                        <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $r['id'] ?>">
+                        <button class="res-btn res-btn--ghost" type="submit">Отклонить</button>
+                    </form>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
 
 <div class="prof-sec-head"><h2>Жители поместья</h2></div>
 <?php if (!$members): ?><p class="res-meta">Пока никого не добавлено.</p><?php endif; ?>

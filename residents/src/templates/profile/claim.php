@@ -1,6 +1,6 @@
 <?php
-use SkazResidents\View;
-/** @var array $households */
+use SkazResidents\{Csrf, View};
+/** @var array $households @var array|null $pendingJoin */
 // Имя поляны без номера: «(1) Обережная» -> «Обережная». Иначе — как есть.
 $gladeName = static function (string $g): string {
     $g = trim($g);
@@ -32,6 +32,17 @@ uasort($byGlade, static fn(array $a, array $b): int => $gladeNum($a['name']) <=>
 <?php $backFallback = '/poselenie/moye-pomestie'; require __DIR__ . '/../partials/back.php'; ?>
 <h1>Выберите ваше поместье</h1>
 <p class="res-meta">Найдите своё поместье в списке и привяжите его к себе по фамилии — после этого вы сможете проверить и исправить данные в профиле своего поместья. Привязка делается один раз.</p>
+
+<?php if (!empty($pendingJoin)): ?>
+    <div class="prof-card">
+        <b>Заявка отправлена</b>
+        <p class="res-meta">Вы попросились в совладельцы поместья<?= $pendingJoin['estate_name'] !== '' ? ' «' . View::e($pendingJoin['estate_name']) . '»' : '' ?>. Как только владелец подтвердит заявку, поместье появится в вашем кабинете.</p>
+        <form method="post" action="/poselenie/moye-pomestie/zayavka/otozvat" data-confirm="Отозвать заявку?">
+            <?= Csrf::field() ?>
+            <button class="res-btn res-btn--ghost" type="submit">Отозвать заявку</button>
+        </form>
+    </div>
+<?php endif; ?>
 
 <?php if (!$households): ?>
     <p class="res-meta">Свободных для привязки поместий нет. Обратитесь к редактору поселения.</p>

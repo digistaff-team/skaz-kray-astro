@@ -4,6 +4,7 @@ namespace SkazResidents\Controller;
 
 use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Upload, TelegramMedia};
 use SkazResidents\Repository\{HouseholdProfileRepository, ImageRepository, FamilyRepository};
+use SkazResidents\Service\BotNotify;
 
 /**
  * «Наше поместье» — личный кабинет семьи. Вошедший под аккаунтом поместья
@@ -36,11 +37,16 @@ final class ProfileController
         $pets = $this->repo->pets((int) $h['id']);
         foreach ($pets as &$pet) { $pet['images'] = $this->images->listFor('pet', (int) $pet['id']); }
         unset($pet);
+        $me = $this->families->findById(Auth::id());
+        $requests = $this->repo->joinRequests((int) $h['id']);
+        foreach ($requests as &$r) { $r['can_merge'] = $this->canMergeMax($r, $me); }
+        unset($r);
         View::render('profile/index', [
-            'household' => $h,
-            'members'   => $members,
-            'cars'      => $cars,
-            'pets'      => $pets,
+            'household'    => $h,
+            'members'      => $members,
+            'cars'         => $cars,
+            'pets'         => $pets,
+            'joinRequests' => $requests,
         ], 'Наше поместье');
     }
 
@@ -51,7 +57,10 @@ final class ProfileController
         if ($this->repo->householdByFamily(Auth::id())) { header('Location: /poselenie/moye-pomestie'); return; }
         // Показываем ВСЕ участки поляны (число фиксировано), группируем в шаблоне.
         // Занятые — зелёным (не открыть), свободные с жителями — серым (можно привязать).
-        View::render('profile/claim', ['households' => $this->repo->listForClaimView()], 'Выбор поместья');
+        View::render('profile/claim', [
+            'households'  => $this->repo->listForClaimView(),
+            'pendingJoin' => $this->repo->pendingJoinFor(Auth::id()),
+        ], 'Выбор поместья');
     }
 
     public function showClaimConfirm(array $p): void
@@ -85,14 +94,12 @@ final class ProfileController
         }
         // Проверка принадлежности: если в поместье есть жители — подтверждаем фамилией.
         $surname = trim($_POST['surname'] ?? '');
-        $surnameVerified = false;   // фамилия действительно сверена с жителями поместья
         if ($this->repo->members($id) !== []) {
             if (!$this->repo->surnameMatchesHousehold($id, $surname)) {
                 Flash::set('error', 'Такой фамилии нет среди жителей этого поместья. Проверьте написание или обратитесь к редактору.');
                 header('Location: /poselenie/moye-pomestie/vybor/' . $id);
                 return;
             }
-            $surnameVerified = true;
         }
         if ($this->repo->isClaimable($id)) {
             // Свободное поместье — становимся первичным владельцем.
@@ -105,58 +112,115 @@ final class ProfileController
             if ($surname !== '') { $this->repo->setClaimSurname($id, $surname); }
             Flash::set('success', 'Поместье привязано к вашему аккаунту — теперь можно проверять и править данные.');
         } else {
-            // Занятое поместье. Вариант 1: если вошли новым MAX-аккаунтом и
-            // принадлежность подтверждена фамилией, а у поместья один владелец без
-            // привязанного MAX — связываем в один аккаунт (Telegram+MAX), входим
-            // под ним, а не заводим второго совладельца.
-            $target = $surnameVerified ? $this->tryLinkMaxToOwner($id) : null;
-            if ($target !== null) {
-                Auth::login($target);
-                Flash::set('success', 'Вход через MAX привязан к вашему аккаунту поместья — теперь Telegram и MAX ведут в один и тот же аккаунт.');
-                header('Location: /poselenie/moye-pomestie');
-                return;
+            // Занятое поместье: только заявка. Доступ даёт владелец — фамилии
+            // жителей видны в «Наших соседях», одной фамилии для этого мало.
+            $this->repo->requestJoin($id, Auth::id(), $surname);
+            Flash::set('success', 'Заявка отправлена владельцу поместья. Как только он её подтвердит, поместье появится в вашем кабинете.');
+            header('Location: /poselenie/moye-pomestie/vybor');
+            $name = Auth::name();
+            foreach ($this->repo->owners($id) as $o) {
+                BotNotify::personal((int) $o['family_id'], [
+                    'Заявка в совладельцы вашего поместья: «' . $name . '»' . ($surname !== '' ? ' (фамилия ' . $surname . ')' : '') . '.',
+                    'Если это не ваш родственник — просто отклоните заявку.',
+                ], 'Решить: ', '/poselenie/moye-pomestie');
             }
-            // Иначе присоединяемся к семье как совладелец.
-            $this->repo->joinAsOwner($id, Auth::id());
-            Flash::set('success', 'Вы добавлены как совладелец поместья — теперь можно вести данные вместе с семьёй.');
+            return;
         }
         header('Location: /poselenie/moye-pomestie');
     }
 
-    /**
-     * Вариант 1 связывания аккаунтов: текущий вход — свежий MAX-аккаунт (есть
-     * max_user_id, нет telegram_id, поместья пока нет — гарантировано ранним
-     * возвратом claim()). Если у занятого поместья ровно один активный владелец
-     * без своей привязки MAX — переносим max_user_id на него, одноразовый
-     * MAX-аккаунт удаляем и возвращаем целевой аккаунт для входа под ним. Иначе
-     * (несколько владельцев, у владельца уже есть MAX, любой сбой) — null, и
-     * вызывающий код присоединяет как совладельца (прежнее поведение).
-     *
-     * @return array<string,mixed>|null целевой аккаунт для Auth::login, либо null
-     */
-    private function tryLinkMaxToOwner(int $householdId): ?array
+    /** Отозвать свою заявку в чужое поместье. */
+    public function cancelJoin(): void
     {
-        $current = $this->families->findById(Auth::id());
-        if (!$current || empty($current['max_user_id']) || !empty($current['telegram_id'])) {
-            return null; // связываем только вход, пришедший новым MAX-аккаунтом
+        Auth::requireLogin();
+        $this->csrfOrDie();
+        $this->repo->cancelJoinRequestOf(Auth::id());
+        Flash::set('info', 'Заявка отозвана.');
+        header('Location: /poselenie/moye-pomestie/vybor');
+    }
+
+    /**
+     * Владелец принимает заявку: mode=owner — совладелец со своим входом;
+     * mode=merge — «это я сам, вошёл через MAX»: MAX переносится на аккаунт
+     * владельца, одноразовый аккаунт удаляется (Telegram и MAX — один аккаунт).
+     */
+    public function approveJoin(): void
+    {
+        Auth::requireLogin();
+        $this->csrfOrDie();
+        $h = $this->myHouseholdOr404();
+        $req = $this->joinRequestOfMine($h);
+        if (!$req) { return; }
+        $requester = $this->families->findById((int) $req['family_id']);
+        if (!$requester || $requester['status'] !== 'active') {
+            $this->repo->deleteJoinRequest((int) $req['id']);
+            Flash::set('error', 'Аккаунт заявителя больше не активен — заявка снята.');
+            header('Location: /poselenie/moye-pomestie');
+            return;
         }
 
-        $owners = $this->repo->owners($householdId);
-        if (count($owners) !== 1) { return null; }        // только при единственном владельце
-        $ownerId = (int) $owners[0]['family_id'];
-        if ($ownerId === (int) $current['id']) { return null; }
-
-        $target = $this->families->findById($ownerId);
-        if (!$target || $target['status'] !== 'active') { return null; }
-        if (!empty($target['max_user_id'])) { return null; } // у владельца уже привязан MAX — не трогаем
-
-        try {
-            $this->families->mergeMaxInto((int) $current['id'], $ownerId, (int) $current['max_user_id']);
-        } catch (\Throwable $e) {
-            error_log('ProfileController::tryLinkMaxToOwner: слияние не удалось: ' . $e->getMessage());
-            return null; // напр. у одноразового аккаунта неожиданно есть контент (FK) — откат, фолбэк на совладельца
+        if (($_POST['mode'] ?? '') === 'merge') {
+            $me = $this->families->findById(Auth::id());
+            if (!$this->canMergeMax($requester, $me)) {
+                Flash::set('error', 'Объединить можно только новый вход через MAX с аккаунтом, у которого MAX ещё не привязан.');
+                header('Location: /poselenie/moye-pomestie');
+                return;
+            }
+            $this->repo->deleteJoinRequest((int) $req['id']);
+            try {
+                $this->families->mergeMaxInto((int) $requester['id'], (int) $me['id'], (int) $requester['max_user_id']);
+            } catch (\Throwable $e) {
+                error_log('ProfileController::approveJoin: слияние не удалось: ' . $e->getMessage());
+                Flash::set('error', 'Не удалось объединить аккаунты — в MAX-аккаунте уже есть свои записи. Примите его как совладельца.');
+                header('Location: /poselenie/moye-pomestie');
+                return;
+            }
+            Flash::set('success', 'Вход через MAX привязан к вашему аккаунту. Откройте приложение в MAX заново — оно откроется под этим же аккаунтом.');
+            header('Location: /poselenie/moye-pomestie');
+            return;
         }
-        return $this->families->findById($ownerId);
+
+        $this->repo->joinAsOwner((int) $h['id'], (int) $requester['id']);
+        Flash::set('success', '«' . $requester['name'] . '» теперь совладелец поместья.');
+        header('Location: /poselenie/moye-pomestie');
+        BotNotify::personal((int) $requester['id'], ['Вашу заявку в совладельцы поместья приняли — можно вести его данные вместе с семьёй.'], 'Открыть: ', '/poselenie/moye-pomestie');
+    }
+
+    public function rejectJoin(): void
+    {
+        Auth::requireLogin();
+        $this->csrfOrDie();
+        $h = $this->myHouseholdOr404();
+        $req = $this->joinRequestOfMine($h);
+        if (!$req) { return; }
+        $this->repo->deleteJoinRequest((int) $req['id']);
+        Flash::set('info', 'Заявка отклонена.');
+        header('Location: /poselenie/moye-pomestie');
+        BotNotify::personal((int) $req['family_id'], ['Заявку в совладельцы поместья отклонили. Если это ошибка — свяжитесь с семьёй или с редактором.'], 'Выбрать поместье: ', '/poselenie/moye-pomestie/vybor');
+    }
+
+    /** Заявка из POST, адресованная именно моему поместью; иначе flash и редирект (null). */
+    private function joinRequestOfMine(array $h): ?array
+    {
+        $req = $this->repo->joinRequestById((int) ($_POST['id'] ?? 0));
+        if (!$req || (int) $req['household_id'] !== (int) $h['id']) {
+            Flash::set('error', 'Заявка не найдена.');
+            header('Location: /poselenie/moye-pomestie');
+            return null;
+        }
+        return $req;
+    }
+
+    /**
+     * Можно ли склеить заявителя с аккаунтом владельца: заявитель — вход только
+     * через MAX (без Telegram), у владельца MAX ещё не привязан.
+     */
+    private function canMergeMax(array $requester, ?array $me): bool
+    {
+        return $me !== null
+            && !empty($requester['max_user_id']) && empty($requester['telegram_id'])
+            && empty($me['max_user_id'])
+            && (int) ($requester['family_id'] ?? $requester['id']) !== (int) $me['id'];
     }
 
     // ── Совместное владение ─────────────────────────────────────────────────

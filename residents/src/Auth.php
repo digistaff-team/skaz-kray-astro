@@ -71,6 +71,17 @@ final class Auth
         return ($_SESSION['role'] ?? '') === 'admin';
     }
 
+    /**
+     * Может ли текущий модератор блокировать аккаунт или сбрасывать ему пароль.
+     * Редактор управляет только жителями: иначе, сбросив пароль админа (новый
+     * пароль показывается модератору), он сам стал бы админом.
+     */
+    public static function canManageAccount(array $target): bool
+    {
+        if (self::isAdmin()) { return true; }
+        return self::isEditor() && !in_array($target['role'] ?? '', ['editor', 'admin'], true);
+    }
+
     public static function requireLogin(): void
     {
         if (self::id() === null) {

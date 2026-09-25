@@ -130,7 +130,29 @@ final class AdminController
         $member = $this->members->findById($id);
         if ($member) {
             $this->members->unbindTelegram($id);
-            Flash::set('info', "Привязка Telegram снята для «{$member['name']}». Он сможет войти и привязаться заново по фамилии.");
+            Flash::set('info', "Привязка Telegram снята для «{$member['name']}». Чтобы он снова вошёл, выдайте ему код привязки.");
+        }
+        header('Location: /sovet/upravlenie');
+    }
+
+    /**
+     * Выдать код привязки Telegram. Код показывается только здесь — админ
+     * передаёт его члену совета лично; без кода по одной фамилии не войти.
+     */
+    public function issueClaimCode(): void
+    {
+        $this->guard();
+        $id = (int) ($_POST['id'] ?? 0);
+        $member = $this->members->findById($id);
+        if (!$member) {
+            Flash::set('error', 'Член совета не найден.');
+        } elseif (!empty($member['telegram_id'])) {
+            Flash::set('error', "У «{$member['name']}» Telegram уже привязан. Чтобы перепривязать, сначала отвяжите его.");
+        } elseif ($member['status'] !== 'active') {
+            Flash::set('error', 'Аккаунт заблокирован — сначала разблокируйте его.');
+        } else {
+            $code = $this->members->issueClaimCode($id, time());
+            Flash::set('success', "Код привязки для «{$member['name']}»: {$code}. Действует 7 дней, один раз. Передайте его лично — при первом входе через Telegram нужно ввести фамилию и этот код.");
         }
         header('Location: /sovet/upravlenie');
     }

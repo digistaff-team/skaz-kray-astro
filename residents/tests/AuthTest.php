@@ -26,6 +26,30 @@ final class AuthTest extends TestCase
         $this->assertFalse(Auth::isAdmin());
     }
 
+    public function test_editor_cannot_manage_editor_or_admin_accounts(): void
+    {
+        $_SESSION['family_id'] = 7;
+        $_SESSION['role'] = 'editor';
+        $this->assertTrue(Auth::canManageAccount(['role' => 'resident']));
+        $this->assertFalse(Auth::canManageAccount(['role' => 'editor']));
+        $this->assertFalse(Auth::canManageAccount(['role' => 'admin']));
+    }
+
+    public function test_admin_can_manage_any_account(): void
+    {
+        $_SESSION['family_id'] = 1;
+        $_SESSION['role'] = 'admin';
+        $this->assertTrue(Auth::canManageAccount(['role' => 'admin']));
+        $this->assertTrue(Auth::canManageAccount(['role' => 'editor']));
+    }
+
+    public function test_resident_cannot_manage_accounts(): void
+    {
+        $_SESSION['family_id'] = 9;
+        $_SESSION['role'] = 'resident';
+        $this->assertFalse(Auth::canManageAccount(['role' => 'resident']));
+    }
+
     public function test_platform_is_remembered_and_whitelisted(): void
     {
         // Пусто, пока не входили: сессии прошлых версий признака не имеют, и

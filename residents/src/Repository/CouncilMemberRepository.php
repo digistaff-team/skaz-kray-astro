@@ -64,41 +64,63 @@ final class CouncilMemberRepository
         return $st->fetch() ?: null;
     }
 
+    /** Срок жизни кода привязки, секунд. */
+    public const CLAIM_CODE_TTL = 7 * 86400;
+
+    /** Алфавит кода без похожих символов (0/O, 1/I/L): код диктуют голосом. */
+    private const CLAIM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
     /**
-     * Записи ростера с такой фамилией, ещё не привязанные к MAX (max_user_id
-     * независим от telegram_id — член может входить и из Telegram, и из MAX).
-     * @return array<int,array<string,mixed>>
+     * Выдать члену совета одноразовый код привязки Telegram (прежний код
+     * сгорает). В БД — только sha256, сам код видит лишь администратор.
+     * @return string код вида «ABCD-EFGH»
      */
-    public function findUnclaimedBySurnameForMax(string $surname): array
+    public function issueClaimCode(int $id, int $now): string
     {
-        $st = $this->db->prepare(
-            'SELECT * FROM council_members WHERE max_user_id IS NULL AND surname = ? ORDER BY name'
-        );
-        $st->execute([$surname]);
-        return $st->fetchAll();
+        $code = '';
+        for ($i = 0; $i < 8; $i++) {
+            $code .= self::CLAIM_CODE_ALPHABET[random_int(0, strlen(self::CLAIM_CODE_ALPHABET) - 1)];
+        }
+        $st = $this->db->prepare('UPDATE council_members SET claim_code_hash = ?, claim_code_expires = ? WHERE id = ?');
+        $st->execute([hash('sha256', $code), date('Y-m-d H:i:s', $now + self::CLAIM_CODE_TTL), $id]);
+        return substr($code, 0, 4) . '-' . substr($code, 4);
+    }
+
+    /** Код в каноническом виде: регистр и разделители, как бы его ни ввели, не важны. */
+    public static function normalizeClaimCode(string $code): string
+    {
+        return (string) preg_replace('~[^A-Z0-9]~', '', mb_strtoupper($code));
     }
 
     /**
-     * Ещё не привязанные к Telegram записи ростера с такой фамилией.
-     * Обычно 0 или 1; больше одной — когда фамилия неуникальна (напр. «Моисеенко»),
-     * тогда вход требует уточнения по имени.
-     * @return array<int,array<string,mixed>>
+     * Привязать Telegram по фамилии и коду администратора. Запись должна быть
+     * активной, ещё не привязанной, код — непросроченным; после привязки код
+     * гасится. Любой отказ — null без подробностей (нечего перебирать).
+     * @return array<string,mixed>|null привязанная запись
      */
-    public function findUnclaimedBySurname(string $surname): array
+    public function claimTelegramByCode(string $surname, string $code, int $telegramId, int $now): ?array
     {
-        $st = $this->db->prepare(
-            'SELECT * FROM council_members WHERE telegram_id IS NULL AND surname = ? ORDER BY name'
-        );
-        $st->execute([$surname]);
-        return $st->fetchAll();
-    }
+        $code = self::normalizeClaimCode($code);
+        $surname = mb_strtolower(trim($surname));
+        if ($code === '' || $surname === '') { return null; }
 
-    /** Любая запись с такой фамилией (для сообщения «уже занято»). */
-    public function findBySurnameAny(string $surname): ?array
-    {
-        $st = $this->db->prepare('SELECT * FROM council_members WHERE surname = ? LIMIT 1');
-        $st->execute([$surname]);
-        return $st->fetch() ?: null;
+        $st = $this->db->prepare(
+            "SELECT * FROM council_members
+             WHERE claim_code_hash = ? AND telegram_id IS NULL AND status = 'active'"
+        );
+        $st->execute([hash('sha256', $code)]);
+        foreach ($st->fetchAll() as $m) {
+            if (mb_strtolower(trim((string) $m['surname'])) !== $surname) { continue; }
+            if (strtotime((string) $m['claim_code_expires']) < $now) { continue; }
+            $upd = $this->db->prepare(
+                'UPDATE council_members SET telegram_id = ?, claim_code_hash = NULL, claim_code_expires = NULL
+                 WHERE id = ? AND telegram_id IS NULL'
+            );
+            $upd->execute([$telegramId, (int) $m['id']]);
+            if ($upd->rowCount() !== 1) { return null; }   // гонка: запись успели привязать
+            return $this->findById((int) $m['id']);
+        }
+        return null;
     }
 
     /** Привязать Telegram-аккаунт к записи члена совета (клейм ростера). */

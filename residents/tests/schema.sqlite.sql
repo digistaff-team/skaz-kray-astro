@@ -61,10 +61,16 @@ CREATE TABLE login_attempts (
 CREATE TABLE council_members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
+    telegram_id INTEGER UNIQUE,
+    max_user_id INTEGER UNIQUE,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
+    surname TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'active',
     role TEXT NOT NULL DEFAULT 'member',
+    is_duty_chair INTEGER NOT NULL DEFAULT 0,
+    claim_code_hash TEXT,
+    claim_code_expires TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE council_tasks (
@@ -253,6 +259,13 @@ CREATE TABLE household_owners (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     household_id INTEGER NOT NULL,
     family_id INTEGER NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE household_join_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    household_id INTEGER NOT NULL,
+    family_id INTEGER NOT NULL UNIQUE,
+    surname TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

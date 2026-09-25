@@ -107,6 +107,9 @@ $router->get('/poselenie/moye-pomestie/vybor', [$profile, 'showClaim']);
 $router->get('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'showClaimConfirm']);
 $router->post('/poselenie/moye-pomestie/vybor/{id}', [$profile, 'claim']);
 $router->post('/poselenie/moye-pomestie/sovladelec/udalit', [$profile, 'removeOwner']);
+$router->post('/poselenie/moye-pomestie/zayavka/otozvat', [$profile, 'cancelJoin']);
+$router->post('/poselenie/moye-pomestie/zayavka/prinyat', [$profile, 'approveJoin']);
+$router->post('/poselenie/moye-pomestie/zayavka/otklonit', [$profile, 'rejectJoin']);
 $router->get('/poselenie/moye-pomestie/nazvanie', [$profile, 'showEditEstate']);
 $router->post('/poselenie/moye-pomestie/nazvanie', [$profile, 'updateEstate']);
 $router->get('/poselenie/moye-pomestie/zhitel/novyy', [$profile, 'showAddMember']);
@@ -301,6 +304,7 @@ $router->post('/sovet/upravlenie/sbros-parolya', [$cAdmin, 'resetPassword']);
 $router->post('/sovet/upravlenie/status', [$cAdmin, 'toggleStatus']);
 $router->post('/sovet/upravlenie/dezhurnyy', [$cAdmin, 'setDutyChair']);
 $router->post('/sovet/upravlenie/otvyazat-telegram', [$cAdmin, 'unbindTelegram']);
+$router->post('/sovet/upravlenie/kod-privyazki', [$cAdmin, 'issueClaimCode']);
 
 // Бухгалтерия совета — операции бюджета (все члены) + справочник статей (админ).
 $cLedger = new CouncilLedgerController();

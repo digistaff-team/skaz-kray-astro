@@ -1,6 +1,7 @@
 <?php use SkazResidents\{Csrf, View}; ?>
 <h1>Участники совета</h1>
 <p class="res-meta">Аккаунты заводятся по приглашению. При добавлении генерируется пароль — он показывается здесь и отправляется на email. Член совета может сменить его сам.</p>
+<p class="res-meta">Для первого входа через Telegram член совета вводит фамилию и код привязки — выдайте его кнопкой «код привязки Telegram» и передайте лично. Код действует 7 дней и только один раз.</p>
 
 <div class="res-card">
     <h2>Добавить члена совета</h2>
@@ -46,6 +47,11 @@
                         <form method="post" action="/sovet/upravlenie/otvyazat-telegram">
                             <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
                             <button class="res-link-btn sovet-danger" type="submit">отвязать Telegram</button>
+                        </form>
+                    <?php elseif ($m['status'] === 'active'): ?>
+                        <form method="post" action="/sovet/upravlenie/kod-privyazki">
+                            <?= Csrf::field() ?><input type="hidden" name="id" value="<?= $mid ?>">
+                            <button class="res-link-btn" type="submit">код привязки Telegram</button>
                         </form>
                     <?php endif; ?>
                     <?php if ($isDuty): ?>

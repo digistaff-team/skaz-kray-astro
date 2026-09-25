@@ -86,10 +86,12 @@
     <?php foreach ($activeFamilies as $f): ?>
         <div class="res-card">
             <?= View::e($f['name']) ?> — <?= View::e($f['email']) ?>
+            <?php if (Auth::canManageAccount($f)): ?>
             <form method="post" action="/poselenie/moderation/family/reset-password" style="display:inline" data-confirm="Сбросить пароль этой семье?">
                 <?= Csrf::field() ?><input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
                 <button class="res-btn res-btn--ghost" type="submit">Сбросить пароль</button>
             </form>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
 </section>

@@ -176,7 +176,8 @@ final class HouseholdProfileRepository
     /**
      * Присоединяет аккаунт к УЖЕ занятому поместью как совладельца, НЕ меняя
      * первичного владельца (households.family_id). Один аккаунт — одно поместье:
-     * прежние привязки аккаунта снимаются.
+     * прежние привязки аккаунта снимаются. Зовётся только по решению владельца
+     * (одобренная заявка) — сама по себе фамилия доступа не даёт.
      */
     public function joinAsOwner(int $householdId, int $familyId): void
     {
@@ -216,11 +217,70 @@ final class HouseholdProfileRepository
         }
     }
 
-    /** Снимает все привязки аккаунта к поместьям (первичную и совладение). */
+    /** Снимает все привязки аккаунта к поместьям (первичную, совладение и заявку). */
     private function detachAccount(int $familyId): void
     {
         $this->db->prepare('UPDATE households SET family_id = NULL WHERE family_id = ?')->execute([$familyId]);
         $this->db->prepare('DELETE FROM household_owners WHERE family_id = ?')->execute([$familyId]);
+        $this->db->prepare('DELETE FROM household_join_requests WHERE family_id = ?')->execute([$familyId]);
+    }
+
+    // ── Заявки на присоединение к занятому поместью ─────────────────────────
+    /**
+     * Подать заявку в совладельцы. Сама по себе доступа не даёт — его даёт
+     * владелец поместья (approveJoinRequest). Прежняя заявка аккаунта заменяется.
+     */
+    public function requestJoin(int $householdId, int $familyId, string $surname): void
+    {
+        $this->db->prepare('DELETE FROM household_join_requests WHERE family_id = ?')->execute([$familyId]);
+        $this->db->prepare('INSERT INTO household_join_requests (household_id, family_id, surname) VALUES (?, ?, ?)')
+            ->execute([$householdId, $familyId, $surname]);
+    }
+
+    /** Ожидающая заявка аккаунта (с данными поместья) или null. */
+    public function pendingJoinFor(int $familyId): ?array
+    {
+        $st = $this->db->prepare(
+            'SELECT r.*, h.estate_name, h.glade, h.plot
+             FROM household_join_requests r JOIN households h ON h.id = r.household_id
+             WHERE r.family_id = ?'
+        );
+        $st->execute([$familyId]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Заявки в поместье — для владельцев: кто просится и откуда вошёл.
+     * @return array<int,array<string,mixed>>
+     */
+    public function joinRequests(int $householdId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT r.id, r.family_id, r.surname, r.created_at,
+                    f.name, f.telegram_username, f.telegram_id, f.max_user_id
+             FROM household_join_requests r JOIN families f ON f.id = r.family_id
+             WHERE r.household_id = ?
+             ORDER BY r.id ASC'
+        );
+        $st->execute([$householdId]);
+        return $st->fetchAll();
+    }
+
+    public function joinRequestById(int $id): ?array
+    {
+        $st = $this->db->prepare('SELECT * FROM household_join_requests WHERE id = ?');
+        $st->execute([$id]);
+        return $st->fetch() ?: null;
+    }
+
+    public function deleteJoinRequest(int $id): void
+    {
+        $this->db->prepare('DELETE FROM household_join_requests WHERE id = ?')->execute([$id]);
+    }
+
+    public function cancelJoinRequestOf(int $familyId): void
+    {
+        $this->db->prepare('DELETE FROM household_join_requests WHERE family_id = ?')->execute([$familyId]);
     }
 
     // ── Жители ──────────────────────────────────────────────────────────────

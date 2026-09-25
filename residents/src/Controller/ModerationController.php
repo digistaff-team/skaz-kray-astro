@@ -86,7 +86,9 @@ final class ModerationController
         $this->guard();
         $id = (int) ($_POST['id'] ?? 0);
         $family = $this->families->findById($id);
-        if ($family) {
+        if ($family && !Auth::canManageAccount($family)) {
+            Flash::set('error', 'Аккаунты редакторов и администраторов может менять только администратор сайта.');
+        } elseif ($family) {
             $this->families->setStatus($id, 'blocked');
             Flash::set('info', 'Заявка отклонена (аккаунт заблокирован).');
         }
@@ -98,7 +100,9 @@ final class ModerationController
         $this->guard();
         $id = (int) ($_POST['id'] ?? 0);
         $family = $this->families->findById($id);
-        if ($family) {
+        if ($family && !Auth::canManageAccount($family)) {
+            Flash::set('error', 'Аккаунты редакторов и администраторов может менять только администратор сайта.');
+        } elseif ($family) {
             $newPass = bin2hex(random_bytes(9)); // 18 hex-символов (~72 бита)
             $this->families->updatePassword($id, Auth::hash($newPass));
             Flash::set('success', "Новый пароль для «{$family['name']}»: $newPass — передайте его семье.");

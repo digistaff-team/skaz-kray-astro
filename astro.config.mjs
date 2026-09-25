@@ -8,5 +8,12 @@ export default defineConfig({
   build: {
     format: 'directory', // /pravila/ -> pravila/index.html, preserves WP-style URLs
   },
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      // Redirect-заглушки на старых кириллических адресах постов (см. [...slug].astro)
+      // в карту сайта не нужны: у них canonical на латинский адрес. Собственных
+      // страниц с кириллицей в пути у сайта нет.
+      filter: (page) => !/[^\x00-\x7F]/.test(decodeURI(new URL(page).pathname)),
+    }),
+  ],
 });

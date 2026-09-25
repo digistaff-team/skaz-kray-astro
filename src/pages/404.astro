@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+// Отдаётся nginx'ом на любой несуществующий адрес (error_page 404 /404.html).
+---
+<Base title="Страница не найдена" description="Такой страницы на сайте поселения Сказочный Край нет." noindex>
+  <header class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Ошибка 404</p>
+      <h1>Страница не найдена</h1>
+      <p class="page-head-lead">
+        Возможно, адрес набран с ошибкой или страница переехала при обновлении сайта.
+      </p>
+      <p class="page-head-lead">
+        <a href="/">На главную</a> · <a href="/category/archive/">Все записи</a> · <a href="/kontakty/">Контакты</a>
+      </p>
+    </div>
+  </header>
+</Base>

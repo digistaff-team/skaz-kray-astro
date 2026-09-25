@@ -84,6 +84,7 @@ if (type === 'redirect') {
     <head>
       <meta charset="utf-8" />
       <meta http-equiv="refresh" content={`0; url=${to}`} />
+      <meta name="robots" content="noindex, follow" />
       <link rel="canonical" href={new URL(to, Astro.site).href} />
       <title>{`${title} — Сказочный Край`}</title>
       <meta name="description" content={description} />

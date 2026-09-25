@@ -9,7 +9,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import TelegramMiniApp from '../components/TelegramMiniApp.astro';
 
-const { title, description, image, type = 'website' } = Astro.props;
+const { title, description, image, type = 'website', noindex = false } = Astro.props;
 const fullTitle = title ? `${title} — Сказочный Край` : 'Сказочный Край — поселение родовых поместий в Краснодарском крае';
 const desc = description || 'Поселение родовых поместий Сказочный Край в Северском районе Краснодарского края. Жизнь в гармонии с природой, свободные участки, дневники поместий.';
 // og:image — абсолютный URL (соцсети/мессенджеры не принимают относительные).
@@ -29,6 +29,7 @@ const ogDesc = clip(desc, 120);
   <title>{fullTitle}</title>
   <meta name="description" content={desc} />
   <link rel="canonical" href={Astro.url.href} />
+  {noindex && <meta name="robots" content="noindex" />}
   <meta property="og:type" content={type} />
   <meta property="og:locale" content="ru_RU" />
   <meta property="og:site_name" content="Сказочный Край" />
@@ -42,7 +43,7 @@ const ogDesc = clip(desc, 120);
   <meta name="twitter:description" content={ogDesc} />
   <meta name="twitter:image" content={ogImage} />
   <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
-  <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed/" />
+  <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed.xml" />
   <!-- Прячем не загрузившиеся картинки вместе с их обёрткой (figure/ссылка).
        В старых постах 2013–2016 есть ~сотня битых ссылок на утраченные ещё в
        WordPress файлы — так на сайте не будет «сломанных» иконок и пустых

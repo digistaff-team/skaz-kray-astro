@@ -21,7 +21,7 @@ npm run preview    # предпросмотр собранного
 
 ### Ключевые особенности
 - **Static, `format: 'directory'`, `trailingSlash: 'always'`** (`astro.config.mjs`) — чтобы сохранить WP-style URL (`/pravila/` → `pravila/index.html`). Не менять без причины: старые ссылки уже расшарены.
-- **Контент** — коллекции `pages` и `posts` в `src/content/`, схема в `src/content/config.ts`. Даты коэрсятся в строку `"YYYY-MM-DD HH:mm:ss"` (обходит особенность datetime-виджета Decap, который пишет дату без кавычек и YAML парсит её как нативный Date).
+- **Astro 7** (Node ≥ 22.12 — и локально, и на сервере, где собирает автодеплой). **Контент** — коллекции `pages` и `posts`: файлы в `src/content/`, схема и `glob`-загрузчики в `src/content.config.ts` (Content Layer; `entry.id` = бывший `entry.slug`, на нём держатся адреса постов, рендер — `render(entry)`). Даты коэрсятся в строку `"YYYY-MM-DD HH:mm:ss"` (обходит особенность datetime-виджета Decap, который пишет дату без кавычек и YAML парсит её как нативный Date).
 - **Роутинг** — почти всё генерирует один `src/pages/[...slug].astro` через `getStaticPaths`:
   - `pages` — по своему `permalink` (может быть вложенным);
   - `posts` — по транслитерированному в латиницу слагу (`postSlug`); если исходный кириллический слаг отличается — на старом адресе генерится **redirect-заглушка** с OG-тегами (пост мог быть уже расшарен);

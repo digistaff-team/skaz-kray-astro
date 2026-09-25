@@ -13,8 +13,6 @@ seoDescription: >-
   следующий тоже.
 ---
 
-<p><em><!--</em></p>
-
 <span style="font-size: 11pt; line-height: 115%; font-family: 'Calibri','sans-serif';">В Сказочном Крае мы жили на общей поляне, благодаря этому мы познакомились со многими поселенцами. В первый же день к нам пришли дети поселенцев Андрей, Антон и Дамира. Ребята нам показали речку, с интересом рассказали нам об особенностях своего края. В этот же вечер нас пригласили в гости на чай и в следующий тоже.</span>
 
 <span style="font-size: 11pt; line-height: 115%; font-family: 'Calibri','sans-serif';"><a href="/wp-content/uploads/2014/04/gru_3.jpg"><img class="size-large wp-image-2174 aligncenter" alt="gru_3" src="/wp-content/uploads/2014/04/gru_3.jpg" width="606" height="341" /></a></span>

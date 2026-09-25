@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
-    "@astrojs/sitemap": "^3.2.1",
+    "@astrojs/sitemap": "^3.7.4",
     "@fontsource/pt-sans": "^5.1.0",
     "@fontsource/pt-serif": "^5.1.0",
-    "astro": "^4.16.18"
+    "astro": "^7.3.5"
   },
   "devDependencies": {
     "@wordpress/autop": "^4.53.0",

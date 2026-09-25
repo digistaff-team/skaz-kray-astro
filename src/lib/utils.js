@@ -26,7 +26,7 @@ const TRANSLIT = {
   ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
 };
 export function postSlug(input) {
-  const raw = typeof input === 'string' ? input : (input && input.slug) || '';
+  const raw = typeof input === 'string' ? input : (input && input.id) || '';
   if (/^[a-z0-9-]+$/.test(raw)) { return raw; } // старые ASCII-слаги — как есть
   let out = '';
   for (const ch of raw.toLowerCase()) {

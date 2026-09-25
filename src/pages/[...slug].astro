@@ -32,8 +32,8 @@ export async function getStaticPaths() {
   for (const entry of posts) {
     const slug = postSlug(entry);
     add(slug, { type: 'post', entry });
-    if (entry.slug !== slug) {
-      add(entry.slug, { type: 'redirect', to: `/${slug}/`, entry });
+    if (entry.id !== slug) {
+      add(entry.id, { type: 'redirect', to: `/${slug}/`, entry });
     }
   }
 

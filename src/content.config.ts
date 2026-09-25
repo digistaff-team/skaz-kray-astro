@@ -1,4 +1,10 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
+
+// Content Layer (Astro 5+): файлы по-прежнему лежат в src/content/{pages,posts}.
+// id записи = путь без расширения, слагифицированный как раньше entry.slug —
+// на нём держатся адреса постов (postSlug) и redirect-заглушки.
 
 // Decap CMS datetime widget пишет дату в frontmatter без кавычек, YAML парсит
 // её как нативный Date, а не строку — коэрсим обратно в исходный формат
@@ -11,7 +17,7 @@ const dateAsString = z.union([z.string(), z.date()]).transform((v) => {
 });
 
 const pages = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.md', base: './src/content/pages' }),
   schema: z.object({
     title: z.string(),
     permalink: z.string(),
@@ -22,7 +28,7 @@ const pages = defineCollection({
 });
 
 const posts = defineCollection({
-  type: 'content',
+  loader: glob({ pattern: '**/*.md', base: './src/content/posts' }),
   schema: z.object({
     title: z.string(),
     date: dateAsString,

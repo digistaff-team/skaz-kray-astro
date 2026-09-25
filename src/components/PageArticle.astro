@@ -1,8 +1,9 @@
 ---
+import { render } from 'astro:content';
 const { entry } = Astro.props;
 const { title } = entry.data;
 const hasBody = (entry.body || '').trim().length > 0;
-const { Content } = hasBody ? await entry.render() : { Content: null };
+const { Content } = hasBody ? await render(entry) : { Content: null };
 ---
 <article class="page">
   <header class="page-head">

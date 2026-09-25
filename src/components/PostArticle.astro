@@ -1,4 +1,5 @@
 ---
+import { render } from 'astro:content';
 import { ruDate } from '../lib/utils.js';
 import Gallery from './Gallery.astro';
 const { entry } = Astro.props;
@@ -10,7 +11,7 @@ const chips = categories.map((s) => bySlug[s]).filter(Boolean);
 // entry.body — сырой markdown/HTML-исходник, не готовый HTML; компилируем
 // через встроенный конвейер Astro (markdown-синтаксис из Decap CMS форматируется,
 // «сырые» HTML-блоки старых импортированных записей проходят как есть — CommonMark).
-const { Content } = await entry.render();
+const { Content } = await render(entry);
 ---
 <article class="post">
   <header class="post-head wrap">

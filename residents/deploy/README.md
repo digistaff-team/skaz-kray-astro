@@ -66,11 +66,20 @@ php8.3 -c /etc/php/8.3/fpm/php.ini -r 'echo ini_get("upload_max_filesize"), " / 
 
 ## 6. Обновление кода
 ```bash
-bash residents/deploy/deploy.sh             # выкатить
-bash residents/deploy/deploy.sh --dry-run   # только посмотреть, что уедет и что удалится
+bash residents/deploy/deploy.sh              # выкатить
+bash residents/deploy/deploy.sh --dry-run    # только посмотреть, что уедет и что удалится
+bash residents/deploy/deploy.sh --rollback   # вернуть код из последнего снимка
 ```
 Работает и с Windows (Git Bash), и с Linux/macOS: `rsync` не нужен — дерево уезжает
 архивом через `ssh`. Скрипт сам:
+
+- гоняет phpunit по рабочему дереву на сервере (`/root/skaz-residents-deploy-test`);
+  красные тесты останавливают деплой (`SKIP_TESTS=1` — пропустить, в крайнем случае);
+- проверяет миграции БД (см. ниже) — до выкладки кода;
+- снимает текущую версию кода в `/root/skaz-residents-releases/` (5 последних).
+  `--rollback` восстанавливает последний снимок и удаляет его, повторный откат уходит
+  ещё на шаг назад. **БД не откатывается**: если откатываемая версия добавляла
+  миграции, таблицы/колонки останутся — старый код их просто не использует;
 
 - отправляет весь код, кроме `config/config.php`, `config/.env`, `public/uploads/`,
   `vendor/`, `tests/`, `.phpunit.cache/` и `.git/`;

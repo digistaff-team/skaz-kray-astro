@@ -1,6 +1,7 @@
 ---
 title: 'Где купить саженцы хвойных на Кубани: сосны, ели, можжевельники, туи'
 date: '2026-09-25 12:00:00'
+cover: /images/posts/hvoinye-kubani-cover.jpg
 categories:
   - kopilka-znanij
   - stati

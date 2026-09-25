@@ -1,0 +1,42 @@
+# Порядок применения SQL-миграций (файлы в config/). Новая миграция — строкой
+# В КОНЕЦ списка; переставлять и переименовывать уже применённые нельзя.
+# Применённые записываются в таблицу schema_migrations — см. bin/migrate.php.
+# Тест MigrationsTest следит, чтобы каждый config/*.sql был в этом списке.
+
+schema.sql
+council-schema.sql
+telegram-migration.sql
+books-schema.sql
+tools-schema.sql
+rides-schema.sql
+diary-public-migration.sql
+council-ledger-schema.sql
+diary-visibility-migration.sql
+products-visibility-migration.sql
+app-sections-schema.sql
+families-telegram-username-migration.sql
+residents-directory-schema.sql
+household-profile-schema.sql
+household-pets-schema.sql
+households-claim-surname-migration.sql
+council-telegram-schema.sql
+council-meeting-schema.sql
+council-meeting-datetime.sql
+council-meeting-notify.sql
+council-meeting-rotation.sql
+council-agenda-schema.sql
+council-agenda-carried.sql
+household-owners-schema.sql
+council-terem-expense.sql
+council-task-expense-approval.sql
+council-task-expense-msgid.sql
+families-max-migration.sql
+council-max-schema.sql
+council-task-expense-timing.sql
+purchases-schema.sql
+water-level-history.sql
+water-alert-state.sql
+products-unit-migration.sql
+council-duty-ack.sql
+council-claim-code.sql
+household-join-requests.sql

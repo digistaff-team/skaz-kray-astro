@@ -43,6 +43,31 @@ STALE_COUNT="$(printf '%s\n' "$STALE" | grep -c . || true)"
 SUSPICIOUS=""
 if [ "$STALE_COUNT" -gt $((COUNT / 10)) ] && [ "${FORCE_DELETE:-}" != "1" ]; then SUSPICIOUS=1; fi
 
+# Миграции БД — ДО кода: новый код может рассчитывать на новые таблицы/колонки.
+# Набор для наката (список, .sql и сам migrate.php) едет во временный каталог и
+# запускается оттуда — живой каталог к этому моменту ещё старый.
+# Ждущие миграции без MIGRATE=1 останавливают деплой.
+MIG_TMP="$(ssh "$SERVER" mktemp -d)"
+trap 'ssh "$SERVER" "rm -rf $MIG_TMP" >/dev/null 2>&1 || true' EXIT
+tar -czf - --warning=no-timestamp config/migrations.txt config/*.sql bin/migrate.php src/Migrations.php src/timezone.php \
+  | ssh "$SERVER" "tar -xzf - --no-same-owner -C $MIG_TMP"
+MIG_RC=0
+ssh "$SERVER" "cd $MIG_TMP && php8.3 bin/migrate.php status" || MIG_RC=$?
+if [ "$MIG_RC" -eq 2 ]; then
+  if [ -n "$DRY" ]; then
+    echo "(dry-run: миграции не накатываю; при деплое понадобится MIGRATE=1)"
+  elif [ "${MIGRATE:-}" = "1" ]; then
+    echo "Накат миграций ..."
+    ssh "$SERVER" "cd $MIG_TMP && php8.3 bin/migrate.php up"
+  else
+    echo "Есть ненакатанные миграции — код не выкладываю. Повторите с MIGRATE=1 bash residents/deploy/deploy.sh"
+    exit 1
+  fi
+elif [ "$MIG_RC" -ne 0 ]; then
+  echo "Проверка миграций упала (код $MIG_RC) — код не выкладываю."
+  exit 1
+fi
+
 if [ -n "$DRY" ]; then
   echo "Уедет файлов: $COUNT"
   if [ "$STALE_COUNT" -eq 0 ]; then

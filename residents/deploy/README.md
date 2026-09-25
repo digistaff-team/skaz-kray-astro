@@ -85,8 +85,23 @@ bash residents/deploy/deploy.sh --dry-run   # только посмотреть,
 
 **OPcache** перезагружать не нужно: на сервере `opcache.validate_timestamps=On`,
 байткод перечитывается по mtime изменённых файлов — поэтому деплой не трогает
-PHP-FPM. Новые `.sql`-миграции деплой НЕ применяет: их накатывают вручную от root
-(см. разделы про соответствующие схемы).
+PHP-FPM.
+
+**Миграции БД** деплой проверяет ДО выкладки кода: если в `config/migrations.txt`
+есть ненакатанные, он останавливается. `MIGRATE=1 bash residents/deploy/deploy.sh`
+сначала накатит их (`bin/migrate.php up` от root), потом выложит код.
+Применённые записаны в таблице `schema_migrations`. Вручную на сервере:
+```bash
+cd /var/www/skaz-residents
+php8.3 bin/migrate.php status                         # что ждёт наката
+php8.3 bin/migrate.php up                             # накатить по порядку
+php8.3 bin/migrate.php baseline <последний-файл.sql>  # только отметить (без выполнения)
+```
+Новая миграция = новый файл `config/<имя>.sql` + строка в КОНЕЦ `config/migrations.txt`
+(тест `MigrationsTest` не даст забыть). Пишите её так, чтобы повтор был безопасен
+(`IF NOT EXISTS`): DDL в MySQL не откатывается, и файл, упавший на середине, после
+исправления выполнится ещё раз целиком. Команды `mysql … < config/….sql` в разделах
+ниже — история первичной установки; сейчас всё это делает `migrate.php`.
 
 ### 6b. Бэкапы
 Ночью (02:25) `deploy/backup-residents.sh` (на сервере — `/usr/local/bin/backup_skaz-residents.sh`)
@@ -140,18 +155,13 @@ ssh abconsult 'rm -rf /root/res-test'
 5. Вход через Telegram: при первом входе член совета вводит фамилию **и
    одноразовый код привязки**, который администратор выдаёт в `/sovet/upravlenie`
    (кнопка «код привязки Telegram», код живёт 7 дней). Колонки кода — миграция
-   (один раз, до деплоя кода):
-   ```
-   mysql skazkray_residents < /var/www/skaz-residents/config/council-claim-code.sql
-   ```
+   `config/council-claim-code.sql` (накатывается через `MIGRATE=1` при деплое).
 
 ## 7a. Заявки в совладельцы поместья
 Присоединиться к занятому поместью можно только заявкой, которую принимает
 владелец в «Моём поместье» (там же — объединение нового входа MAX с его
-аккаунтом). Таблица заявок — миграция (один раз, до деплоя кода):
-```
-mysql skazkray_residents < /var/www/skaz-residents/config/household-join-requests.sql
-```
+аккаунтом). Таблица заявок — миграция `config/household-join-requests.sql`
+(накатывается через `MIGRATE=1` при деплое).
 
 ## 8. Шеринг инструментов (/poselenie/instrumenty)
 Часть раздела жителей: жители делятся своими инструментами (P2P), заявку

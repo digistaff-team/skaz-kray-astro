@@ -88,6 +88,22 @@ bash residents/deploy/deploy.sh --dry-run   # только посмотреть,
 PHP-FPM. Новые `.sql`-миграции деплой НЕ применяет: их накатывают вручную от root
 (см. разделы про соответствующие схемы).
 
+### 6b. Бэкапы
+Ночью (02:25) `deploy/backup-residents.sh` (на сервере — `/usr/local/bin/backup_skaz-residents.sh`)
+кладёт в `/root/backups/skaz-residents/` дамп БД `skazkray_residents` и архив того,
+чего нет в git: `config.php` и `config/.env` раздела, загрузки, серверный вход в CMS
+(`oauth/`, `editor-auth/`), `tg-media`, скрипт автодеплоя, nginx-конфиги, crontab.
+Хранится 14 последних наборов; в 04:00 `backup_to_gdrive.sh` зеркалит `/root/backups`
+на Google Drive (`gdrive:BackupsVPS/`). Лог — `/var/log/backup_skaz-residents.log`.
+
+После правки скрипта в репо — переустановить:
+```bash
+scp residents/deploy/backup-residents.sh abconsult:/tmp/ && \
+ssh abconsult 'install -m 700 /tmp/backup-residents.sh /usr/local/bin/backup_skaz-residents.sh && rm /tmp/backup-residents.sh'
+```
+Восстановление БД: `gunzip -c residents_db_<дата>.sql.gz | mysql skazkray_residents`.
+В архиве файлов лежат токены и пароли — права 600, делиться им нельзя.
+
 ### 6a. Тесты (PHP только на сервере)
 Локально PHP нет — прогон в изолированной папке на сервере (рабочее дерево, а не
 только закоммиченное):

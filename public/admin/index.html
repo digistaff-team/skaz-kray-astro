@@ -8,7 +8,12 @@
 </head>
 <body>
   <!-- Decap CMS admin. Loaded from CDN; can be self-hosted later if нужно. -->
-  <script src="https://unpkg.com/decap-cms@^3.5.0/dist/decap-cms.js"></script>
+  <!-- Версия закреплена и сверяется по хешу (SRI): подменённый на CDN файл браузер не выполнит,
+       а у редактора в браузере GitHub-токен с правом записи в репо. Обновление: новая версия + новый
+       sha384 (openssl dgst -sha384 -binary decap-cms.js | openssl base64 -A). -->
+  <script src="https://unpkg.com/decap-cms@3.16.3/dist/decap-cms.js"
+          integrity="sha384-A/Gdn928CNLufmnGWGs9RM4Q9o8bSNLeJERqBFrBjwzL7FRpoLT3MPF8Tl0+Wd2p"
+          crossorigin="anonymous"></script>
   <!-- Виджеты загрузки фото в Telegram-канал (обложка + галерея).
        ?v — cache-buster: браузеры, закэшировавшие старую версию скрипта
        (до появления виджета галереи), при бампе версии берут свежий URL. -->

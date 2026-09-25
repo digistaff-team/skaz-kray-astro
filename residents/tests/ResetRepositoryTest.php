@@ -36,4 +36,14 @@ final class ResetRepositoryTest extends TestCase
         $this->repo->delete($token);
         $this->assertNull($this->repo->findValid($token, '2026-08-28 12:00:00'));
     }
+
+    public function test_token_is_stored_hashed(): void
+    {
+        $token = $this->repo->create($this->familyId, '2999-01-01 00:00:00');
+        $stored = \SkazResidents\Database::pdo()->query('SELECT token FROM password_resets')->fetchColumn();
+        $this->assertNotSame($token, $stored);
+        $this->assertSame(hash('sha256', $token), $stored);
+        // По сохранённому значению (утёкший дамп) сброс не срабатывает.
+        $this->assertNull($this->repo->findValid((string) $stored, '2026-08-28 12:00:00'));
+    }
 }

@@ -1,4 +1,4 @@
-<?php use SkazResidents\View; use SkazResidents\Auth; use SkazResidents\Sections; ?>
+<?php use SkazResidents\View; use SkazResidents\Auth; use SkazResidents\Sections; use SkazResidents\Csrf; ?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -63,7 +63,7 @@
             <?php if (Sections::isEnabled('obshchiy-dom')): ?><a href="/poselenie/obshchiy-dom">Общий дом</a><?php endif; ?>
             <?php if (Auth::isEditor()): ?><a href="/poselenie/moderation">Модерация</a><?php endif; ?>
             <?php if (Auth::isAdmin()): ?><a href="/poselenie/moderation/razdely">Разделы</a><?php endif; ?>
-            <a href="/poselenie/vyhod">Выход</a>
+            <a href="/poselenie/vyhod?t=<?= View::e(Csrf::token()) ?>">Выход</a>
         <?php else: ?>
             <a href="/poselenie/vhod">Вход для жителей</a>
         <?php endif; ?>

@@ -6,6 +6,10 @@ final class Upload
 {
     private const MAX_BYTES = 5_242_880; // 5 МБ
     private const MAX_DIM   = 1600;      // px по большей стороне
+    // GD держит картинку несжатой (~5 байт на пиксель), а memory_limit PHP-FPM — 128 МБ:
+    // больше ~25 Мп процесс падает с фатальной ошибкой. Маленький PNG размером
+    // 20000×20000 так и вовсе съел бы гигабайты. Отказываем заранее и понятно.
+    private const MAX_PIXELS = 24_000_000;
 
     /**
      * Валидирует и пересохраняет одно изображение из $_FILES-записи.
@@ -29,6 +33,9 @@ final class Upload
         $info = @getimagesize($file['tmp_name']);
         if ($info === false) {
             return [null, 'Файл не является изображением.'];
+        }
+        if ((int) $info[0] * (int) $info[1] > self::MAX_PIXELS) {
+            return [null, 'Фото слишком большое по разрешению (больше 24 Мп). Уменьшите его или отправьте снимок из мессенджера — там он уже сжат.'];
         }
         $mime = $info['mime'];
         if (!Validator::imageMime($mime)) {

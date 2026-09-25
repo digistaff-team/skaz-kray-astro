@@ -1,4 +1,4 @@
-<?php use SkazResidents\{View, CouncilAuth}; ?>
+<?php use SkazResidents\{View, CouncilAuth, Csrf}; ?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -41,7 +41,7 @@
             <a href="/sovet/buhgalteriya">Бухгалтерия</a>
             <?php if (CouncilAuth::isAdmin()): ?><a href="/sovet/upravlenie">Участники</a><?php endif; ?>
             <a href="/sovet/parol">Пароль</a>
-            <a href="/sovet/vyhod">Выход</a>
+            <a href="/sovet/vyhod?t=<?= View::e(Csrf::token()) ?>">Выход</a>
         <?php else: ?>
             <a href="/">На сайт</a>
             <a href="/sovet/vhod">Вход</a>

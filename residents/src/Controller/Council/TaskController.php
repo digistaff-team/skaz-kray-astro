@@ -79,7 +79,7 @@ final class TaskController
         $id = $this->tasks->create(
             mb_substr($title, 0, 300),
             $desc !== '' ? $desc : null,
-            trim($_POST['author'] ?? '') ?: CouncilAuth::name(),
+            CouncilAuth::name(),   // автор — кто вошёл; из формы не берём, иначе подделаешь
             $assignee,
             $priority,
             $this->pickDate($_POST['due_date'] ?? '')
@@ -120,7 +120,6 @@ final class TaskController
         $patch = [];
         if (isset($_POST['title']))       { $patch['title']       = mb_substr(trim($_POST['title']), 0, 300) ?: 'Без названия'; }
         if (isset($_POST['assignee']))    { $patch['assignee']    = trim($_POST['assignee']); }
-        if (isset($_POST['author']))      { $patch['author']      = trim($_POST['author']); }
         if (isset($_POST['description'])) { $patch['description']  = trim($_POST['description']) ?: null; }
         if (isset($_POST['contacts']))    { $patch['contacts']    = trim($_POST['contacts']) ?: null; }
         if (isset($_POST['links']))       { $patch['links']       = trim($_POST['links']) ?: null; }

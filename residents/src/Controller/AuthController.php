@@ -96,8 +96,17 @@ final class AuthController
         header('Location: /poselenie/app'); // единый домашний экран для всех устройств
     }
 
+    /**
+     * Выход — только с CSRF-токеном: ?t= в ссылке меню или _csrf из формы. Иначе
+     * (чужая страница с <img src=…/vyhod>, старая ссылка без токена) — страница
+     * подтверждения с кнопкой, а не молчаливый выход.
+     */
     public function logout(): void
     {
+        if (!Csrf::check($_GET['t'] ?? $_POST['_csrf'] ?? null)) {
+            View::render('auth/logout', [], 'Выход');
+            return;
+        }
         Auth::logout();
         header('Clear-Site-Data: "cache"');   // фото и картинки соседей не должны пережить выход
         // ?vyshli=1 — чтобы страница входа отличила «вышел сам» от «истекла

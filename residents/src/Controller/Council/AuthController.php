@@ -55,8 +55,17 @@ final class AuthController
         header('Location: /sovet');
     }
 
+    /**
+     * Выход — только с CSRF-токеном: ?t= в ссылке меню или _csrf из формы. Иначе
+     * (чужая страница с <img src=…/vyhod>, старая ссылка без токена) — страница
+     * подтверждения с кнопкой, а не молчаливый выход.
+     */
     public function logout(): void
     {
+        if (!Csrf::check($_GET['t'] ?? $_POST['_csrf'] ?? null)) {
+            View::render('council/auth/logout', [], 'Выход', self::LAYOUT);
+            return;
+        }
         CouncilAuth::logout();
         // Только кеш: куки не трогаем, вход жителя в той же сессии остаётся.
         header('Clear-Site-Data: "cache"');

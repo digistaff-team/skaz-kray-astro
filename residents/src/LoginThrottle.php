@@ -8,9 +8,13 @@ namespace SkazResidents;
  */
 final class LoginThrottle
 {
-    public static function exceeded(string $key): bool
+    /** Неудач с одного IP (по всем email) — шире: за одним NAT бывает полдеревни. */
+    public const IP_LIMIT = ['max' => 20, 'window' => 900];
+
+    /** @param array{max:int,window:int}|null $limit по умолчанию config login_throttle */
+    public static function exceeded(string $key, ?array $limit = null): bool
     {
-        $cfg = Config::get('login_throttle', ['max' => 5, 'window' => 900]);
+        $cfg = $limit ?? Config::get('login_throttle', ['max' => 5, 'window' => 900]);
         $st = Database::pdo()->prepare(
             'SELECT attempted_at FROM login_attempts WHERE email = ? ORDER BY attempted_at DESC LIMIT 50'
         );
@@ -21,6 +25,22 @@ final class LoginThrottle
             if (strtotime((string) $ts) >= $cutoff) { $recent++; }
         }
         return $recent >= (int) $cfg['max'];
+    }
+
+    /**
+     * Неудачный вход: и по email, и по IP. Счётчик по IP ловит перебор одного
+     * пароля по многим адресам (password spraying), который лимит на email не видит.
+     */
+    public static function loginBlocked(string $scope, string $email): bool
+    {
+        return self::exceeded($scope . $email)
+            || self::exceeded($scope . 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), self::IP_LIMIT);
+    }
+
+    public static function recordLoginFailure(string $scope, string $email): void
+    {
+        self::record($scope . $email);
+        self::record($scope . 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
     }
 
     public static function record(string $key): void

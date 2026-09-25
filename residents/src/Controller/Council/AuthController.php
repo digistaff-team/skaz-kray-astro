@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller\Council;
 
-use SkazResidents\{Auth, CouncilAuth, Csrf, Flash, Validator, View, Config, Database, Mailer};
+use SkazResidents\{Auth, CouncilAuth, Csrf, Flash, LoginThrottle, Validator, View, Config, Mailer};
 use SkazResidents\Repository\{CouncilMemberRepository, CouncilResetRepository};
 
 /**
@@ -31,9 +31,8 @@ final class AuthController
 
         $email = trim($_POST['email'] ?? '');
         $pass  = (string) ($_POST['password'] ?? '');
-        $ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        if ($this->throttled('council:' . $email)) {
+        if (LoginThrottle::loginBlocked('council:', $email)) {
             View::render('council/auth/login', ['old' => compact('email'), 'error' => 'Слишком много попыток. Попробуйте позже.'], 'Вход — Попечительский совет', self::LAYOUT);
             return;
         }
@@ -42,7 +41,7 @@ final class AuthController
         $ok = $member && Auth::verify($pass, $member['password_hash']);
 
         if (!$ok) {
-            $this->recordAttempt('council:' . $email, $ip);
+            LoginThrottle::recordLoginFailure('council:', $email);
             View::render('council/auth/login', ['old' => compact('email'), 'error' => 'Неверный email или пароль.'], 'Вход — Попечительский совет', self::LAYOUT);
             return;
         }
@@ -74,11 +73,11 @@ final class AuthController
         Csrf::guard();
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        if ($this->throttled('cforgot:' . $ip)) {
+        if (LoginThrottle::exceeded('cforgot:' . $ip)) {
             View::render('council/auth/forgot', ['sent' => true], 'Восстановление пароля', self::LAYOUT);
             return;
         }
-        $this->recordAttempt('cforgot:' . $ip, $ip);
+        LoginThrottle::record('cforgot:' . $ip);
 
         $email  = trim($_POST['email'] ?? '');
         $member = Validator::email($email) ? $this->members->findByEmail($email) : null;
@@ -153,29 +152,5 @@ final class AuthController
         CouncilAuth::passwordChanged($hash);   // остаёмся в системе; другие устройства выйдут
         Flash::set('success', 'Пароль изменён.');
         header('Location: /sovet');
-    }
-
-    // --- Троттлинг (общая таблица login_attempts, ключи council:/cforgot:) ---
-    private function throttled(string $key): bool
-    {
-        $cfg = Config::get('login_throttle');
-        $st = Database::pdo()->prepare(
-            'SELECT attempted_at FROM login_attempts WHERE email = ? ORDER BY attempted_at DESC LIMIT 50'
-        );
-        $st->execute([$key]);
-        $cutoff = time() - (int) $cfg['window'];
-        $recent = 0;
-        foreach ($st->fetchAll(\PDO::FETCH_COLUMN) as $ts) {
-            if (strtotime((string) $ts) >= $cutoff) { $recent++; }
-        }
-        return $recent >= (int) $cfg['max'];
-    }
-
-    private function recordAttempt(string $key, string $ip): void
-    {
-        $st = Database::pdo()->prepare(
-            'INSERT INTO login_attempts (email, ip, attempted_at) VALUES (?, ?, ?)'
-        );
-        $st->execute([$key, $ip, date('Y-m-d H:i:s')]);
     }
 }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, Validator, View, Config, Database};
+use SkazResidents\{Auth, Csrf, Flash, LoginThrottle, Validator, View, Config};
 use SkazResidents\Repository\FamilyRepository;
 use SkazResidents\Service\ModerationNotify;
 
@@ -23,11 +23,11 @@ final class AuthController
         Csrf::guard();
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        if ($this->throttled('reg:' . $ip)) {
+        if (LoginThrottle::exceeded('reg:' . $ip)) {
             View::render('auth/register', ['old' => [], 'errors' => ['email' => 'Слишком много попыток регистрации. Попробуйте позже.']], 'Регистрация семьи');
             return;
         }
-        $this->recordAttempt('reg:' . $ip, $ip);
+        LoginThrottle::record('reg:' . $ip);
 
         $email = trim($_POST['email'] ?? '');
         $name  = trim($_POST['name'] ?? '');
@@ -69,9 +69,8 @@ final class AuthController
 
         $email = trim($_POST['email'] ?? '');
         $pass  = (string) ($_POST['password'] ?? '');
-        $ip    = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
-        if ($this->throttled($email)) {
+        if (LoginThrottle::loginBlocked('', $email)) {
             View::render('auth/login', ['old' => compact('email'), 'error' => 'Слишком много попыток. Попробуйте позже.'], 'Вход для жителей');
             return;
         }
@@ -80,7 +79,7 @@ final class AuthController
         $ok = $family && Auth::verify($pass, $family['password_hash']);
 
         if (!$ok) {
-            $this->recordAttempt($email, $ip);
+            LoginThrottle::recordLoginFailure('', $email);
             View::render('auth/login', ['old' => compact('email'), 'error' => 'Неверный email или пароль.'], 'Вход для жителей');
             return;
         }
@@ -117,12 +116,12 @@ final class AuthController
         Csrf::guard();
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        if ($this->throttled('forgot:' . $ip)) {
+        if (LoginThrottle::exceeded('forgot:' . $ip)) {
             // Тихо показываем "отправлено" — не раскрываем ни факт троттлинга, ни существование email.
             View::render('auth/forgot', ['sent' => true], 'Восстановление пароля');
             return;
         }
-        $this->recordAttempt('forgot:' . $ip, $ip);
+        LoginThrottle::record('forgot:' . $ip);
 
         $email = trim($_POST['email'] ?? '');
         $family = Validator::email($email) ? $this->families->findByEmail($email) : null;
@@ -166,33 +165,5 @@ final class AuthController
         $this->resets->delete($token);
         Flash::set('success', 'Пароль обновлён. Теперь войдите с новым паролем.');
         header('Location: /poselenie/vhod');
-    }
-
-    // Обобщённый троттлинг попыток (вход, регистрация, запрос сброса).
-    // Ключ $key задаёт «корзину»: email для входа, "reg:<ip>"/"forgot:<ip>" для остального.
-    // Переносимо между MariaDB и SQLite: сравниваем время попыток в PHP,
-    // а не в SQL-выражении (у СУБД разный синтаксис работы с датами).
-    private function throttled(string $key): bool
-    {
-        $cfg = Config::get('login_throttle');
-        $st = Database::pdo()->prepare(
-            'SELECT attempted_at FROM login_attempts
-             WHERE email = ? ORDER BY attempted_at DESC LIMIT 50'
-        );
-        $st->execute([$key]);
-        $cutoff = time() - (int) $cfg['window'];
-        $recent = 0;
-        foreach ($st->fetchAll(\PDO::FETCH_COLUMN) as $ts) {
-            if (strtotime((string) $ts) >= $cutoff) { $recent++; }
-        }
-        return $recent >= (int) $cfg['max'];
-    }
-
-    private function recordAttempt(string $key, string $ip): void
-    {
-        $st = Database::pdo()->prepare(
-            'INSERT INTO login_attempts (email, ip, attempted_at) VALUES (?, ?, ?)'
-        );
-        $st->execute([$key, $ip, date('Y-m-d H:i:s')]);
     }
 }

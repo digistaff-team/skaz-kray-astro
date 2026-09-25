@@ -311,3 +311,29 @@ CREATE TABLE water_alert_state (
     level_cm REAL NOT NULL,
     notified_at TEXT
 );
+
+-- Собрание и повестка совета — зеркало config/council-meeting-*.sql, council-duty-ack.sql,
+-- council-agenda-schema.sql, council-agenda-carried.sql
+CREATE TABLE council_meeting (
+    id INTEGER PRIMARY KEY,
+    meeting_date TEXT NOT NULL DEFAULT '',
+    starts_at TEXT,
+    ends_at TEXT,
+    notified_for TEXT,
+    rotation_index INTEGER NOT NULL DEFAULT 0,
+    duty_ack_at TEXT,
+    place TEXT NOT NULL DEFAULT '',
+    duty_chair TEXT NOT NULL DEFAULT '',
+    duty_secretary TEXT NOT NULL DEFAULT '',
+    agenda TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE council_agenda_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL DEFAULT '',
+    discussed INTEGER NOT NULL DEFAULT 0,
+    carried_over INTEGER NOT NULL DEFAULT 0,
+    sort INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

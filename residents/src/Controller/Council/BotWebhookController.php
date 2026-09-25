@@ -33,8 +33,19 @@ final class BotWebhookController
         echo 'ok';
         if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
 
-        if (!is_array($update) || empty($update['callback_query'])) { return; }
-        $this->handleCallback($update['callback_query'], (string) ($tg['bot_token'] ?? ''));
+        if (!is_array($update)) { return; }
+        $this->dispatch($update, (string) ($tg['bot_token'] ?? ''));
+    }
+
+    /**
+     * Обработать уже проверенный update. Отдельно от handle() — чтобы тесты гоняли
+     * логику без HTTP; с пустым $token в Telegram ничего не отправляется.
+     * @param array<string,mixed> $update
+     */
+    public function dispatch(array $update, string $token): void
+    {
+        if (empty($update['callback_query']) || !is_array($update['callback_query'])) { return; }
+        $this->handleCallback($update['callback_query'], $token);
     }
 
     /** @param array<string,mixed> $cq */

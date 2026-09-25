@@ -15,8 +15,8 @@ final class SchemaTest extends TestCase
             [
                 'app_sections',
                 'book_loans', 'books',
-                'council_ledger_categories', 'council_ledger_entries',
-                'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',
+                'council_agenda_items', 'council_ledger_categories', 'council_ledger_entries',
+                'council_meeting', 'council_members', 'council_password_resets', 'council_subtasks', 'council_tasks',
                 'diary_entries', 'families', 'household_cars', 'household_join_requests', 'household_owners', 'household_pets', 'households', 'images',
                 'login_attempts', 'password_resets', 'products',
                 'purchase_orders', 'purchases', 'residents',

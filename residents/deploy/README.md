@@ -120,6 +120,11 @@ php8.3 bin/migrate.php baseline <последний-файл.sql>  # тольк�
 Хранится 14 последних наборов; в 04:00 `backup_to_gdrive.sh` зеркалит `/root/backups`
 на Google Drive (`gdrive:BackupsVPS/`). Лог — `/var/log/backup_skaz-residents.log`.
 
+`gdrive:BackupsVPS/` — зеркало (`rclone sync`), истории в нём нет. Историю даёт
+`deploy/backup-history-gdrive.sh` (на сервере `/usr/local/bin/backup_history_gdrive.sh`,
+cron 04:30): дампы ВСЕХ БД сервера за день — в `gdrive:BackupsVPS-history/<ГГГГ-ММ-ДД>/`,
+хранится 30 дней (~1 ГБ). Полные архивы файлов сайтов в историю не идут: не влезут в квоту.
+
 После правки скрипта в репо — переустановить:
 ```bash
 scp residents/deploy/backup-residents.sh abconsult:/tmp/ && \

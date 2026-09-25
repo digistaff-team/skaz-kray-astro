@@ -5,12 +5,12 @@
 # Заголовки безопасности стоят на уровне server { } vhost'а (так на проде):
 #   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 #   add_header X-Content-Type-Options "nosniff" always;
-#   add_header Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org" always;
+#   add_header Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org https://web.max.ru" always;
 #   add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 #   add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-# frame-ancestors пускает во фрейм только Telegram Web (там открывается Mini App).
+# frame-ancestors пускает во фрейм только веб-клиенты Telegram и MAX (там открывается мини-приложение).
 # Внимание: add_header внутри location отменяет ВСЕ унаследованные от server —
-# в таком location их нужно повторить.
+# в таком location их нужно повторить (или, как для Cache-Control, взять expires).
 
 # Отдача загруженных фото как статики, без выполнения PHP.
 # ^~ даёт приоритет над regex-локейшном ~ ^/poselenie/.*\.php$ ниже.

@@ -65,3 +65,8 @@ require __DIR__ . '/helpers.php';
 
 
 Database::connect(Config::get('db'));
+
+// Блокировка, удаление аккаунта и сброс пароля действуют и на уже вошедших.
+if (isset($_SESSION['family_id']) || isset($_SESSION['council_id'])) {
+    \SkazResidents\SessionGuard::check(Database::pdo());
+}

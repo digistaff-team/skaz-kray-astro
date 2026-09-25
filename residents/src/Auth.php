@@ -20,6 +20,16 @@ final class Auth
         $_SESSION['family_id'] = (int) $family['id'];
         $_SESSION['role']      = $family['role'];
         $_SESSION['family_name'] = $family['name'];
+        $_SESSION['family_pw']   = SessionGuard::fingerprint((string) ($family['password_hash'] ?? ''));
+    }
+
+    /**
+     * Выйти только из аккаунта жителя (аккаунт заблокирован/удалён, пароль
+     * сброшен): вход в совет в той же сессии не трогаем, в отличие от logout().
+     */
+    public static function forget(): void
+    {
+        unset($_SESSION['family_id'], $_SESSION['role'], $_SESSION['family_name'], $_SESSION['family_pw']);
     }
 
     /**

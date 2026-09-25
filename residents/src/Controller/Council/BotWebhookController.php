@@ -77,7 +77,7 @@ final class BotWebhookController
 
         // Действие доступно только исполнителю (тому, кому назначена задача).
         $member = (new CouncilMemberRepository())->findByTelegramId($fromId);
-        $name = $member ? (string) $member['name'] : '';
+        $name = $member && $member['status'] === 'active' ? (string) $member['name'] : '';
         if ($name === '' || $name !== (string) ($task['assignee'] ?? '')) {
             TelegramBot::answerCallback($token, $callbackId, 'Эта задача назначена не вам');
             return;
@@ -142,7 +142,7 @@ final class BotWebhookController
         }
 
         $member = (new CouncilMemberRepository())->findByTelegramId($fromId);
-        $name = $member ? (string) $member['name'] : '';
+        $name = $member && $member['status'] === 'active' ? (string) $member['name'] : '';
         if ($name === '' || $name !== (string) ($meetings->get()['dutyChair'] ?? '')) {
             TelegramBot::answerCallback($token, $callbackId, 'Подтвердить дежурство может только дежурный председатель');
             return;
@@ -171,7 +171,7 @@ final class BotWebhookController
         $approval = new CouncilExpenseApproval();
 
         $member = (new CouncilMemberRepository())->findByTelegramId($fromId);
-        $name = $member ? (string) $member['name'] : '';
+        $name = $member && $member['status'] === 'active' ? (string) $member['name'] : '';
         if ($name === '' || $name !== $approval->approverName()) {
             TelegramBot::answerCallback($token, $callbackId, 'Одобрять расходы может только казначей');
             return;

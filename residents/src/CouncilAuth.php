@@ -18,12 +18,19 @@ final class CouncilAuth
         $_SESSION['council_id']   = (int) $member['id'];
         $_SESSION['council_role'] = $member['role'];
         $_SESSION['council_name'] = $member['name'];
+        $_SESSION['council_pw']   = SessionGuard::fingerprint((string) ($member['password_hash'] ?? ''));
+    }
+
+    /** Свой пароль сменён — текущая сессия остаётся, прочие отвалятся ({@see SessionGuard}). */
+    public static function passwordChanged(string $newHash): void
+    {
+        $_SESSION['council_pw'] = SessionGuard::fingerprint($newHash);
     }
 
     public static function logout(): void
     {
         // Гасим только ключи совета — вход жителя (family_*) не трогаем.
-        unset($_SESSION['council_id'], $_SESSION['council_role'], $_SESSION['council_name']);
+        unset($_SESSION['council_id'], $_SESSION['council_role'], $_SESSION['council_name'], $_SESSION['council_pw']);
     }
 
     public static function id(): ?int

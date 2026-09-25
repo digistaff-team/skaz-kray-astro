@@ -148,7 +148,9 @@ final class AuthController
             View::render('council/password', ['error' => 'Новый пароль не короче 8 символов.'], 'Смена пароля', self::LAYOUT);
             return;
         }
-        $this->members->updatePassword($id, Auth::hash($next));
+        $hash = Auth::hash($next);
+        $this->members->updatePassword($id, $hash);
+        CouncilAuth::passwordChanged($hash);   // остаёмся в системе; другие устройства выйдут
         Flash::set('success', 'Пароль изменён.');
         header('Location: /sovet');
     }

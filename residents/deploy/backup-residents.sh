@@ -6,7 +6,7 @@
 #   residents_files_*.tar.gz  — секреты и серверный код: config.php и .env раздела,
 #                               загрузки, вход в CMS (oauth/, editor-auth/), tg-media
 #                               (без кеша), скрипт автодеплоя сайта, nginx-конфиги
-#                               skaz-kray, crontab root.
+#                               skaz-kray (сайт + conf.d), crontab root.
 #
 # Куда: /root/backups/skaz-residents/ — оттуда backup_to_gdrive.sh (04:00) зеркалит
 # весь /root/backups на Google Drive. Там rclone sync, т.е. зеркало, а не архив, —
@@ -51,7 +51,8 @@ for p in \
     "$APP/config/config.php" "$APP/config/.env" "$APP/public/uploads" \
     "$SITE/oauth" "$SITE/editor-auth" "$SITE/tg-media" "$SITE/tg-media-admin" \
     /usr/local/bin/skaz-kray-autodeploy.sh /usr/local/bin/backup_skaz-residents.sh \
-    /etc/nginx/sites-available/skaz-kray_ru_astro /etc/nginx/sites-available/new.skaz-kray_ru; do
+    /etc/nginx/sites-available/skaz-kray_ru_astro /etc/nginx/sites-available/new.skaz-kray_ru \
+    /etc/nginx/conf.d/skaz-editor-limit.conf /etc/nginx/conf.d/skaz-kray-cache.conf; do
     [ -e "$p" ] && PATHS+=("$p")
 done
 

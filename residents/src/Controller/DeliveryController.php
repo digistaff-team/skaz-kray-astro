@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, View, Validator, Sections};
+use SkazResidents\{Auth, Csrf, Flash, View, Validator};
 use SkazResidents\Repository\{DeliveryRepository, TripRepository, ImageRepository};
 use SkazResidents\Service\{DeliveryPolicy as P, DeliveryNotify as N, CatalogAnnounce};
 
@@ -63,8 +63,10 @@ final class DeliveryController
             Flash::set('success', 'Просьба отправлена водителю. Он получит уведомление.');
             header('Location: /poselenie/dostavka/' . $id);
             $full = $this->deliveries->findDetailed($id);
-            N::send((int) $trip['driver_id'], (string) $trip['driver_email'], 'Просьба привезти',
-                N::requestLines($full), 'Взять или отказаться: ', '/poselenie/dostavka/moi');
+            if ($full !== null) {
+                N::send((int) $trip['driver_id'], (string) $trip['driver_email'], 'Просьба привезти',
+                    N::requestLines($full), 'Взять или отказаться: ', '/poselenie/dostavka/moi');
+            }
             return;
         }
         Flash::set('success', 'Заявка на доске — соседи увидят её.');
@@ -89,6 +91,8 @@ final class DeliveryController
         $d = $this->found((int) $params['id']);
         if ($d === null) { return; }
         $me = Auth::id();
+        // Не открытую заявку видят только её стороны; прочим — как будто её нет.
+        if (!P::canView($d, $me, self::driverOf($d))) { $this->notFound(); return; }
         $receipts = $this->images->listFor('delivery_receipt', (int) $d['id']);
         View::render('delivery/show', [
             'd'        => $d,
@@ -136,7 +140,7 @@ final class DeliveryController
                 N::droppedLines($d), 'Заявка: ', '/poselenie/dostavka/' . (int) $d['id']);
             return;
         }
-        $this->deny($d);
+        $this->deny($d, $d['status'] === 'accepted' ? P::DROP : P::DECLINE);
     }
 
     public function unassign(array $params): void
@@ -172,9 +176,12 @@ final class DeliveryController
         if (!$this->deliveries->deliver((int) $d['id'], Auth::id(), $sum, date('Y-m-d H:i:s'))) {
             $this->back((int) $d['id'], 'error', 'Заявка уже обработана.'); return;
         }
+        // Статус уже сменён — успех сообщаем всегда; сбой фото не отменяет «Привёз».
+        Flash::set('success', 'Отмечено: привезли. Заказчик получит уведомление.');
+        $hadError = Flash::has('error');
         $photos = $d['kind'] === 'buy' ? $this->handleReceiptUploads((int) $d['id']) : 0;
-        $full = $this->deliveries->findDetailed((int) $d['id']);
-        if (!Flash::has('error')) { Flash::set('success', 'Отмечено: привезли. Заказчик получит уведомление.'); }
+        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Фото чека можно добавить в карточке заявки.'); }
+        $full = $this->deliveries->findDetailed((int) $d['id']) ?? $d;
         header('Location: /poselenie/dostavka/' . (int) $d['id']);
         N::send((int) $d['requester_id'], (string) $d['req_email'], 'Вам привезли заказ',
             N::deliveredLines($full, $photos), 'Отметьте получение: ', '/poselenie/dostavka/' . (int) $d['id']);
@@ -187,9 +194,12 @@ final class DeliveryController
         $d = $this->found((int) $params['id']);
         if ($d === null) { return; }
         $count = count($this->images->listFor('delivery_receipt', (int) $d['id']));
-        if (!P::allows(P::ADD_RECEIPT, $d, Auth::id(), self::driverOf($d), $count)) { $this->deny($d); return; }
+        if (!P::allows(P::ADD_RECEIPT, $d, Auth::id(), self::driverOf($d), $count)) { $this->deny($d, P::ADD_RECEIPT); return; }
+        if (!self::receiptFiles()) { $this->back((int) $d['id'], 'info', 'Выберите фото чека.'); return; }
+        $hadError = Flash::has('error');
         $added = $this->handleReceiptUploads((int) $d['id']);
-        if ($added > 0 && !Flash::has('error')) { Flash::set('success', 'Фото чека добавлено.'); }
+        if ($added > 0) { Flash::set('success', $added === 1 ? 'Фото чека добавлено.' : 'Фото чека добавлены.'); }
+        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Фото чека можно добавить в карточке заявки.'); }
         header('Location: /poselenie/dostavka/' . (int) $d['id']);
     }
 
@@ -230,26 +240,27 @@ final class DeliveryController
         Csrf::guard();
         $d = $this->found($id);
         if ($d === null) { return null; }
-        if (!P::allows($action, $d, Auth::id(), self::driverOf($d))) { $this->deny($d); return null; }
+        if (!P::allows($action, $d, Auth::id(), self::driverOf($d))) { $this->deny($d, $action); return null; }
         return $d;
     }
 
     private function found(int $id): ?array
     {
         $d = $this->deliveries->findDetailed($id);
-        if (!$d) { http_response_code(404); View::render('public/notfound', [], 'Заявка не найдена'); return null; }
+        if (!$d) { $this->notFound(); return null; }
         return $d;
     }
 
-    /** Действие не по роли — 403; по роли, но не из этого статуса — «уже обработана». */
-    private function deny(array $d): void
+    private function notFound(): void
     {
-        $me = Auth::id();
-        $isParty = (int) $d['requester_id'] === $me
-            || ($d['carrier_id'] !== null && (int) $d['carrier_id'] === $me)
-            || ($d['trip_driver_id'] !== null && (int) $d['trip_driver_id'] === $me)
-            || $d['status'] === 'open';
-        if (!$isParty) { http_response_code(403); exit('Доступ запрещён.'); }
+        http_response_code(404);
+        View::render('public/notfound', [], 'Заявка не найдена');
+    }
+
+    /** Действие не по роли — 403; стороне, у которой статус ушёл, — «уже обработана». */
+    private function deny(array $d, string $action): void
+    {
+        if (!P::isParty($d, Auth::id(), self::driverOf($d), $action)) { http_response_code(403); exit('Доступ запрещён.'); }
         $this->back((int) $d['id'], 'error', 'Заявка уже обработана.');
     }
 
@@ -324,7 +335,7 @@ final class DeliveryController
      * «1 250,50» → «1250.50». Пусто — null без ошибки.
      * @return array{0:?string,1:?string} [сумма, ошибка]
      */
-    private static function money(string $raw): array
+    public static function money(string $raw): array
     {
         $v = str_replace([' ', "\u{00A0}", ','], ['', '', '.'], trim($raw));
         if ($v === '') { return [null, null]; }
@@ -340,15 +351,8 @@ final class DeliveryController
      */
     private function handleReceiptUploads(int $id): int
     {
-        if (empty($_FILES['photos'])) { return 0; }
-        $f = $_FILES['photos'];
-        $files = is_array($f['name'])
-            ? array_map(fn($i) => [
-                'name' => $f['name'][$i], 'type' => $f['type'][$i], 'tmp_name' => $f['tmp_name'][$i],
-                'error' => $f['error'][$i], 'size' => $f['size'][$i],
-            ], array_keys($f['name']))
-            : [$f];
-        $files = array_values(array_filter($files, fn($x) => ($x['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE));
+        $files = self::receiptFiles();
+        if (!$files) { return 0; }
         $sort = count($this->images->listFor('delivery_receipt', $id));
         $room = P::MAX_RECEIPTS - $sort;
         if (count($files) > $room) { Flash::set('info', 'Можно приложить не больше ' . P::MAX_RECEIPTS . ' фото чека.'); }
@@ -361,5 +365,22 @@ final class DeliveryController
             elseif ($err !== null) { Flash::set('error', $err); }
         }
         return $added;
+    }
+
+    /**
+     * Выбранные файлы из поля photos[] (пустые слоты формы отброшены).
+     * @return array<int,array{name:string,type:string,tmp_name:string,error:int,size:int}>
+     */
+    private static function receiptFiles(): array
+    {
+        if (empty($_FILES['photos'])) { return []; }
+        $f = $_FILES['photos'];
+        $files = is_array($f['name'])
+            ? array_map(fn($i) => [
+                'name' => $f['name'][$i], 'type' => $f['type'][$i], 'tmp_name' => $f['tmp_name'][$i],
+                'error' => $f['error'][$i], 'size' => $f['size'][$i],
+            ], array_keys($f['name']))
+            : [$f];
+        return array_values(array_filter($files, fn($x) => ($x['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE));
     }
 }

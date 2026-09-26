@@ -56,6 +56,38 @@ final class DeliveryPolicy
     }
 
     /**
+     * Сторона заявки для отказа в действии: сторона получает «Заявка уже обработана»
+     * (кнопка у неё была, статус ушёл), не сторона — 403. Открытую заявку взять может
+     * любой, поэтому для TAKE на открытой любой житель — сторона; для прочих действий нет.
+     *
+     * @param array<string,mixed> $d
+     */
+    public static function isParty(array $d, int $me, ?int $tripDriverId, string $action): bool
+    {
+        return self::isSide($d, $me, $tripDriverId)
+            || ((string) $d['status'] === 'open' && $action === self::TAKE);
+    }
+
+    /**
+     * Кто видит карточку: открытую — любой житель (она на доске), остальные — только
+     * стороны (заказчик, текущий исполнитель, водитель поездки). Прочим — «не найдена».
+     *
+     * @param array<string,mixed> $d
+     */
+    public static function canView(array $d, int $me, ?int $tripDriverId): bool
+    {
+        return (string) $d['status'] === 'open' || self::isSide($d, $me, $tripDriverId);
+    }
+
+    /** @param array<string,mixed> $d */
+    private static function isSide(array $d, int $me, ?int $tripDriverId): bool
+    {
+        return (int) $d['requester_id'] === $me
+            || ($d['carrier_id'] !== null && (int) $d['carrier_id'] === $me)
+            || ($d['trip_id'] !== null && $tripDriverId !== null && $tripDriverId === $me);
+    }
+
+    /**
      * Код получения и фото чека — только сторонам заявки: заказчику и назначенному
      * исполнителю. Снятый исполнитель перестаёт видеть сразу: carrier_id обнулён.
      *

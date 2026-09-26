@@ -198,4 +198,59 @@ final class DeliveryPolicyTest extends TestCase
         $this->assertSame('Забрать', delivery_kind_label('pickup'));
         $this->assertSame('tool-st--free', delivery_status_class('open'));
     }
+
+    public function test_is_party_open_request_only_for_take(): void
+    {
+        $d = $this->d('open');
+        $this->assertFalse(P::isParty($d, self::OTHER, null, P::CANCEL), 'чужой не отменяет чужую заявку — 403');
+        $this->assertTrue(P::isParty($d, self::OTHER, null, P::TAKE), 'взять открытую может любой — «уже обработана»');
+        $this->assertTrue(P::isParty($d, self::REQ, null, P::CANCEL));
+    }
+
+    public function test_is_party_sides_of_request(): void
+    {
+        $acc = $this->d('accepted', ['carrier_id' => self::CARRIER, 'trip_id' => 10]);
+        $this->assertTrue(P::isParty($acc, self::REQ, self::DRIVER, P::DELIVER));
+        $this->assertTrue(P::isParty($acc, self::CARRIER, self::DRIVER, P::SETTLE));
+        $this->assertTrue(P::isParty($acc, self::DRIVER, self::DRIVER, P::DECLINE));
+        $this->assertFalse(P::isParty($acc, self::OTHER, self::DRIVER, P::TAKE), 'взятая — уже не открытая');
+        // Без поездки водителя нет, даже если id совпал случайно.
+        $this->assertFalse(P::isParty($this->d('accepted', ['carrier_id' => self::CARRIER]), self::DRIVER, self::DRIVER, P::DROP));
+    }
+
+    public function test_can_view_open_to_everyone(): void
+    {
+        foreach ([self::REQ, self::DRIVER, self::CARRIER, self::OTHER] as $me) {
+            $this->assertTrue(P::canView($this->d('open'), $me, null));
+        }
+    }
+
+    public function test_can_view_requested_only_requester_and_driver(): void
+    {
+        $d = $this->d('requested', ['trip_id' => 10]);
+        $this->assertTrue(P::canView($d, self::REQ, self::DRIVER));
+        $this->assertTrue(P::canView($d, self::DRIVER, self::DRIVER));
+        $this->assertFalse(P::canView($d, self::CARRIER, self::DRIVER));
+        $this->assertFalse(P::canView($d, self::OTHER, self::DRIVER));
+    }
+
+    public function test_can_view_accepted_only_requester_and_carrier(): void
+    {
+        $d = $this->d('accepted', ['carrier_id' => self::CARRIER]);
+        $this->assertTrue(P::canView($d, self::REQ, null));
+        $this->assertTrue(P::canView($d, self::CARRIER, null));
+        $this->assertFalse(P::canView($d, self::OTHER, null));
+        $this->assertFalse(P::canView($d, self::DRIVER, null));
+    }
+
+    public function test_can_view_closed_statuses_only_parties(): void
+    {
+        foreach (['cancelled', 'settled', 'declined', 'delivered'] as $st) {
+            $d = $this->d($st, ['carrier_id' => $st === 'declined' ? null : self::CARRIER, 'trip_id' => 10]);
+            $this->assertTrue(P::canView($d, self::REQ, self::DRIVER), $st);
+            $this->assertTrue(P::canView($d, self::DRIVER, self::DRIVER), $st . ': водитель поездки');
+            if ($d['carrier_id'] !== null) { $this->assertTrue(P::canView($d, self::CARRIER, self::DRIVER), $st); }
+            $this->assertFalse(P::canView($d, self::OTHER, self::DRIVER), $st);
+        }
+    }
 }

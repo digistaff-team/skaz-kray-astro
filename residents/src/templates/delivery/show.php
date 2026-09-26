@@ -3,6 +3,7 @@ use SkazResidents\{Csrf, View};
 use SkazResidents\Service\DeliveryPolicy as P;
 $id = (int) $d['id'];
 $has = static fn(string $a): bool => in_array($a, $actions, true);
+$room = max(0, P::MAX_RECEIPTS - count($receipts));   // сколько ещё фото чека можно приложить
 $post = static function (string $slug, string $label, string $cls = 'res-btn') use ($id): string {
     return '<form method="post" action="/poselenie/dostavka/' . $id . '/' . $slug . '" class="buy-inline-form">'
         . Csrf::field() . '<button class="' . $cls . '" type="submit">' . View::e($label) . '</button></form>';
@@ -54,9 +55,9 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
                         <input type="text" name="receipt_sum" inputmode="decimal">
                     </label>
                     <label class="file-btn">Приложить фото чека
-                        <input type="file" name="photos[]" id="profilePhotos" accept="image/*" multiple hidden>
+                        <input type="file" name="photos[]" id="receiptPhotos" data-max="<?= $room ?>" accept="image/*" multiple hidden>
                     </label>
-                    <div id="profilePhotoPreview" class="photo-preview"></div>
+                    <div id="receiptPhotoPreview" class="photo-preview"></div>
                 <?php endif; ?>
                 <button class="res-btn" type="submit">Привёз</button>
             </form>
@@ -65,9 +66,9 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
             <form class="res-form" method="post" action="/poselenie/dostavka/<?= $id ?>/chek" enctype="multipart/form-data">
                 <?= Csrf::field() ?>
                 <label class="file-btn">Добавить фото чека
-                    <input type="file" name="photos[]" id="profilePhotos" accept="image/*" multiple hidden>
+                    <input type="file" name="photos[]" id="receiptPhotos" data-max="<?= $room ?>" accept="image/*" multiple hidden>
                 </label>
-                <div id="profilePhotoPreview" class="photo-preview"></div>
+                <div id="receiptPhotoPreview" class="photo-preview"></div>
                 <button class="res-btn" type="submit">Загрузить</button>
             </form>
         <?php endif; ?>
@@ -93,11 +94,13 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
     });
     lb.addEventListener('click', function () { lb.hidden = true; img.src = ''; });
   }
-  var inp = document.getElementById('profilePhotos'), box = document.getElementById('profilePhotoPreview');
+  var inp = document.getElementById('receiptPhotos'), box = document.getElementById('receiptPhotoPreview');
   if (!inp || !box || typeof DataTransfer === 'undefined') { return; }
+  // Сколько ещё фото чека влезает в заявку (лимит минус уже загруженные) — считает сервер.
+  var max = parseInt(inp.getAttribute('data-max'), 10) || 0;
   var dt = new DataTransfer();
   inp.addEventListener('change', function () {
-    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type) && dt.files.length < 3) { dt.items.add(f); } });
+    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type) && dt.files.length < max) { dt.items.add(f); } });
     inp.files = dt.files; render();
   });
   function render() {

@@ -91,8 +91,11 @@ final class DeliveryController
         $d = $this->found((int) $params['id']);
         if ($d === null) { return; }
         $me = Auth::id();
-        // Не открытую заявку видят только её стороны; прочим — как будто её нет.
-        if (!P::canView($d, $me, self::driverOf($d))) { $this->notFound(); return; }
+        // Не открытую заявку видят только её стороны. Прочие приходят обычно по старой
+        // ссылке из анонса — говорим, что её уже нет на доске, и ведём на доску.
+        if (!P::canView($d, $me, self::driverOf($d))) {
+            $this->back((int) $d['id'], 'info', 'Эта заявка уже не на доске.', '/poselenie/dostavka'); return;
+        }
         $receipts = $this->images->listFor('delivery_receipt', (int) $d['id']);
         View::render('delivery/show', [
             'd'        => $d,
@@ -109,7 +112,9 @@ final class DeliveryController
         $from = $d['status'] === 'requested' ? 'requested' : 'open';
         if (!$this->deliveries->take((int) $d['id'], Auth::id(), $from, date('Y-m-d H:i:s'))) {
             // Просьбу к поездке мог опередить отказ или отмена, заявку с доски — другой сосед.
-            $this->back((int) $d['id'], 'error', $from === 'requested' ? 'Заявка уже обработана.' : 'Заявку уже взяли.'); return;
+            // Не на карточку: она этому жителю может быть уже не видна.
+            if ($from === 'requested') { $this->back((int) $d['id'], 'error', 'Заявка уже обработана.', '/poselenie/dostavka/moi'); return; }
+            $this->back((int) $d['id'], 'error', 'Заявку уже взяли.', '/poselenie/dostavka'); return;
         }
         $full = $this->deliveries->findDetailed((int) $d['id']);
         $contact = family_contact((string) $full['car_name'], $full['car_tg'] ?? null, (string) $full['car_email']);
@@ -180,7 +185,7 @@ final class DeliveryController
         Flash::set('success', 'Отмечено: привезли. Заказчик получит уведомление.');
         $hadError = Flash::has('error');
         $photos = $d['kind'] === 'buy' ? $this->handleReceiptUploads((int) $d['id']) : 0;
-        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Фото чека можно добавить в карточке заявки.'); }
+        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Фото чека можно добавить позже — на этой странице.'); }
         $full = $this->deliveries->findDetailed((int) $d['id']) ?? $d;
         header('Location: /poselenie/dostavka/' . (int) $d['id']);
         N::send((int) $d['requester_id'], (string) $d['req_email'], 'Вам привезли заказ',
@@ -199,7 +204,7 @@ final class DeliveryController
         $hadError = Flash::has('error');
         $added = $this->handleReceiptUploads((int) $d['id']);
         if ($added > 0) { Flash::set('success', $added === 1 ? 'Фото чека добавлено.' : 'Фото чека добавлены.'); }
-        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Фото чека можно добавить в карточке заявки.'); }
+        if (!$hadError && Flash::has('error')) { Flash::set('info', 'Не все фото загрузились — попробуйте ещё раз.'); }
         header('Location: /poselenie/dostavka/' . (int) $d['id']);
     }
 
@@ -257,11 +262,17 @@ final class DeliveryController
         View::render('public/notfound', [], 'Заявка не найдена');
     }
 
-    /** Действие не по роли — 403; стороне, у которой статус ушёл, — «уже обработана». */
+    /** Отказ по P::denial: 403, «уже взяли» (на доску) или «уже обработана». */
     private function deny(array $d, string $action): void
     {
-        if (!P::isParty($d, Auth::id(), self::driverOf($d), $action)) { http_response_code(403); exit('Доступ запрещён.'); }
-        $this->back((int) $d['id'], 'error', 'Заявка уже обработана.');
+        switch (P::denial($d, Auth::id(), self::driverOf($d), $action)) {
+            case P::DENY_FORBIDDEN:
+                http_response_code(403); exit('Доступ запрещён.');
+            case P::DENY_TAKEN:
+                $this->back((int) $d['id'], 'error', 'Заявку уже взяли.', '/poselenie/dostavka'); return;
+            default:
+                $this->back((int) $d['id'], 'error', 'Заявка уже обработана.');
+        }
     }
 
     private function back(int $id, string $type, string $msg, ?string $to = null): void

@@ -24,6 +24,11 @@ final class DeliveryPolicy
 
     public const MAX_RECEIPTS = 3;
 
+    // Как отказать в действии (denial): 403, «уже обработана» или «уже взяли» (на доску).
+    public const DENY_FORBIDDEN = 'forbidden';
+    public const DENY_STALE     = 'stale';
+    public const DENY_TAKEN     = 'taken';
+
     /**
      * $me и $tripDriverId — настоящие int (из PDO приводить через (int)); $tripDriverId = null,
      * если заявка не к поездке.
@@ -66,6 +71,19 @@ final class DeliveryPolicy
     {
         return self::isSide($d, $me, $tripDriverId)
             || ((string) $d['status'] === 'open' && $action === self::TAKE);
+    }
+
+    /**
+     * Как отказать, когда allows() = false. Стороне — «уже обработана» (статус ушёл).
+     * Не стороне на «Возьму» — «уже взяли»: это проигравший гонку сосед с доски,
+     * а не взломщик, и карточка ему теперь не видна. Прочим не сторонам — 403.
+     *
+     * @param array<string,mixed> $d
+     */
+    public static function denial(array $d, int $me, ?int $tripDriverId, string $action): string
+    {
+        if (self::isParty($d, $me, $tripDriverId, $action)) { return self::DENY_STALE; }
+        return $action === self::TAKE ? self::DENY_TAKEN : self::DENY_FORBIDDEN;
     }
 
     /**

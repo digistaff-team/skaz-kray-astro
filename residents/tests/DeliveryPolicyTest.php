@@ -218,6 +218,19 @@ final class DeliveryPolicyTest extends TestCase
         $this->assertFalse(P::isParty($this->d('accepted', ['carrier_id' => self::CARRIER]), self::DRIVER, self::DRIVER, P::DROP));
     }
 
+    public function test_denial_kind(): void
+    {
+        $acc = $this->d('accepted', ['carrier_id' => self::CARRIER]);
+        // Проиграл гонку за «Возьму»: заявку взял другой — не 403, а понятное «уже взяли».
+        $this->assertSame(P::DENY_TAKEN, P::denial($acc, self::OTHER, null, P::TAKE));
+        // Чужой пытается сделать чужое действие — 403.
+        $this->assertSame(P::DENY_FORBIDDEN, P::denial($acc, self::OTHER, null, P::CANCEL));
+        $this->assertSame(P::DENY_FORBIDDEN, P::denial($this->d('open'), self::OTHER, null, P::CANCEL));
+        // Сторона, у которой статус ушёл, — «уже обработана».
+        $this->assertSame(P::DENY_STALE, P::denial($acc, self::REQ, null, P::SETTLE));
+        $this->assertSame(P::DENY_STALE, P::denial($acc, self::CARRIER, null, P::TAKE));
+    }
+
     public function test_can_view_open_to_everyone(): void
     {
         foreach ([self::REQ, self::DRIVER, self::CARRIER, self::OTHER] as $me) {

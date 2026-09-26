@@ -1,7 +1,8 @@
 <?php
-use SkazResidents\{Csrf, View};
+use SkazResidents\{Auth, Csrf, View};
 use SkazResidents\Service\DeliveryPolicy as P;
 $id = (int) $d['id'];
+$isRequester = (int) $d['requester_id'] === Auth::id();
 $has = static fn(string $a): bool => in_array($a, $actions, true);
 $room = max(0, P::MAX_RECEIPTS - count($receipts));   // сколько ещё фото чека можно приложить
 $post = static function (string $slug, string $label, string $cls = 'res-btn') use ($id): string {
@@ -25,6 +26,12 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
         <p class="res-meta">Поездка: <a href="/poselenie/poezdki/<?= (int) $d['trip_id'] ?>"><?= View::e($d['origin']) ?> → <?= View::e($d['destination']) ?></a>, <?= View::e(ru_date((string) $d['trip_date'])) ?> · водитель <?= View::e($d['driver_name']) ?></p>
     <?php endif; ?>
     <?php if ($d['carrier_id'] !== null): ?><p class="res-meta">Везёт: <?= View::e($d['car_name']) ?></p><?php endif; ?>
+    <?php // Контакты сторон — только сторонам (заказчику и исполнителю); contact_links экранирует сам. ?>
+    <?php if ($private && $isRequester && $d['carrier_id'] !== null): ?>
+        <p>Контакт исполнителя: <?= contact_links(family_contact((string) $d['car_name'], $d['car_tg'] ?? null, (string) $d['car_email'])) ?></p>
+    <?php elseif ($private && !$isRequester): ?>
+        <p>Контакт заказчика: <?= contact_links(family_contact((string) $d['req_name'], $d['req_tg'] ?? null, (string) $d['req_email'])) ?></p>
+    <?php endif; ?>
     <?php if ($private && $d['kind'] === 'pickup' && ($d['pickup_code'] ?? '') !== ''): ?>
         <p><strong>Код или номер заказа:</strong> <?= View::e($d['pickup_code']) ?></p>
     <?php endif; ?>
@@ -83,6 +90,7 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
     </section>
 <?php endif; ?>
 
+<?php if ($private): ?><?php require __DIR__ . '/../partials/tg-links.php'; ?><?php endif; ?>
 <div class="res-lightbox" id="buyLightbox" hidden><img class="res-lightbox-img" src="" alt=""></div>
 <script>
 // Превью выбранных фото и увеличение фото чека — как в закупках.

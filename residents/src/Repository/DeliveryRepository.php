@@ -99,6 +99,11 @@ final class DeliveryRepository
      */
     public function listForTripDriver(int $driverId, array $statuses): array
     {
+        if ($statuses === []) {
+            // MariaDB отказывает на `IN ()` синтаксической ошибкой (SQLite её молча
+            // пропускает и просто ничего не находит) — не даём SQL решать за нас.
+            return [];
+        }
         $in = implode(',', array_fill(0, count($statuses), '?'));
         $st = $this->db->prepare(
             "SELECT d.*, r.name AS req_name, t.origin, t.destination, t.trip_date, t.status AS trip_status
@@ -112,7 +117,11 @@ final class DeliveryRepository
         return $st->fetchAll();
     }
 
-    /** «Возьму»: из $fromStatus ('open' — доска, 'requested' — водитель). */
+    /**
+     * «Возьму»: из $fromStatus ('open' — доска, 'requested' — водитель).
+     * Правило «при fromStatus 'requested' исполнителем может стать только водитель
+     * этой поездки» — на стороне DeliveryPolicy в контроллере, здесь не проверяется.
+     */
     public function take(int $id, int $carrierId, string $fromStatus, string $now): bool
     {
         return $this->exec(
@@ -127,21 +136,33 @@ final class DeliveryRepository
         return $this->exec("UPDATE deliveries SET status = 'declined' WHERE id = ? AND status = 'requested'", [$id]);
     }
 
-    /** Обратно на доску: исполнитель отказался, заказчик снял исполнителя, «Выложить на доску». */
-    public function release(int $id): bool
+    /**
+     * Обратно на доску без исполнителя и поездки: исполнитель отказался («Не смогу»
+     * после «Возьму») или заказчик снял исполнителя. Проверка carrier_id — не
+     * оптимизация, а страховка от гонки: устаревший/повторный сабмит формы не
+     * снимет уже другого, более нового исполнителя, который мог взять заявку
+     * между открытием формы и её отправкой.
+     */
+    public function releaseCarrier(int $id, int $carrierId): bool
     {
         return $this->exec(
             "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
-             WHERE id = ? AND status IN ('accepted','declined')",
-            [$id]
+             WHERE id = ? AND status = 'accepted' AND carrier_id = ?",
+            [$id, $carrierId]
         );
     }
 
-    public function deliver(int $id, ?string $receiptSum, string $now): bool
+    /** «Выложить на доску»: заказчик — после отказа водителя (declined), уже без поездки. */
+    public function toBoard(int $id): bool
+    {
+        return $this->exec("UPDATE deliveries SET status = 'open', trip_id = NULL WHERE id = ? AND status = 'declined'", [$id]);
+    }
+
+    public function deliver(int $id, int $carrierId, ?string $receiptSum, string $now): bool
     {
         return $this->exec(
-            "UPDATE deliveries SET status = 'delivered', receipt_sum = ?, delivered_at = ? WHERE id = ? AND status = 'accepted'",
-            [$receiptSum, $now, $id]
+            "UPDATE deliveries SET status = 'delivered', receipt_sum = ?, delivered_at = ? WHERE id = ? AND status = 'accepted' AND carrier_id = ?",
+            [$receiptSum, $now, $id, $carrierId]
         );
     }
 
@@ -160,7 +181,13 @@ final class DeliveryRepository
 
     /**
      * Поездку отменили или удаляют: незавершённые просьбы к ней — на доску.
-     * Возвращает затронутые заявки (как были до перевода) — кому написать.
+     * Вызывающий должен сначала перевести саму поездку в нерабочий статус
+     * (например, 'cancelled') — иначе после нашего SELECT, но до UPDATE, к ней
+     * успеет прийти новая просьба и её здесь не будет.
+     * Переводим построчно (не одним UPDATE по списку id): так возвращаем только
+     * заявки, которые действительно переехали — на случай, если чья-то заявка
+     * поменяла статус между SELECT и переводом (гонка), уведомление уйдёт точно
+     * по факту, а не по снимку до перевода.
      * Звать ДО удаления поездки: ON DELETE SET NULL обнулил бы trip_id, оставив статус.
      *
      * @return array<int,array<string,mixed>>
@@ -174,12 +201,17 @@ final class DeliveryRepository
         );
         $st->execute([$tripId]);
         $rows = $st->fetchAll();
-        $this->exec(
-            "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
-             WHERE trip_id = ? AND status IN ('requested','accepted')",
-            [$tripId]
-        );
-        return $rows;
+
+        $moved = [];
+        foreach ($rows as $row) {
+            $ok = $this->exec(
+                "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
+                 WHERE id = ? AND trip_id = ? AND status IN ('requested','accepted')",
+                [$row['id'], $tripId]
+            );
+            if ($ok) { $moved[] = $row; }
+        }
+        return $moved;
     }
 
     /** @param array<int,mixed> $args */

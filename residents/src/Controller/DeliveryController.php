@@ -273,7 +273,10 @@ final class DeliveryController
     {
         switch (P::denial($d, Auth::id(), self::driverOf($d), $action)) {
             case P::DENY_FORBIDDEN:
-                http_response_code(403); exit('Доступ запрещён.');
+                // Вызывающий после deny() делает return — страница и есть весь ответ.
+                http_response_code(403);
+                View::render('public/forbidden', [], 'Действие недоступно');
+                return;
             case P::DENY_TAKEN:
                 $this->back((int) $d['id'], 'error', 'Заявку уже взяли.', '/poselenie/dostavka'); return;
             default:

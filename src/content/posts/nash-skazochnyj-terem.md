@@ -1,18 +1,18 @@
 ---
 title: "Наш Сказочный Терем: общий дом, который объединяет и ведёт вперёд"
 date: 2026-09-26 12:00:00
-cover: /images/posts/nash-skazochnyj-terem/01.jpg
+cover: https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAAM9argYpH3IA5UDG7lIy4Vsm-QfUp8AAhwdaxvzzMBJ3y_Hs1BatTUBAAMCAAN5AAM9BA.jpg
 gallery:
-  - /images/posts/nash-skazochnyj-terem/01.jpg
-  - /images/posts/nash-skazochnyj-terem/02.jpg
-  - /images/posts/nash-skazochnyj-terem/03.jpg
-  - /images/posts/nash-skazochnyj-terem/04.jpg
-  - /images/posts/nash-skazochnyj-terem/05.jpg
-  - /images/posts/nash-skazochnyj-terem/06.jpg
-  - /images/posts/nash-skazochnyj-terem/07.jpg
-  - /images/posts/nash-skazochnyj-terem/08.jpg
-  - /images/posts/nash-skazochnyj-terem/09.jpg
-  - /images/posts/nash-skazochnyj-terem/10.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAAM9argYpH3IA5UDG7lIy4Vsm-QfUp8AAhwdaxvzzMBJ3y_Hs1BatTUBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAAM-argYphHsp4JO8IFukCX0GgKhwuYAAh0daxvzzMBJNLAc36dBMPEBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAAM_argYp5cC5wtjcKSgID3NjCUZx3EAAh4daxvzzMBJ-rrZGUrP7dUBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANAargYqAs3ZXxVgSNw3kYAAfpIhfkKAAIfHWsb88zASZkCfIF4WQwrAQADAgADeQADPQQ.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANBargYqSi6kdMJRg9RPDP3R6UpAAFdAAIgHWsb88zASdeSUeCqfGjUAQADAgADeQADPQQ.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANCargYqqR2RrneNxJOjDVl_tt3qIQAAiEdaxvzzMBJ9gVFKghhGRQBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANDargYq6JPBgx_05VHiZSNaEqQ3owAAiIdaxvzzMBJ9gkNSAuX9kMBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANEargYrJNdaZqESZFUJrwvubEnwFcAAiMdaxvzzMBJlbQVmeDqGxoBAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANFargYrcscokcf9GZ6IFqRmD1uo8IAAiQdaxvzzMBJFeB3LJheXe8BAAMCAAN5AAM9BA.jpg
+  - https://skaz-kray.ru/tg-media/AgACAgIAAyEGAATc3awtAANGargYrynGIjMrnleEKNpkqLMv5XAAAiUdaxvzzMBJGWpVXDMN3u8BAAMCAAN5AAM9BA.jpg
 categories:
   - novosti
 ---

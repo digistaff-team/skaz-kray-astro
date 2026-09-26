@@ -22,7 +22,7 @@ final class DeliveryNotifyTest extends TestCase
         return [
             N::requestLines($d), N::takenLines($d, 'Семья Лебедевых (Telegram: @leb)'), N::driverDeclinedLines($d),
             N::droppedLines($d), N::unassignedLines($d), N::deliveredLines($d, 2), N::settledLines($d),
-            N::cancelledLines($d), N::tripCancelledLines($d), N::doneTripLines($d),
+            N::cancelledLines($d), N::tripCancelledLines($d), N::doneTripLines($d), N::withdrawnLines($d),
         ];
     }
 
@@ -83,6 +83,15 @@ final class DeliveryNotifyTest extends TestCase
     public function test_done_trip_lines_carry_summary(): void
     {
         $t = implode("\n", N::doneTripLines($this->d()));
+        $this->assertStringContainsString('Забрать: Посылка на имя Орловой', $t);
+        $this->assertStringContainsString('Где: СДЭК, Северская', $t);
+    }
+
+    public function test_withdrawn_lines_for_driver(): void
+    {
+        $lines = N::withdrawnLines($this->d());
+        $this->assertSame('↩️ Заказчик забрал просьбу на общую доску', $lines[0]);
+        $t = implode("\n", $lines);
         $this->assertStringContainsString('Забрать: Посылка на имя Орловой', $t);
         $this->assertStringContainsString('Где: СДЭК, Северская', $t);
     }

@@ -32,19 +32,22 @@ final class DeliveryPolicy
     /**
      * $me и $tripDriverId — настоящие int (из PDO приводить через (int)); $tripDriverId = null,
      * если заявка не к поездке.
+     * $tripLive — см. tripLive(): просьба к отменённой, состоявшейся или прошедшей поездке
+     * «застряла» — водитель её уже не возьмёт и не отклонит, заказчик может выложить на доску.
      *
      * @param array<string,mixed> $d        заявка (нужны requester_id, carrier_id, trip_id, kind, status)
      * @param int|null            $tripDriverId водитель поездки заявки, если она к поездке
      * @return array<int,string>
      */
-    public static function actions(array $d, int $me, ?int $tripDriverId, int $receiptCount = 0): array
+    public static function actions(array $d, int $me, ?int $tripDriverId, int $receiptCount = 0, bool $tripLive = true): array
     {
         $isRequester = (int) $d['requester_id'] === $me;
         $isCarrier   = $d['carrier_id'] !== null && (int) $d['carrier_id'] === $me;
         $isDriver    = $d['trip_id'] !== null && $tripDriverId !== null && $tripDriverId === $me;
 
         return match ((string) $d['status']) {
-            'requested' => $isRequester ? [self::CANCEL] : ($isDriver ? [self::TAKE, self::DECLINE] : []),
+            'requested' => $isRequester ? ($tripLive ? [self::CANCEL] : [self::CANCEL, self::TO_BOARD])
+                : (($isDriver && $tripLive) ? [self::TAKE, self::DECLINE] : []),
             'open'      => $isRequester ? [self::CANCEL] : [self::TAKE],
             'accepted'  => $isRequester ? [self::UNASSIGN, self::CANCEL] : ($isCarrier ? [self::DROP, self::DELIVER] : []),
             'delivered' => $isRequester ? [self::SETTLE]
@@ -55,9 +58,21 @@ final class DeliveryPolicy
     }
 
     /** @param array<string,mixed> $d */
-    public static function allows(string $action, array $d, int $me, ?int $tripDriverId, int $receiptCount = 0): bool
+    public static function allows(string $action, array $d, int $me, ?int $tripDriverId, int $receiptCount = 0, bool $tripLive = true): bool
     {
-        return in_array($action, self::actions($d, $me, $tripDriverId, $receiptCount), true);
+        return in_array($action, self::actions($d, $me, $tripDriverId, $receiptCount, $tripLive), true);
+    }
+
+    /**
+     * Поездка заявки «живая»: активна и не в прошлом. Заявка без поездки — «живая»
+     * (правило её не касается). Даты из PDO — строки Y-m-d, сравниваем как строки.
+     *
+     * @param array<string,mixed> $d заявка из findDetailed (trip_id, trip_status, trip_date)
+     */
+    public static function tripLive(array $d, string $today): bool
+    {
+        if (($d['trip_id'] ?? null) === null) { return true; }
+        return ($d['trip_status'] ?? null) === 'active' && (string) ($d['trip_date'] ?? '') >= $today;
     }
 
     /**

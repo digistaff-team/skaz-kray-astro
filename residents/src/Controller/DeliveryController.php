@@ -99,7 +99,7 @@ final class DeliveryController
         $receipts = $this->images->listFor('delivery_receipt', (int) $d['id']);
         View::render('delivery/show', [
             'd'        => $d,
-            'actions'  => P::actions($d, $me, self::driverOf($d), count($receipts)),
+            'actions'  => P::actions($d, $me, self::driverOf($d), count($receipts), self::live($d)),
             'private'  => P::seesPrivate($d, $me),
             'receipts' => P::seesPrivate($d, $me) ? $receipts : [],
         ], delivery_kind_label((string) $d['kind']) . ': ' . $d['place']);
@@ -131,14 +131,14 @@ final class DeliveryController
         $d = $this->found((int) $params['id']);
         if ($d === null) { return; }
         $me = Auth::id();
-        if (P::allows(P::DECLINE, $d, $me, self::driverOf($d))) {
+        if (P::allows(P::DECLINE, $d, $me, self::driverOf($d), 0, self::live($d))) {
             if (!$this->deliveries->decline((int) $d['id'])) { $this->back((int) $d['id'], 'error', 'Заявка уже обработана.'); return; }
             $this->back((int) $d['id'], 'info', 'Вы отказались от просьбы.', '/poselenie/dostavka/moi');
             N::send((int) $d['requester_id'], (string) $d['req_email'], 'Водитель не сможет привезти',
                 N::driverDeclinedLines($d), 'Можно выложить заявку на общую доску: ', '/poselenie/dostavka/' . (int) $d['id']);
             return;
         }
-        if (P::allows(P::DROP, $d, $me, self::driverOf($d))) {
+        if (P::allows(P::DROP, $d, $me, self::driverOf($d), 0, self::live($d))) {
             if (!$this->deliveries->releaseCarrier((int) $d['id'], $me)) { $this->back((int) $d['id'], 'error', 'Заявка уже обработана.'); return; }
             $this->back((int) $d['id'], 'info', 'Заявка вернулась на доску.', '/poselenie/dostavka/moi');
             N::send((int) $d['requester_id'], (string) $d['req_email'], 'Исполнитель не сможет привезти',
@@ -167,6 +167,12 @@ final class DeliveryController
         if (!$this->deliveries->toBoard((int) $d['id'])) { $this->back((int) $d['id'], 'error', 'Заявка уже обработана.'); return; }
         $this->back((int) $d['id'], 'success', 'Заявка на доске — соседи увидят её.');
         CatalogAnnounce::delivery((int) $d['id'], (string) $d['kind'], (string) $d['place'], $d['need_by'] ?? null);
+        // Просьба застряла у неактивной/прошедшей поездки — водителю сказать, что её забрали.
+        // После declined водитель сам отказался, ему сообщать нечего.
+        if ($d['status'] === 'requested' && self::driverOf($d) !== null) {
+            N::send((int) self::driverOf($d), (string) $d['driver_email'], 'Просьбу забрали на общую доску',
+                N::withdrawnLines($d), 'Другие заявки: ', '/poselenie/dostavka');
+        }
     }
 
     public function deliver(array $params): void
@@ -199,7 +205,7 @@ final class DeliveryController
         $d = $this->found((int) $params['id']);
         if ($d === null) { return; }
         $count = count($this->images->listFor('delivery_receipt', (int) $d['id']));
-        if (!P::allows(P::ADD_RECEIPT, $d, Auth::id(), self::driverOf($d), $count)) { $this->deny($d, P::ADD_RECEIPT); return; }
+        if (!P::allows(P::ADD_RECEIPT, $d, Auth::id(), self::driverOf($d), $count, self::live($d))) { $this->deny($d, P::ADD_RECEIPT); return; }
         if (!self::receiptFiles()) { $this->back((int) $d['id'], 'info', 'Выберите фото чека.'); return; }
         $hadError = Flash::has('error');
         $added = $this->handleReceiptUploads((int) $d['id']);
@@ -245,7 +251,7 @@ final class DeliveryController
         Csrf::guard();
         $d = $this->found($id);
         if ($d === null) { return null; }
-        if (!P::allows($action, $d, Auth::id(), self::driverOf($d))) { $this->deny($d, $action); return null; }
+        if (!P::allows($action, $d, Auth::id(), self::driverOf($d), 0, self::live($d))) { $this->deny($d, $action); return null; }
         return $d;
     }
 
@@ -284,6 +290,12 @@ final class DeliveryController
     private static function driverOf(array $d): ?int
     {
         return $d['trip_driver_id'] !== null ? (int) $d['trip_driver_id'] : null;
+    }
+
+    /** Поездка заявки активна и не прошла (или заявка без поездки) — см. P::tripLive. */
+    private static function live(array $d): bool
+    {
+        return P::tripLive($d, date('Y-m-d'));
     }
 
     /** Поездка, к которой можно попросить привезти: чужая, активная, не прошедшая. */

@@ -122,7 +122,17 @@ final class DeliveryRepositoryTest extends TestCase
         $this->assertNull($d['trip_id']);
     }
 
-    public function test_to_board_only_from_declined(): void
+    public function test_to_board_from_requested_detaches_trip(): void
+    {
+        $stuck = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $this->assertTrue($this->repo->toBoard($stuck), 'просьба к неактивной поездке — на доску');
+        $d = $this->repo->findDetailed($stuck);
+        $this->assertSame('open', $d['status']);
+        $this->assertNull($d['trip_id']);
+        $this->assertFalse($this->repo->toBoard($stuck), 'повторно — уже open');
+    }
+
+    public function test_to_board_only_from_declined_or_requested(): void
     {
         $open = $this->board();
         $this->assertFalse($this->repo->toBoard($open), 'open — уже на доске');

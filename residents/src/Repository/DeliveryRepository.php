@@ -168,10 +168,17 @@ final class DeliveryRepository
         );
     }
 
-    /** «Выложить на доску»: заказчик — после отказа водителя (declined), уже без поездки. */
+    /**
+     * «Выложить на доску»: заказчик — после отказа водителя (declined) или когда
+     * просьба (requested) застряла у неактивной/прошедшей поездки. Уже без поездки.
+     * Можно ли — решает DeliveryPolicy в контроллере, здесь только статус.
+     */
     public function toBoard(int $id): bool
     {
-        return $this->exec("UPDATE deliveries SET status = 'open', trip_id = NULL WHERE id = ? AND status = 'declined'", [$id]);
+        return $this->exec(
+            "UPDATE deliveries SET status = 'open', trip_id = NULL WHERE id = ? AND status IN ('declined','requested')",
+            [$id]
+        );
     }
 
     public function deliver(int $id, int $carrierId, ?string $receiptSum, string $now): bool

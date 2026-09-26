@@ -37,6 +37,30 @@ final class DeliveryPolicyTest extends TestCase
         $this->assertSame([], $this->acts($d, self::OTHER, self::DRIVER));
     }
 
+    public function test_trip_live(): void
+    {
+        $today = '2026-09-26';
+        $this->assertTrue(P::tripLive($this->d('open'), $today), 'без поездки правило не касается');
+        $base = ['trip_id' => 10, 'trip_status' => 'active', 'trip_date' => $today];
+        $this->assertTrue(P::tripLive($this->d('requested', $base), $today), 'активная, сегодня');
+        $this->assertTrue(P::tripLive($this->d('requested', ['trip_date' => '2026-09-30'] + $base), $today));
+        $this->assertFalse(P::tripLive($this->d('requested', ['trip_date' => '2026-09-25'] + $base), $today), 'вчера');
+        $this->assertFalse(P::tripLive($this->d('requested', ['trip_status' => 'done'] + $base), $today));
+        $this->assertFalse(P::tripLive($this->d('requested', ['trip_status' => 'cancelled'] + $base), $today));
+    }
+
+    public function test_requested_to_dead_trip_driver_cannot_act_requester_can_move_to_board(): void
+    {
+        $d = $this->d('requested', ['trip_id' => 10]);
+        $this->assertSame([], P::actions($d, self::DRIVER, self::DRIVER, 0, false));
+        $this->assertSame([P::CANCEL, P::TO_BOARD], P::actions($d, self::REQ, self::DRIVER, 0, false));
+        $this->assertSame([], P::actions($d, self::OTHER, self::DRIVER, 0, false));
+        $this->assertTrue(P::allows(P::TO_BOARD, $d, self::REQ, self::DRIVER, 0, false));
+        $this->assertFalse(P::allows(P::TO_BOARD, $d, self::REQ, self::DRIVER, 0, true), 'живая поездка — ждём водителя');
+        $this->assertFalse(P::allows(P::TAKE, $d, self::DRIVER, self::DRIVER, 0, false));
+        $this->assertTrue(P::allows(P::TAKE, $d, self::DRIVER, self::DRIVER, 0, true));
+    }
+
     public function test_open_anyone_but_requester_takes(): void
     {
         $d = $this->d('open');

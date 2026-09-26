@@ -87,6 +87,12 @@ final class DeliveryNotify
         return ['Водитель не ответил — заявка на общей доске', '', ...self::summary($d)];
     }
 
+    /** Водителю: заказчик сам выложил на доску просьбу к неактивной/прошедшей поездке. @return array<int,string> */
+    public static function withdrawnLines(array $d): array
+    {
+        return ['↩️ Заказчик забрал просьбу на общую доску', '', ...self::summary($d)];
+    }
+
     /**
      * Письмо (если адрес есть) и бот. Звать последним в обработчике.
      * @param array<int,string> $lines

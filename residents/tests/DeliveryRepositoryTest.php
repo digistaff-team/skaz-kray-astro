@@ -203,6 +203,23 @@ final class DeliveryRepositoryTest extends TestCase
         $this->assertNotContains($declined, array_map('intval', array_column($affected, 'id')));
     }
 
+    public function test_release_after_trip_cancel_then_delete_leaves_request_open_on_board(): void
+    {
+        // Порядок как в TripController::delete: отменить → отвязать → удалить.
+        $trips = new TripRepository();
+        $id = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $trips->setStatus($this->trip, 'cancelled');
+        $affected = $this->repo->releaseTripRequests($this->trip);
+        $this->assertSame([$id], array_map('intval', array_column($affected, 'id')));
+        $this->assertSame('req@skaz-kray.ru', $affected[0]['req_email']);
+        $trips->delete($this->trip);
+
+        $d = $this->repo->findDetailed($id);
+        $this->assertSame('open', $d['status']);
+        $this->assertNull($d['trip_id']);
+        $this->assertContains($id, array_map('intval', array_column($this->repo->listBoard(self::TODAY), 'id')));
+    }
+
     public function test_list_by_carrier_excludes_cancelled(): void
     {
         $active = $this->board();

@@ -16,6 +16,13 @@ $bkLabel = fn(string $s) => ['requested' => 'ожидает подтвержде
     <?php if (!empty($trip['note'])): ?><p><?= nl2br(View::e($trip['note'])) ?></p><?php endif; ?>
 </div>
 
+<?php if ($canAskDelivery): ?>
+    <div class="res-card">
+        <p>Нужно что-то купить или забрать по пути?</p>
+        <a class="res-btn res-btn--ghost" href="/poselenie/dostavka/novaya?poezdka=<?= (int) $trip['id'] ?>">Попросить привезти</a>
+    </div>
+<?php endif; ?>
+
 <?php if ($isDriver): ?>
     <div class="res-card">
         <p class="res-meta">Это ваша поездка. Управление и брони — в разделе <a href="/poselenie/poezdki/moi">«Мои поездки»</a>.</p>

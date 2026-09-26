@@ -2,9 +2,9 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, Validator, View};
-use SkazResidents\Repository\{TripRepository, TripBookingRepository};
-use SkazResidents\Service\CatalogAnnounce;
+use SkazResidents\{Auth, Csrf, Flash, Validator, View, Sections};
+use SkazResidents\Repository\{TripRepository, TripBookingRepository, DeliveryRepository};
+use SkazResidents\Service\{CatalogAnnounce, DeliveryNotify};
 
 /**
  * Совместные поездки (попутки) — раздел жителей. Доска предстоящих поездок
@@ -59,6 +59,8 @@ final class TripController
             'canBook'   => $canBook,
             'bookings'  => $isDriver ? $this->bookings->listForTrip((int) $trip['id']) : [],
             'maxSeats'  => min(self::MAX_SEATS, (int) $trip['seats_free']),
+            'canAskDelivery' => !$isDriver && $trip['status'] === 'active' && $trip['trip_date'] >= date('Y-m-d')
+                && Sections::isEnabled('dostavka'),
         ], $trip['origin'] . ' → ' . $trip['destination']);
     }
 
@@ -97,6 +99,8 @@ final class TripController
             'trips'      => $myTrips,
             'incoming'   => $this->bookings->listIncoming($me, ['requested', 'confirmed']),
             'bookings'   => $this->bookings->listByPassenger($me),
+            'deliveryRequests' => Sections::isEnabled('dostavka')
+                ? (new DeliveryRepository())->listForTripDriver($me, ['requested']) : [],
         ], 'Мои поездки');
     }
 
@@ -113,21 +117,43 @@ final class TripController
     {
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
+        // Сначала отменяем: к неактивной поездке новые просьбы не создаются, потом переводим старые.
         $this->trips->setStatus((int) $trip['id'], 'cancelled');
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id']);
         Flash::set('info', 'Поездка отменена.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released);
     }
 
     public function delete(array $params): void
     {
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
+        $this->trips->setStatus((int) $trip['id'], 'cancelled');   // новые просьбы к ней больше не создаются
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id']); // до удаления: FK обнулил бы trip_id
         $this->trips->delete((int) $trip['id']); // брони каскадом
         Flash::set('info', 'Поездка удалена.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released);
     }
 
     // --- helpers ---
+
+    /**
+     * Заказчикам просьб, которые из-за отмены поездки ушли на доску.
+     * @param array<int,array<string,mixed>> $released
+     */
+    private function notifyReleased(array $released): void
+    {
+        DeliveryNotify::sendMany('Поездка отменена — заявка на общей доске', array_map(
+            static fn(array $d): array => [
+                'family_id' => (int) $d['requester_id'],
+                'email'     => $d['req_email'] ?? null,
+                'lines'     => DeliveryNotify::tripCancelledLines($d),
+            ],
+            $released
+        ), 'Доска: ', '/poselenie/dostavka');
+    }
 
     /** @return array{0:array<string,mixed>,1:array<string,string>} */
     private function validate(): array

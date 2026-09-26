@@ -1,0 +1,192 @@
+<?php
+declare(strict_types=1);
+namespace SkazResidents\Repository;
+
+use SkazResidents\Database;
+use PDO;
+
+/**
+ * Заявки на доставку (раздел «Поездки»). Каждый переход статуса — один UPDATE
+ * с условием на текущий статус: двое нажали «Возьму» одновременно — сработает
+ * у одного, второй получит false. Спека: docs/superpowers/specs/2026-09-26-dostavka-design.md.
+ */
+final class DeliveryRepository
+{
+    private PDO $db;
+
+    public function __construct()
+    {
+        $this->db = Database::pdo();
+    }
+
+    public function create(int $requesterId, ?int $tripId, string $kind, string $what, string $place,
+                           ?string $needBy, ?string $budget, ?string $pickupCode, ?string $note, string $now): int
+    {
+        $st = $this->db->prepare(
+            'INSERT INTO deliveries (requester_id, trip_id, kind, what, place, need_by, budget, pickup_code, note, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $st->execute([$requesterId, $tripId, $kind, $what, $place, $needBy, $budget, $pickupCode, $note,
+            $tripId !== null ? 'requested' : 'open', $now]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    /** Заявка с именами и контактами сторон и данными поездки (если есть). */
+    public function findDetailed(int $id): ?array
+    {
+        $st = $this->db->prepare(
+            'SELECT d.*,
+                    r.name AS req_name, r.email AS req_email, r.telegram_username AS req_tg,
+                    c.name AS car_name, c.email AS car_email, c.telegram_username AS car_tg,
+                    t.origin, t.destination, t.trip_date, t.trip_time, t.status AS trip_status,
+                    t.driver_id AS trip_driver_id,
+                    dr.name AS driver_name, dr.email AS driver_email
+             FROM deliveries d
+             JOIN families r       ON r.id = d.requester_id
+             LEFT JOIN families c  ON c.id = d.carrier_id
+             LEFT JOIN trips t     ON t.id = d.trip_id
+             LEFT JOIN families dr ON dr.id = t.driver_id
+             WHERE d.id = ?'
+        );
+        $st->execute([$id]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * Доска: открытые, срок не прошёл или не задан. Сначала со сроком — ближайшие
+     * выше, потом без срока, внутри — кто раньше попросил.
+     * @return array<int,array<string,mixed>>
+     */
+    public function listBoard(string $today, string $kind = ''): array
+    {
+        $sql = "SELECT d.*, r.name AS req_name FROM deliveries d JOIN families r ON r.id = d.requester_id
+                WHERE d.status = 'open' AND (d.need_by IS NULL OR d.need_by >= ?)";
+        $args = [$today];
+        if ($kind === 'buy' || $kind === 'pickup') { $sql .= ' AND d.kind = ?'; $args[] = $kind; }
+        $sql .= ' ORDER BY (d.need_by IS NULL) ASC, d.need_by ASC, d.created_at ASC, d.id ASC';
+        $st = $this->db->prepare($sql);
+        $st->execute($args);
+        return $st->fetchAll();
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    public function listByRequester(int $requesterId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT d.*, c.name AS car_name FROM deliveries d LEFT JOIN families c ON c.id = d.carrier_id
+             WHERE d.requester_id = ? ORDER BY d.created_at DESC, d.id DESC'
+        );
+        $st->execute([$requesterId]);
+        return $st->fetchAll();
+    }
+
+    /** Взятые жителем. @return array<int,array<string,mixed>> */
+    public function listByCarrier(int $carrierId): array
+    {
+        $st = $this->db->prepare(
+            "SELECT d.*, r.name AS req_name FROM deliveries d JOIN families r ON r.id = d.requester_id
+             WHERE d.carrier_id = ? AND d.status IN ('accepted','delivered','settled')
+             ORDER BY d.created_at DESC, d.id DESC"
+        );
+        $st->execute([$carrierId]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Просьбы к поездкам водителя (для «Мои поездки», «Мои доставки», «Мои дела»).
+     * @param array<int,string> $statuses
+     * @return array<int,array<string,mixed>>
+     */
+    public function listForTripDriver(int $driverId, array $statuses): array
+    {
+        $in = implode(',', array_fill(0, count($statuses), '?'));
+        $st = $this->db->prepare(
+            "SELECT d.*, r.name AS req_name, t.origin, t.destination, t.trip_date, t.status AS trip_status
+             FROM deliveries d
+             JOIN trips t    ON t.id = d.trip_id
+             JOIN families r ON r.id = d.requester_id
+             WHERE t.driver_id = ? AND d.status IN ($in)
+             ORDER BY d.created_at ASC, d.id ASC"
+        );
+        $st->execute([$driverId, ...$statuses]);
+        return $st->fetchAll();
+    }
+
+    /** «Возьму»: из $fromStatus ('open' — доска, 'requested' — водитель). */
+    public function take(int $id, int $carrierId, string $fromStatus, string $now): bool
+    {
+        return $this->exec(
+            "UPDATE deliveries SET status = 'accepted', carrier_id = ?, accepted_at = ? WHERE id = ? AND status = ?",
+            [$carrierId, $now, $id, $fromStatus]
+        );
+    }
+
+    /** Водитель: «Не смогу» на просьбу к поездке. */
+    public function decline(int $id): bool
+    {
+        return $this->exec("UPDATE deliveries SET status = 'declined' WHERE id = ? AND status = 'requested'", [$id]);
+    }
+
+    /** Обратно на доску: исполнитель отказался, заказчик снял исполнителя, «Выложить на доску». */
+    public function release(int $id): bool
+    {
+        return $this->exec(
+            "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
+             WHERE id = ? AND status IN ('accepted','declined')",
+            [$id]
+        );
+    }
+
+    public function deliver(int $id, ?string $receiptSum, string $now): bool
+    {
+        return $this->exec(
+            "UPDATE deliveries SET status = 'delivered', receipt_sum = ?, delivered_at = ? WHERE id = ? AND status = 'accepted'",
+            [$receiptSum, $now, $id]
+        );
+    }
+
+    public function settle(int $id, string $now): bool
+    {
+        return $this->exec("UPDATE deliveries SET status = 'settled', settled_at = ? WHERE id = ? AND status = 'delivered'", [$now, $id]);
+    }
+
+    public function cancel(int $id): bool
+    {
+        return $this->exec(
+            "UPDATE deliveries SET status = 'cancelled' WHERE id = ? AND status IN ('requested','open','accepted')",
+            [$id]
+        );
+    }
+
+    /**
+     * Поездку отменили или удаляют: незавершённые просьбы к ней — на доску.
+     * Возвращает затронутые заявки (как были до перевода) — кому написать.
+     * Звать ДО удаления поездки: ON DELETE SET NULL обнулил бы trip_id, оставив статус.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function releaseTripRequests(int $tripId): array
+    {
+        $st = $this->db->prepare(
+            "SELECT d.id, d.requester_id, d.kind, d.what, d.place, d.need_by, r.email AS req_email
+             FROM deliveries d JOIN families r ON r.id = d.requester_id
+             WHERE d.trip_id = ? AND d.status IN ('requested','accepted')"
+        );
+        $st->execute([$tripId]);
+        $rows = $st->fetchAll();
+        $this->exec(
+            "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
+             WHERE trip_id = ? AND status IN ('requested','accepted')",
+            [$tripId]
+        );
+        return $rows;
+    }
+
+    /** @param array<int,mixed> $args */
+    private function exec(string $sql, array $args): bool
+    {
+        $st = $this->db->prepare($sql);
+        $st->execute($args);
+        return $st->rowCount() > 0;
+    }
+}

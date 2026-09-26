@@ -76,6 +76,8 @@ final class DeliveryNotifyTest extends TestCase
         $this->assertSame('🚫 Заявка отменена', N::cancelledLines($d)[0]);
         $this->assertSame('Поездка отменена — ваша заявка теперь на общей доске', N::tripCancelledLines($d)[0]);
         $this->assertSame('Водитель не ответил — заявка на общей доске', N::doneTripLines($d)[0]);
+        $this->assertSame(N::DONE_TRIP_SUBJECT, N::doneTripLines($d)[0], 'тема и заголовок совпадают');
+        $this->assertSame('Поездка отменена — заявка на общей доске', N::TRIP_CANCELLED_SUBJECT);
     }
 
     public function test_done_trip_lines_carry_summary(): void

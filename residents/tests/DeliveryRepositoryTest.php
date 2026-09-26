@@ -245,6 +245,22 @@ final class DeliveryRepositoryTest extends TestCase
         $this->assertEqualsCanonicalizing([$live, $past, $done, $today], $all, 'без today — как раньше');
     }
 
+    public function test_deleting_done_trip_keeps_accepted_delivery_with_carrier(): void
+    {
+        // Как TripController::delete для закрытой поездки: без отвязки, просто удаление.
+        $trips = new TripRepository();
+        $id = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $this->repo->take($id, $this->driver, 'requested', self::NOW);
+        $trips->setStatus($this->trip, 'done');
+        $trips->delete($this->trip);
+
+        $d = $this->repo->findDetailed($id);
+        $this->assertSame('accepted', $d['status']);
+        $this->assertSame($this->driver, (int) $d['carrier_id']);
+        // trip_id здесь не проверяем: в SQLite-схеме тестов нет внешних ключей,
+        // а на MariaDB его обнуляет FK ON DELETE SET NULL.
+    }
+
     public function test_release_after_trip_cancel_then_delete_leaves_request_open_on_board(): void
     {
         // Порядок как в TripController::delete: отменить → отвязать → удалить.

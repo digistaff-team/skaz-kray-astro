@@ -13,6 +13,10 @@ use SkazResidents\Mailer;
  */
 final class DeliveryNotify
 {
+    /** Темы писем заказчикам, чьи просьбы ушли на доску из-за поездки. */
+    public const TRIP_CANCELLED_SUBJECT = 'Поездка отменена — заявка на общей доске';
+    public const DONE_TRIP_SUBJECT = 'Водитель не ответил — заявка на общей доске';
+
     /** @return array<int,string> */
     public static function requestLines(array $d): array
     {

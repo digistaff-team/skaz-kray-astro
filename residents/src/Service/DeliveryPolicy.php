@@ -11,6 +11,8 @@ namespace SkazResidents\Service;
 final class DeliveryPolicy
 {
     public const TAKE        = 'take';         // «Возьму»
+    // DECLINE и DROP — одна кнопка «Не смогу» с точки зрения жителя; контроллер выбирает
+    // действие по статусу заявки (requested → DECLINE, accepted → DROP).
     public const DECLINE     = 'decline';      // водитель: «Не смогу» на просьбу к поездке
     public const DROP        = 'drop';         // исполнитель: «Не смогу» после «Возьму»
     public const UNASSIGN    = 'unassign';     // заказчик: «Отказаться от исполнителя»
@@ -23,6 +25,9 @@ final class DeliveryPolicy
     public const MAX_RECEIPTS = 3;
 
     /**
+     * $me и $tripDriverId — настоящие int (из PDO приводить через (int)); $tripDriverId = null,
+     * если заявка не к поездке.
+     *
      * @param array<string,mixed> $d        заявка (нужны requester_id, carrier_id, trip_id, kind, status)
      * @param int|null            $tripDriverId водитель поездки заявки, если она к поездке
      * @return array<int,string>

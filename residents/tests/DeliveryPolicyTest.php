@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace SkazResidents\Tests;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use SkazResidents\Service\DeliveryPolicy as P;
 
@@ -93,6 +94,100 @@ final class DeliveryPolicyTest extends TestCase
         $this->assertTrue(P::seesPrivate($d, self::CARRIER));
         $this->assertFalse(P::seesPrivate($d, self::OTHER));
         $this->assertFalse(P::seesPrivate($this->d('open'), self::OTHER), 'исполнителя ещё нет');
+    }
+
+    /** @param array<string,mixed> $d @param array<int,string> $expected */
+    #[DataProvider('matrix')]
+    public function test_role_status_matrix(array $d, int $me, ?int $driver, array $expected): void
+    {
+        $this->assertSame($expected, $this->acts($d, $me, $driver));
+    }
+
+    /** @return iterable<string,array{0:array<string,mixed>,1:int,2:?int,3:array<int,string>}> */
+    public static function matrix(): iterable
+    {
+        $roles = ['REQ' => self::REQ, 'DRIVER' => self::DRIVER, 'CARRIER' => self::CARRIER, 'OTHER' => self::OTHER];
+
+        $cases = [
+            'requested' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => null, 'trip_id' => 10, 'kind' => 'buy', 'status' => 'requested'],
+                'driver' => self::DRIVER,
+                'expected' => ['REQ' => [P::CANCEL], 'DRIVER' => [P::DECLINE, P::TAKE], 'CARRIER' => [], 'OTHER' => []],
+            ],
+            'open' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => null, 'trip_id' => null, 'kind' => 'buy', 'status' => 'open'],
+                'driver' => null,
+                'expected' => ['REQ' => [P::CANCEL], 'DRIVER' => [P::TAKE], 'CARRIER' => [P::TAKE], 'OTHER' => [P::TAKE]],
+            ],
+            'accepted' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => self::CARRIER, 'trip_id' => 10, 'kind' => 'buy', 'status' => 'accepted'],
+                'driver' => self::DRIVER,
+                'expected' => ['REQ' => [P::CANCEL, P::UNASSIGN], 'DRIVER' => [], 'CARRIER' => [P::DELIVER, P::DROP], 'OTHER' => []],
+            ],
+            'delivered' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => self::CARRIER, 'trip_id' => null, 'kind' => 'buy', 'status' => 'delivered'],
+                'driver' => null,
+                'expected' => ['REQ' => [P::SETTLE], 'DRIVER' => [], 'CARRIER' => [P::ADD_RECEIPT], 'OTHER' => []],
+            ],
+            'settled' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => self::CARRIER, 'trip_id' => null, 'kind' => 'buy', 'status' => 'settled'],
+                'driver' => null,
+                'expected' => ['REQ' => [], 'DRIVER' => [], 'CARRIER' => [], 'OTHER' => []],
+            ],
+            'declined' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => null, 'trip_id' => 10, 'kind' => 'buy', 'status' => 'declined'],
+                'driver' => self::DRIVER,
+                'expected' => ['REQ' => [P::TO_BOARD], 'DRIVER' => [], 'CARRIER' => [], 'OTHER' => []],
+            ],
+            'cancelled' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => self::CARRIER, 'trip_id' => null, 'kind' => 'buy', 'status' => 'cancelled'],
+                'driver' => null,
+                'expected' => ['REQ' => [], 'DRIVER' => [], 'CARRIER' => [], 'OTHER' => []],
+            ],
+            'bogus' => [
+                'd' => ['requester_id' => self::REQ, 'carrier_id' => self::CARRIER, 'trip_id' => null, 'kind' => 'buy', 'status' => 'bogus'],
+                'driver' => null,
+                'expected' => ['REQ' => [], 'DRIVER' => [], 'CARRIER' => [], 'OTHER' => []],
+            ],
+        ];
+
+        $rows = [];
+        foreach ($cases as $status => $case) {
+            foreach ($roles as $roleName => $roleId) {
+                $expected = $case['expected'][$roleName];
+                sort($expected);
+                $rows["{$status} / {$roleName}"] = [$case['d'], $roleId, $case['driver'], $expected];
+            }
+        }
+        return $rows;
+    }
+
+    public function test_requested_ignores_trip_driver_when_trip_id_is_null(): void
+    {
+        $d = $this->d('requested', ['trip_id' => null]);
+        $this->assertSame([], $this->acts($d, self::DRIVER, self::DRIVER), 'заявка не к поездке — водитель роли не даёт');
+    }
+
+    public function test_accepted_gives_no_actions_to_a_driver_who_is_not_the_carrier(): void
+    {
+        $d = $this->d('accepted', ['carrier_id' => null, 'trip_id' => null]);
+        $this->assertSame([], $this->acts($d, self::DRIVER, self::DRIVER));
+    }
+
+    public function test_requester_who_is_also_the_trip_driver_only_cancels(): void
+    {
+        $d = $this->d('requested', ['requester_id' => self::DRIVER, 'trip_id' => 10]);
+        $this->assertSame([P::CANCEL], $this->acts($d, self::DRIVER, self::DRIVER));
+    }
+
+    public function test_accepts_pdo_style_string_ids(): void
+    {
+        $d = $this->d('accepted', ['requester_id' => '1', 'carrier_id' => '3', 'trip_id' => '10']);
+        $this->assertSame([P::CANCEL, P::UNASSIGN], $this->acts($d, self::REQ));
+        $this->assertSame([P::DELIVER, P::DROP], $this->acts($d, self::CARRIER));
+        $this->assertTrue(P::seesPrivate($d, self::REQ));
+        $this->assertTrue(P::seesPrivate($d, self::CARRIER));
+        $this->assertFalse(P::seesPrivate($d, self::OTHER));
     }
 
     public function test_labels(): void

@@ -68,4 +68,35 @@ final class MailerTest extends TestCase
         Mailer::send('tg123@telegram.local', 'Тема', 'Тело');
         $this->addToAssertionCount(1);
     }
+
+    public function test_smtp_data_doubles_lone_dot_line(): void
+    {
+        $this->assertSame('..', Mailer::smtpData('.'));
+    }
+
+    public function test_smtp_data_doubles_leading_dot_on_line(): void
+    {
+        $lines = explode("\r\n", Mailer::smtpData("x\n.foo\ny"));
+        $this->assertSame(['x', '..foo', 'y'], $lines);
+    }
+
+    public function test_smtp_data_normalises_all_line_endings_to_crlf(): void
+    {
+        $this->assertSame("a\r\nb\r\nc\r\nd", Mailer::smtpData("a\nb\rc\r\nd"));
+    }
+
+    public function test_smtp_data_prevents_data_injection_via_lone_dot_line(): void
+    {
+        // Без экранирования строка "." сама по себе завершила бы DATA раньше времени,
+        // и всё, что после неё (например, поддельные SMTP-команды), ушло бы отдельными
+        // командами тому же соединению.
+        $out = Mailer::smtpData("x\n.\nMAIL FROM:<a@b>");
+        $lines = explode("\r\n", $out);
+        $this->assertNotContains('.', $lines);
+    }
+
+    public function test_smtp_data_leaves_dotless_text_unchanged_but_for_crlf(): void
+    {
+        $this->assertSame("Здравствуйте!\r\nВаш аккаунт активен.", Mailer::smtpData("Здравствуйте!\nВаш аккаунт активен."));
+    }
 }

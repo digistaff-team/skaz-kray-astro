@@ -5,6 +5,7 @@ $v = static fn(string $k): string => View::e((string) ($d[$k] ?? ''));
 $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="res-flash res-flash--error">' . View::e($errors[$k]) . '</div>' : '';
 ?>
 <?php $backFallback = $trip ? '/poselenie/poezdki/' . (int) $trip['id'] : '/poselenie/dostavka'; require __DIR__ . '/../partials/back.php'; ?>
+<?php $tab = 'dostavka'; require __DIR__ . '/../partials/trip-tabs.php'; ?>
 <h1>Попросить привезти</h1>
 <?php if ($trip): ?>
     <div class="res-card">
@@ -17,7 +18,7 @@ $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="res-fla
     <?= Csrf::field() ?>
     <?php if ($trip): ?><input type="hidden" name="trip_id" value="<?= (int) $trip['id'] ?>"><?php endif; ?>
     <fieldset class="delivery-kind">
-        <legend>Что нужно</legend>
+        <legend>Тип</legend>
         <label class="res-checkbox"><input type="radio" name="kind" value="buy"<?= $kind === 'buy' ? ' checked' : '' ?>> Купить</label>
         <label class="res-checkbox"><input type="radio" name="kind" value="pickup"<?= $kind === 'pickup' ? ' checked' : '' ?>> Забрать</label>
     </fieldset>

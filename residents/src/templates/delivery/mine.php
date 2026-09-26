@@ -7,6 +7,7 @@ $row = static function (array $d, string $who): string {
 };
 ?>
 <?php $backFallback = '/poselenie/dostavka'; require __DIR__ . '/../partials/back.php'; ?>
+<?php $tab = 'dostavka'; require __DIR__ . '/../partials/trip-tabs.php'; ?>
 <h1>Мои доставки</h1>
 <p class="res-meta"><a class="res-btn" href="/poselenie/dostavka/novaya">+ Попросить привезти</a> <a class="res-btn res-btn--ghost" href="/poselenie/dostavka">Все заявки</a></p>
 

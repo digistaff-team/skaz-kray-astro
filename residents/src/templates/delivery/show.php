@@ -9,6 +9,7 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
 };
 ?>
 <?php $backFallback = '/poselenie/dostavka'; require __DIR__ . '/../partials/back.php'; ?>
+<?php $tab = 'dostavka'; require __DIR__ . '/../partials/trip-tabs.php'; ?>
 <div class="tool-show-head">
     <h1><?= View::e(delivery_kind_label((string) $d['kind'])) ?>: <?= View::e($d['place']) ?></h1>
     <span class="tool-st <?= delivery_status_class((string) $d['status']) ?>"><?= View::e(delivery_status_label((string) $d['status'])) ?></span>
@@ -76,7 +77,7 @@ $post = static function (string $slug, string $label, string $cls = 'res-btn') u
             <?php if ($has(P::TO_BOARD)): ?><?= $post('na-dosku', 'Выложить на доску') ?><?php endif; ?>
             <?php if ($has(P::DECLINE) || $has(P::DROP)): ?><?= $post('ne-smogu', 'Не смогу', 'res-btn res-btn--ghost') ?><?php endif; ?>
             <?php if ($has(P::UNASSIGN)): ?><?= $post('snyat-ispolnitelya', 'Отказаться от исполнителя', 'res-btn res-btn--ghost') ?><?php endif; ?>
-            <?php if ($has(P::CANCEL)): ?><?= $post('otmenit', 'Отменить заявку', 'res-btn res-btn--ghost') ?><?php endif; ?>
+            <?php if ($has(P::CANCEL)): ?><?= $post('otmenit', 'Отменить', 'res-btn res-btn--ghost') ?><?php endif; ?>
         </div>
     </section>
 <?php endif; ?>

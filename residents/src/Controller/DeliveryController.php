@@ -36,7 +36,9 @@ final class DeliveryController
     public function showCreate(): void
     {
         $this->requireHousehold('dostavka');
-        $trip = $this->tripForRequest((int) ($_GET['poezdka'] ?? 0));
+        $tripId = (int) ($_GET['poezdka'] ?? 0);
+        $trip = $this->tripForRequest($tripId);
+        if ($tripId > 0 && $trip === null) { $this->tripUnavailable(); return; }
         View::render('delivery/form', ['d' => ['kind' => 'buy'], 'trip' => $trip, 'errors' => []], 'Попросить привезти');
     }
 
@@ -44,7 +46,11 @@ final class DeliveryController
     {
         $this->requireHousehold('dostavka');
         Csrf::guard();
-        $trip = $this->tripForRequest((int) ($_POST['trip_id'] ?? 0));
+        $tripId = (int) ($_POST['trip_id'] ?? 0);
+        $trip = $this->tripForRequest($tripId);
+        // Просили к поездке, а она уже недоступна (отменена, прошла, своя) — не превращаем
+        // молча просьбу водителю в заявку на доску: пусть житель решит сам.
+        if ($tripId > 0 && $trip === null) { $this->tripUnavailable(); return; }
         [$d, $errors] = $this->validate();
         if ($errors) {
             View::render('delivery/form', ['d' => $d, 'trip' => $trip, 'errors' => $errors], 'Попросить привезти');
@@ -98,7 +104,8 @@ final class DeliveryController
         if ($d === null) { return; }
         $from = $d['status'] === 'requested' ? 'requested' : 'open';
         if (!$this->deliveries->take((int) $d['id'], Auth::id(), $from, date('Y-m-d H:i:s'))) {
-            $this->back((int) $d['id'], 'error', 'Заявку уже взяли.'); return;
+            // Просьбу к поездке мог опередить отказ или отмена, заявку с доски — другой сосед.
+            $this->back((int) $d['id'], 'error', $from === 'requested' ? 'Заявка уже обработана.' : 'Заявку уже взяли.'); return;
         }
         $full = $this->deliveries->findDetailed((int) $d['id']);
         $contact = family_contact((string) $full['car_name'], $full['car_tg'] ?? null, (string) $full['car_email']);
@@ -268,6 +275,12 @@ final class DeliveryController
         return $t;
     }
 
+    private function tripUnavailable(): void
+    {
+        Flash::set('error', 'Поездка недоступна для просьбы — выберите другую или разместите заявку на общей доске.');
+        header('Location: /poselenie/dostavka/novaya');
+    }
+
     /** @return array{0:array<string,mixed>,1:array<string,string>} */
     private function validate(): array
     {
@@ -281,7 +294,7 @@ final class DeliveryController
 
         if (!Validator::length($what, 3, 1000)) { $errors['what'] = 'Опишите, что ' . ($kind === 'buy' ? 'купить' : 'забрать') . ': 3–1000 символов.'; }
         if (!Validator::length($place, 2, 160)) { $errors['place'] = 'Где: 2–160 символов.'; }
-        if ($need !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $need)) { $errors['need_by'] = 'Укажите дату.'; }
+        if ($need !== '' && !self::validDate($need)) { $errors['need_by'] = 'Укажите дату.'; }
         elseif ($need !== '' && $need < date('Y-m-d')) { $errors['need_by'] = 'Дата не может быть в прошлом.'; }
         $budget = null;
         if ($kind === 'buy') {
@@ -298,6 +311,13 @@ final class DeliveryController
             'pickup_code' => $kind === 'pickup' && $code !== '' ? $code : null,
             'note' => $note !== '' ? $note : null,
         ], $errors];
+    }
+
+    /** Дата из формы: строго Y-m-d и существующий день календаря (не 2026-02-30). */
+    public static function validDate(string $s): bool
+    {
+        if (!preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/', $s, $m)) { return false; }
+        return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
     }
 
     /**

@@ -12,7 +12,7 @@ final class DeliveryNotifyTest extends TestCase
             'id' => 7, 'kind' => 'pickup', 'what' => 'Посылка на имя Орловой', 'place' => 'СДЭК, Северская',
             'need_by' => '2026-09-28', 'pickup_code' => 'SECRET-4417', 'receipt_sum' => null,
             'req_name' => 'Семья Орловых', 'car_name' => 'Семья Лебедевых',
-            'origin' => 'Край', 'destination' => 'Северская',
+            'origin' => 'Край', 'destination' => 'Северская', 'note' => 'SECRET-NOTE',
         ], $over);
     }
 
@@ -30,6 +30,13 @@ final class DeliveryNotifyTest extends TestCase
     {
         foreach ($this->all($this->d()) as $lines) {
             $this->assertStringNotContainsString('SECRET-4417', implode("\n", $lines));
+        }
+    }
+
+    public function test_note_never_leaks(): void
+    {
+        foreach ($this->all($this->d()) as $lines) {
+            $this->assertStringNotContainsString('SECRET-NOTE', implode("\n", $lines));
         }
     }
 
@@ -74,5 +81,64 @@ final class DeliveryNotifyTest extends TestCase
     {
         $t = implode("\n", N::requestLines($this->d(['what' => str_repeat('а', 500)])));
         $this->assertLessThan(400, mb_strlen($t));
+    }
+
+    public function test_place_with_newlines_is_collapsed_to_one_line(): void
+    {
+        $lines = N::requestLines($this->d(['place' => "СДЭК\n.\nСеверская"]));
+        $whereLine = null;
+        foreach ($lines as $l) { if (str_starts_with($l, 'Где: ')) { $whereLine = $l; } }
+        $this->assertSame('Где: СДЭК . Северская', $whereLine);
+        $this->assertStringNotContainsString("\n", $whereLine);
+    }
+
+    public function test_delivered_mentions_carrier_only_when_present(): void
+    {
+        $with = implode("\n", N::deliveredLines($this->d(), 0));
+        $this->assertStringContainsString('Исполнитель: Семья Лебедевых', $with);
+
+        $without = implode("\n", N::deliveredLines($this->d(['car_name' => '']), 0));
+        $this->assertStringNotContainsString('Исполнитель:', $without);
+    }
+
+    public function test_request_trip_line_only_when_both_origin_and_destination_present(): void
+    {
+        $noOrigin = implode("\n", N::requestLines($this->d(['origin' => null])));
+        $this->assertStringNotContainsString('Поездка:', $noOrigin);
+
+        $noDestination = implode("\n", N::requestLines($this->d(['destination' => null])));
+        $this->assertStringNotContainsString('Поездка:', $noDestination);
+    }
+
+    public function test_email_body_has_lines_and_link(): void
+    {
+        $body = N::emailBody(['Строка раз', 'Строка два'], 'Открыть: ', '/poselenie/dostavka/7');
+        $this->assertStringContainsString('Строка раз', $body);
+        $this->assertStringContainsString('Строка два', $body);
+        $this->assertStringContainsString('Открыть: ', $body);
+        $this->assertStringContainsString('/poselenie/dostavka/7', $body);
+    }
+
+    public function test_queue_email_puts_subject_and_body_in_mailer_queue(): void
+    {
+        $before = count(\SkazResidents\Mailer::queued());
+        N::queueEmail('semya@skaz-kray.ru', '📦 Просьба привезти', ['Забрать: Посылка'], 'Открыть: ', '/poselenie/dostavka/7');
+        $queued = \SkazResidents\Mailer::queued();
+        $this->assertCount($before + 1, $queued);
+        $last = $queued[count($queued) - 1];
+        $this->assertSame('semya@skaz-kray.ru', $last['to']);
+        $this->assertStringEndsWith(' — Сказочный Край', $last['subject']);
+        $this->assertStringContainsString('Забрать: Посылка', $last['body']);
+        $this->assertStringContainsString('Открыть: ', $last['body']);
+        $this->assertStringContainsString('/poselenie/dostavka/7', $last['body']);
+        \SkazResidents\Mailer::flushLater();
+    }
+
+    public function test_queue_email_does_nothing_without_address(): void
+    {
+        $before = count(\SkazResidents\Mailer::queued());
+        N::queueEmail('', '📦 Просьба привезти', ['Строка'], 'Открыть: ', '/poselenie/dostavka/7');
+        N::queueEmail(null, '📦 Просьба привезти', ['Строка'], 'Открыть: ', '/poselenie/dostavka/7');
+        $this->assertCount($before, \SkazResidents\Mailer::queued());
     }
 }

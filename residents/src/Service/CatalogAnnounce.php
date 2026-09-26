@@ -75,9 +75,10 @@ final class CatalogAnnounce
 
     public static function deliveryLine(string $kind, string $place, ?string $needBy): string
     {
-        $line = ($kind === 'pickup' ? 'Забрать' : 'Купить') . ' · ' . $place;
+        $oneLinePlace = trim(preg_replace('/\s+/u', ' ', $place) ?? '');
+        $line = delivery_kind_label($kind) . ' · ' . $oneLinePlace;
         if (($needBy ?? '') !== '') {
-            $line .= ' · к ' . (function_exists('ru_date') ? ru_date((string) $needBy) : (string) $needBy);
+            $line .= ' · к ' . ru_date((string) $needBy);
         }
         return $line;
     }

@@ -17,7 +17,9 @@ final class DeliveryNotify
     public static function requestLines(array $d): array
     {
         $lines = ['📦 Просьба привезти', '', ...self::summary($d), 'Заказчик: ' . $d['req_name']];
-        if (($d['origin'] ?? null) !== null) { $lines[] = 'Поездка: ' . $d['origin'] . ' → ' . $d['destination']; }
+        if (($d['origin'] ?? null) !== null && ($d['destination'] ?? null) !== null) {
+            $lines[] = 'Поездка: ' . $d['origin'] . ' → ' . $d['destination'];
+        }
         return $lines;
     }
 
@@ -48,9 +50,10 @@ final class DeliveryNotify
     /** @return array<int,string> */
     public static function deliveredLines(array $d, int $receiptPhotos): array
     {
-        $lines = ['📦 Привезли', '', ...self::summary($d), 'Исполнитель: ' . ($d['car_name'] ?? '')];
+        $lines = ['📦 Привезли', '', ...self::summary($d)];
+        if (($d['car_name'] ?? '') !== '') { $lines[] = 'Исполнитель: ' . $d['car_name']; }
         if (($d['receipt_sum'] ?? null) !== null && $d['receipt_sum'] !== '') {
-            $lines[] = 'Сумма по чеку: ' . self::money((string) $d['receipt_sum']) . ' ₽';
+            $lines[] = 'Сумма по чеку: ' . buy_money((string) $d['receipt_sum']) . ' ₽';
         }
         if ($receiptPhotos > 0) { $lines[] = 'Фото чека — в карточке заявки'; }
         return $lines;
@@ -80,10 +83,7 @@ final class DeliveryNotify
      */
     public static function send(int $familyId, ?string $email, string $subject, array $lines, string $linkLabel, string $path): void
     {
-        if (($email ?? '') !== '') {
-            Mailer::later((string) $email, $subject . ' — Сказочный Край',
-                implode("\n", $lines) . "\n\n" . $linkLabel . \SkazResidents\Config::get('base_url') . $path);
-        }
+        self::queueEmail($email, $subject, $lines, $linkLabel, $path);
         BotNotify::personal($familyId, $lines, $linkLabel, $path);
     }
 
@@ -96,10 +96,7 @@ final class DeliveryNotify
     {
         if (!$items) { return; }
         foreach ($items as $it) {
-            if (($it['email'] ?? '') !== '') {
-                Mailer::later((string) $it['email'], $subject . ' — Сказочный Край',
-                    implode("\n", $it['lines']) . "\n\n" . $linkLabel . \SkazResidents\Config::get('base_url') . $path);
-            }
+            self::queueEmail($it['email'] ?? null, $subject, $it['lines'], $linkLabel, $path);
         }
         BotNotify::afterResponse(static function () use ($items, $linkLabel, $path): void {
             foreach ($items as $it) {
@@ -109,13 +106,29 @@ final class DeliveryNotify
         });
     }
 
+    /**
+     * Письмо в очередь Mailer, если адрес есть. Отдельно от send() — так проверяется
+     * тестами без обращения к BotNotify (тот трогает БД и сеть).
+     * @param array<int,string> $lines
+     */
+    public static function queueEmail(?string $email, string $subject, array $lines, string $linkLabel, string $path): void
+    {
+        if (($email ?? '') === '') { return; }
+        Mailer::later($email, $subject . ' — Сказочный Край', self::emailBody($lines, $linkLabel, $path));
+    }
+
+    /** Текст письма: строки уведомления, пустая строка, ссылка. @param array<int,string> $lines */
+    public static function emailBody(array $lines, string $linkLabel, string $path): string
+    {
+        return implode("\n", $lines) . "\n\n" . $linkLabel . \SkazResidents\Config::get('base_url') . $path;
+    }
+
     /** «Купить: …», «Где: …», «К какому дню: …» — общая часть всех сообщений. @return array<int,string> */
     private static function summary(array $d): array
     {
-        $what = trim(preg_replace('/\s+/u', ' ', (string) $d['what']) ?? '');
         $lines = [
-            delivery_kind_label((string) $d['kind']) . ': ' . mb_strimwidth($what, 0, 160, '…'),
-            'Где: ' . $d['place'],
+            delivery_kind_label((string) $d['kind']) . ': ' . self::oneLine((string) $d['what']),
+            'Где: ' . self::oneLine((string) $d['place']),
         ];
         if (($d['need_by'] ?? null) !== null && $d['need_by'] !== '') {
             $lines[] = 'К какому дню: ' . ru_date((string) $d['need_by']);
@@ -123,8 +136,10 @@ final class DeliveryNotify
         return $lines;
     }
 
-    private static function money(string $v): string
+    /** Свободный текст (может прийти с переносами строк) — в одну строку, до 160 знаков. */
+    private static function oneLine(string $s): string
     {
-        return function_exists('buy_money') ? buy_money($v) : $v;
+        $s = trim(preg_replace('/\s+/u', ' ', $s) ?? '');
+        return mb_strimwidth($s, 0, 160, '…');
     }
 }

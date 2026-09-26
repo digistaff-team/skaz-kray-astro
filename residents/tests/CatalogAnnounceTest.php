@@ -76,4 +76,11 @@ final class CatalogAnnounceTest extends TestCase
     {
         $this->assertSame('Забрать · СДЭК', CatalogAnnounce::deliveryLine('pickup', 'СДЭК', null));
     }
+
+    public function test_delivery_line_collapses_newlines_in_place(): void
+    {
+        $line = CatalogAnnounce::deliveryLine('pickup', "СДЭК\n.\nСеверская", null);
+        $this->assertSame('Забрать · СДЭК . Северская', $line);
+        $this->assertStringNotContainsString("\n", $line);
+    }
 }

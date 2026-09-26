@@ -64,4 +64,16 @@ final class CatalogAnnounceTest extends TestCase
         $this->assertStringContainsString('Открыть: https://example.test/x', $text);
         $this->assertLessThanOrEqual(6, substr_count($text, "\n"));   // сообщение остаётся коротким
     }
+
+    public function test_delivery_line_has_kind_place_and_date_but_not_what(): void
+    {
+        $line = CatalogAnnounce::deliveryLine('buy', 'Аптека, Северская', '2026-09-28');
+        $this->assertStringStartsWith('Купить · Аптека, Северская', $line);
+        $this->assertStringContainsString('к 28 сентября 2026', $line);
+    }
+
+    public function test_delivery_line_without_date(): void
+    {
+        $this->assertSame('Забрать · СДЭК', CatalogAnnounce::deliveryLine('pickup', 'СДЭК', null));
+    }
 }

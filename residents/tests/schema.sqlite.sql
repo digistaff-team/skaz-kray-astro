@@ -181,6 +181,25 @@ CREATE TABLE trip_bookings (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     decided_at TEXT
 );
+CREATE TABLE deliveries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    requester_id INTEGER NOT NULL,
+    carrier_id INTEGER,
+    trip_id INTEGER,
+    kind TEXT NOT NULL,
+    what TEXT NOT NULL,
+    place TEXT NOT NULL,
+    need_by TEXT,
+    budget TEXT,
+    pickup_code TEXT,
+    note TEXT,
+    receipt_sum TEXT,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TEXT,
+    delivered_at TEXT,
+    settled_at TEXT
+);
 CREATE TABLE council_ledger_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,                 -- income | expense

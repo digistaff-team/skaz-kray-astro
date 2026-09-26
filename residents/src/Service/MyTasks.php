@@ -286,13 +286,12 @@ final class MyTasks
     private function deliveryConfirms(int $me): array
     {
         $out = [];
-        foreach ($this->deliveries->listByRequester($me) as $d) {
-            if ($d['status'] !== 'delivered') { continue; }
-            $sum = ($d['receipt_sum'] ?? null) !== null ? ' · по чеку ' . buy_money((string) $d['receipt_sum']) . ' ₽' : '';
+        foreach ($this->deliveries->listByRequester($me, ['delivered']) as $d) {
+            $sum = ($d['receipt_sum'] ?? null) !== null ? 'по чеку ' . buy_money((string) $d['receipt_sum']) . ' ₽' : '';
             $out[] = self::task('delivery_confirm',
                 'Подтвердите получение: ' . delivery_kind_label((string) $d['kind']) . ' · ' . $d['place'],
-                ($d['car_name'] ?? '') . $sum,
-                '/poselenie/dostavka/' . (int) $d['id'], (string) $d['delivered_at']);
+                implode(' · ', array_filter([(string) ($d['car_name'] ?? ''), $sum], static fn(string $p): bool => $p !== '')),
+                '/poselenie/dostavka/' . (int) $d['id'], (string) ($d['delivered_at'] ?? $d['created_at']));
         }
         return $out;
     }

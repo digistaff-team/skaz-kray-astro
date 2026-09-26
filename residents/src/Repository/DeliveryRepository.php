@@ -69,14 +69,22 @@ final class DeliveryRepository
         return $st->fetchAll();
     }
 
-    /** @return array<int,array<string,mixed>> */
-    public function listByRequester(int $requesterId): array
+    /**
+     * Просьбы жителя. Пустой $statuses — все просьбы без фильтра («Мои доставки»);
+     * в отличие от listForTripDriver, где пустой список означает «ничего».
+     *
+     * @param array<int,string> $statuses
+     * @return array<int,array<string,mixed>>
+     */
+    public function listByRequester(int $requesterId, array $statuses = []): array
     {
-        $st = $this->db->prepare(
-            'SELECT d.*, c.name AS car_name FROM deliveries d LEFT JOIN families c ON c.id = d.carrier_id
-             WHERE d.requester_id = ? ORDER BY d.created_at DESC, d.id DESC'
-        );
-        $st->execute([$requesterId]);
+        $sql = 'SELECT d.*, c.name AS car_name FROM deliveries d LEFT JOIN families c ON c.id = d.carrier_id
+                WHERE d.requester_id = ?';
+        if ($statuses !== []) {
+            $sql .= ' AND d.status IN (' . implode(',', array_fill(0, count($statuses), '?')) . ')';
+        }
+        $st = $this->db->prepare($sql . ' ORDER BY d.created_at DESC, d.id DESC');
+        $st->execute([$requesterId, ...$statuses]);
         return $st->fetchAll();
     }
 

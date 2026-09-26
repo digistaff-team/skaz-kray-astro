@@ -203,6 +203,48 @@ final class DeliveryRepositoryTest extends TestCase
         $this->assertNotContains($declined, array_map('intval', array_column($affected, 'id')));
     }
 
+    public function test_release_trip_requests_with_requested_only_keeps_accepted(): void
+    {
+        $waiting = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $taken   = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $this->repo->take($taken, $this->driver, 'requested', self::NOW);
+
+        $affected = $this->repo->releaseTripRequests($this->trip, ['requested']);
+        $this->assertSame([$waiting], array_map('intval', array_column($affected, 'id')));
+        $w = $this->repo->findDetailed($waiting);
+        $this->assertSame('open', $w['status']);
+        $this->assertNull($w['trip_id']);
+        $t = $this->repo->findDetailed($taken);
+        $this->assertSame('accepted', $t['status'], 'взятую водителем не трогаем');
+        $this->assertSame($this->driver, (int) $t['carrier_id']);
+        $this->assertSame($this->trip, (int) $t['trip_id']);
+    }
+
+    public function test_release_trip_requests_with_empty_statuses_does_nothing(): void
+    {
+        $waiting = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $this->assertSame([], $this->repo->releaseTripRequests($this->trip, []));
+        $this->assertSame('requested', $this->repo->findDetailed($waiting)['status']);
+    }
+
+    public function test_list_for_trip_driver_with_today_skips_inactive_and_past_trips(): void
+    {
+        $trips = new TripRepository();
+        $live = $this->repo->create($this->req, $this->trip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $pastTrip = $trips->create($this->driver, 'Край', 'Абинск', '2026-09-20', '10:00', 3, null, self::NOW);
+        $past = $this->repo->create($this->req, $pastTrip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $doneTrip = $trips->create($this->driver, 'Край', 'Крымск', '2026-09-29', '10:00', 3, null, self::NOW);
+        $done = $this->repo->create($this->req, $doneTrip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $trips->setStatus($doneTrip, 'done');
+        $todayTrip = $trips->create($this->driver, 'Край', 'Ильский', self::TODAY, '10:00', 3, null, self::NOW);
+        $today = $this->repo->create($this->req, $todayTrip, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+
+        $ids = array_map('intval', array_column($this->repo->listForTripDriver($this->driver, ['requested'], self::TODAY), 'id'));
+        $this->assertEqualsCanonicalizing([$live, $today], $ids);
+        $all = array_map('intval', array_column($this->repo->listForTripDriver($this->driver, ['requested']), 'id'));
+        $this->assertEqualsCanonicalizing([$live, $past, $done, $today], $all, 'без today — как раньше');
+    }
+
     public function test_release_after_trip_cancel_then_delete_leaves_request_open_on_board(): void
     {
         // Порядок как в TripController::delete: отменить → отвязать → удалить.

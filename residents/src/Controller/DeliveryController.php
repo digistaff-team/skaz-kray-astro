@@ -81,7 +81,7 @@ final class DeliveryController
         View::render('delivery/mine', [
             'asked'    => $this->deliveries->listByRequester($me),
             'carrying' => $this->deliveries->listByCarrier($me),
-            'incoming' => $this->deliveries->listForTripDriver($me, ['requested']),
+            'incoming' => $this->deliveries->listForTripDriver($me, ['requested'], date('Y-m-d')),
         ], 'Мои доставки');
     }
 

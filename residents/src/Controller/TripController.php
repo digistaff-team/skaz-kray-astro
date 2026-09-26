@@ -15,6 +15,7 @@ final class TripController
     use RequiresHousehold;
 
     private const MAX_SEATS = 8;
+    private const CANCELLED_SUBJECT = 'Поездка отменена — заявка на общей доске';
 
     public function __construct(
         private TripRepository $trips = new TripRepository(),
@@ -100,7 +101,7 @@ final class TripController
             'incoming'   => $this->bookings->listIncoming($me, ['requested', 'confirmed']),
             'bookings'   => $this->bookings->listByPassenger($me),
             'deliveryRequests' => Sections::isEnabled('dostavka')
-                ? (new DeliveryRepository())->listForTripDriver($me, ['requested']) : [],
+                ? (new DeliveryRepository())->listForTripDriver($me, ['requested'], date('Y-m-d')) : [],
         ], 'Мои поездки');
     }
 
@@ -109,8 +110,12 @@ final class TripController
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
         $this->trips->setStatus((int) $trip['id'], 'done');
+        // Взятые водителем заявки остаются за ним; не отвеченные — на доску.
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id'], ['requested']);
         Flash::set('success', 'Поездка отмечена состоявшейся.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released, 'Водитель не ответил — заявка на общей доске',
+            [DeliveryNotify::class, 'doneTripLines']);
     }
 
     public function cancelTrip(array $params): void
@@ -122,7 +127,7 @@ final class TripController
         $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id']);
         Flash::set('info', 'Поездка отменена.');
         header('Location: /poselenie/poezdki/moi');
-        $this->notifyReleased($released);
+        $this->notifyReleased($released, self::CANCELLED_SUBJECT, [DeliveryNotify::class, 'tripCancelledLines']);
     }
 
     public function delete(array $params): void
@@ -134,22 +139,23 @@ final class TripController
         $this->trips->delete((int) $trip['id']); // брони каскадом
         Flash::set('info', 'Поездка удалена.');
         header('Location: /poselenie/poezdki/moi');
-        $this->notifyReleased($released);
+        $this->notifyReleased($released, self::CANCELLED_SUBJECT, [DeliveryNotify::class, 'tripCancelledLines']);
     }
 
     // --- helpers ---
 
     /**
-     * Заказчикам просьб, которые из-за отмены поездки ушли на доску.
+     * Заказчикам просьб, которые из-за отмены (или завершения) поездки ушли на доску.
      * @param array<int,array<string,mixed>> $released
+     * @param callable(array<string,mixed>):array<int,string> $lines тексты DeliveryNotify::*Lines
      */
-    private function notifyReleased(array $released): void
+    private function notifyReleased(array $released, string $subject, callable $lines): void
     {
-        DeliveryNotify::sendMany('Поездка отменена — заявка на общей доске', array_map(
+        DeliveryNotify::sendMany($subject, array_map(
             static fn(array $d): array => [
                 'family_id' => (int) $d['requester_id'],
                 'email'     => $d['req_email'] ?? null,
-                'lines'     => DeliveryNotify::tripCancelledLines($d),
+                'lines'     => $lines($d),
             ],
             $released
         ), 'Доска: ', '/poselenie/dostavka');

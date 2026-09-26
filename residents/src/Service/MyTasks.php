@@ -272,8 +272,7 @@ final class MyTasks
     private function deliveryRequests(int $me, string $today): array
     {
         $out = [];
-        foreach ($this->deliveries->listForTripDriver($me, ['requested']) as $d) {
-            if (($d['trip_status'] ?? '') !== 'active' || (string) $d['trip_date'] < $today) { continue; }
+        foreach ($this->deliveries->listForTripDriver($me, ['requested'], $today) as $d) {
             $out[] = self::task('delivery_request',
                 'Просьба привезти: ' . delivery_kind_label((string) $d['kind']) . ' · ' . $d['place'],
                 ($d['need_by'] ?? '') !== '' ? $d['req_name'] . ' · к ' . ru_date((string) $d['need_by']) : (string) $d['req_name'],

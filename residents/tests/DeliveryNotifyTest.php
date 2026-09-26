@@ -22,7 +22,7 @@ final class DeliveryNotifyTest extends TestCase
         return [
             N::requestLines($d), N::takenLines($d, 'Семья Лебедевых (Telegram: @leb)'), N::driverDeclinedLines($d),
             N::droppedLines($d), N::unassignedLines($d), N::deliveredLines($d, 2), N::settledLines($d),
-            N::cancelledLines($d), N::tripCancelledLines($d),
+            N::cancelledLines($d), N::tripCancelledLines($d), N::doneTripLines($d),
         ];
     }
 
@@ -75,6 +75,14 @@ final class DeliveryNotifyTest extends TestCase
         $this->assertSame('🤝 Получение и расчёт подтверждены', N::settledLines($d)[0]);
         $this->assertSame('🚫 Заявка отменена', N::cancelledLines($d)[0]);
         $this->assertSame('Поездка отменена — ваша заявка теперь на общей доске', N::tripCancelledLines($d)[0]);
+        $this->assertSame('Водитель не ответил — заявка на общей доске', N::doneTripLines($d)[0]);
+    }
+
+    public function test_done_trip_lines_carry_summary(): void
+    {
+        $t = implode("\n", N::doneTripLines($this->d()));
+        $this->assertStringContainsString('Забрать: Посылка на имя Орловой', $t);
+        $this->assertStringContainsString('Где: СДЭК, Северская', $t);
     }
 
     public function test_long_what_is_shortened(): void

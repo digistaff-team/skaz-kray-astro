@@ -77,6 +77,12 @@ final class DeliveryNotify
         return ['Поездка отменена — ваша заявка теперь на общей доске', '', ...self::summary($d)];
     }
 
+    /** Поездка отмечена состоявшейся, а водитель так и не ответил на просьбу. @return array<int,string> */
+    public static function doneTripLines(array $d): array
+    {
+        return ['Водитель не ответил — заявка на общей доске', '', ...self::summary($d)];
+    }
+
     /**
      * Письмо (если адрес есть) и бот. Звать последним в обработчике.
      * @param array<int,string> $lines

@@ -102,10 +102,12 @@ final class DeliveryRepository
 
     /**
      * Просьбы к поездкам водителя (для «Мои поездки», «Мои доставки», «Мои дела»).
+     * $today задан — только к ещё актуальным поездкам (active и не в прошлом):
+     * на прошедшую или отменённую поездку «Возьму» уже не имеет смысла.
      * @param array<int,string> $statuses
      * @return array<int,array<string,mixed>>
      */
-    public function listForTripDriver(int $driverId, array $statuses): array
+    public function listForTripDriver(int $driverId, array $statuses, ?string $today = null): array
     {
         if ($statuses === []) {
             // MariaDB отказывает на `IN ()` синтаксической ошибкой (SQLite её молча
@@ -113,15 +115,21 @@ final class DeliveryRepository
             return [];
         }
         $in = implode(',', array_fill(0, count($statuses), '?'));
+        $args = [$driverId, ...$statuses];
+        $live = '';
+        if ($today !== null) {
+            $live = " AND t.status = 'active' AND t.trip_date >= ?";
+            $args[] = $today;
+        }
         $st = $this->db->prepare(
             "SELECT d.*, r.name AS req_name, t.origin, t.destination, t.trip_date, t.status AS trip_status
              FROM deliveries d
              JOIN trips t    ON t.id = d.trip_id
              JOIN families r ON r.id = d.requester_id
-             WHERE t.driver_id = ? AND d.status IN ($in)
+             WHERE t.driver_id = ? AND d.status IN ($in)$live
              ORDER BY d.created_at ASC, d.id ASC"
         );
-        $st->execute([$driverId, ...$statuses]);
+        $st->execute($args);
         return $st->fetchAll();
     }
 
@@ -198,24 +206,32 @@ final class DeliveryRepository
      * по факту, а не по снимку до перевода.
      * Звать ДО удаления поездки: ON DELETE SET NULL обнулил бы trip_id, оставив статус.
      *
+     * $statuses — какие заявки переводить: при отмене — и ждущие, и взятые;
+     * когда поездка состоялась — только ждущие ответа ('requested').
+     *
+     * @param array<int,string> $statuses
      * @return array<int,array<string,mixed>>
      */
-    public function releaseTripRequests(int $tripId): array
+    public function releaseTripRequests(int $tripId, array $statuses = ['requested', 'accepted']): array
     {
+        if ($statuses === []) {
+            return [];                       // `IN ()` MariaDB не примет
+        }
+        $in = implode(',', array_fill(0, count($statuses), '?'));
         $st = $this->db->prepare(
             "SELECT d.id, d.requester_id, d.kind, d.what, d.place, d.need_by, r.email AS req_email
              FROM deliveries d JOIN families r ON r.id = d.requester_id
-             WHERE d.trip_id = ? AND d.status IN ('requested','accepted')"
+             WHERE d.trip_id = ? AND d.status IN ($in)"
         );
-        $st->execute([$tripId]);
+        $st->execute([$tripId, ...$statuses]);
         $rows = $st->fetchAll();
 
         $moved = [];
         foreach ($rows as $row) {
             $ok = $this->exec(
                 "UPDATE deliveries SET status = 'open', carrier_id = NULL, trip_id = NULL, accepted_at = NULL
-                 WHERE id = ? AND trip_id = ? AND status IN ('requested','accepted')",
-                [$row['id'], $tripId]
+                 WHERE id = ? AND trip_id = ? AND status IN ($in)",
+                [$row['id'], $tripId, ...$statuses]
             );
             if ($ok) { $moved[] = $row; }
         }

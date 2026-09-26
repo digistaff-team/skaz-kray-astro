@@ -22,6 +22,7 @@ use SkazResidents\Controller\PurchaseController;
 use SkazResidents\Controller\PurchaseOrderController;
 use SkazResidents\Controller\TripController;
 use SkazResidents\Controller\TripBookingController;
+use SkazResidents\Controller\DeliveryController;
 use SkazResidents\Controller\TasksController;
 use SkazResidents\Controller\TgAuthController;
 use SkazResidents\Controller\MaxAuthController;

@@ -110,7 +110,8 @@ final class TripController
         $trip = $this->ownedOr404((int) $params['id']);
         if ($trip['status'] !== 'active') { $this->alreadyClosed(); return; }
         // Без транзакции: при сбое между шагами неотвеченная заявка останется
-        // у заказчика в «Моих доставках», и он сам переведёт её на доску — риск мал.
+        // у заказчика в «Моих доставках» как «ждёт водителя» — он может её
+        // отменить и попросить заново. Риск мал, отдельной обработки нет.
         $this->trips->setStatus((int) $trip['id'], 'done');
         // Взятые водителем заявки остаются за ним; не отвеченные — на доску.
         $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id'], ['requested']);

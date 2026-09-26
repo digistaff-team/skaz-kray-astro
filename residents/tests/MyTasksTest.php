@@ -7,7 +7,7 @@ use SkazResidents\Service\MyTasks;
 use SkazResidents\Repository\{
     FamilyRepository, ToolRepository, ToolLoanRepository, BookRepository, BookLoanRepository,
     TripRepository, TripBookingRepository, ProductRepository, DiaryRepository,
-    PurchaseRepository, PurchaseOrderRepository, SectionSettingsRepository
+    PurchaseRepository, PurchaseOrderRepository, SectionSettingsRepository, DeliveryRepository
 };
 
 /**
@@ -347,5 +347,48 @@ final class MyTasksTest extends TestCase
 
         Database::pdo()->exec('DROP TABLE purchase_orders');   // источники закупок падают
         $this->assertSame(['tool_request'], $this->kinds());
+    }
+
+    public function test_delivery_request_to_my_trip_waits_until_decided(): void
+    {
+        $trip = (new TripRepository())->create($this->me, 'Терем', 'Северская', '2026-09-30', '09:00', 3, null, self::NOW);
+        $repo = new DeliveryRepository();
+        $d = $repo->create($this->neighbour, $trip, 'buy', 'Хлеб', 'Магнит', '2026-09-30', null, null, null, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['delivery_request'], array_column($t, 'kind'));
+        $this->assertSame('Просьба привезти: Купить · Магнит', $t[0]['title']);
+        $this->assertSame('Семья Руденко · к 30 сентября 2026', $t[0]['detail']);
+        $this->assertSame('/poselenie/dostavka/moi', $t[0]['link']);
+
+        $repo->take($d, $this->me, 'requested', self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_delivery_request_on_cancelled_or_past_trip_is_not_a_task(): void
+    {
+        $trips = new TripRepository();
+        $repo = new DeliveryRepository();
+        $past = $trips->create($this->me, 'А', 'Б', '2026-09-01', null, 3, null, self::NOW);
+        $repo->create($this->neighbour, $past, 'buy', 'x', 'y', null, null, null, null, self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_delivered_asks_requester_to_confirm(): void
+    {
+        $repo = new DeliveryRepository();
+        $d = $repo->create($this->me, null, 'buy', 'Хлеб', 'Магнит', null, null, null, null, self::NOW);
+        $repo->take($d, $this->neighbour, 'open', self::NOW);
+        $this->assertSame([], $this->kinds(), 'взяли — пока ждём');
+
+        $repo->deliver($d, $this->neighbour, '640', '2026-09-21 12:00:00');
+        $t = $this->tasks();
+        $this->assertSame(['delivery_confirm'], array_column($t, 'kind'));
+        $this->assertSame('Подтвердите получение: Купить · Магнит', $t[0]['title']);
+        $this->assertSame('Семья Руденко · по чеку 640 ₽', $t[0]['detail']);
+        $this->assertSame('/poselenie/dostavka/' . $d, $t[0]['link']);
+
+        $repo->settle($d, self::NOW);
+        $this->assertSame([], $this->kinds());
     }
 }

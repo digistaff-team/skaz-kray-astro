@@ -1,7 +1,7 @@
 <?php
-/** Вкладки «Поездки | Доставка». $tab — 'poezdki' | 'dostavka'. Без раздела доставки вкладок нет. */
+/** Вкладки «Поездки | Доставка». $tab — 'poezdki' | 'dostavka'. Выключен любой из двух разделов — вкладок нет. */
 use SkazResidents\Sections;
-if (!Sections::isEnabled('dostavka')) { return; }
+if (!Sections::isEnabled('poezdki') || !Sections::isEnabled('dostavka')) { return; }
 ?>
 <nav class="trip-tabs" aria-label="Поездки и доставка">
     <a href="/poselenie/poezdki"<?= $tab === 'poezdki' ? ' aria-current="page"' : '' ?>>Поездки</a>

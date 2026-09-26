@@ -2,9 +2,9 @@
 declare(strict_types=1);
 namespace SkazResidents\Controller;
 
-use SkazResidents\{Auth, Csrf, Flash, Validator, View};
-use SkazResidents\Repository\{TripRepository, TripBookingRepository};
-use SkazResidents\Service\CatalogAnnounce;
+use SkazResidents\{Auth, Csrf, Flash, Validator, View, Sections};
+use SkazResidents\Repository\{TripRepository, TripBookingRepository, DeliveryRepository};
+use SkazResidents\Service\{CatalogAnnounce, DeliveryNotify};
 
 /**
  * Совместные поездки (попутки) — раздел жителей. Доска предстоящих поездок
@@ -59,6 +59,8 @@ final class TripController
             'canBook'   => $canBook,
             'bookings'  => $isDriver ? $this->bookings->listForTrip((int) $trip['id']) : [],
             'maxSeats'  => min(self::MAX_SEATS, (int) $trip['seats_free']),
+            'canAskDelivery' => !$isDriver && $trip['status'] === 'active' && $trip['trip_date'] >= date('Y-m-d')
+                && Sections::isEnabled('dostavka'),
         ], $trip['origin'] . ' → ' . $trip['destination']);
     }
 
@@ -97,6 +99,8 @@ final class TripController
             'trips'      => $myTrips,
             'incoming'   => $this->bookings->listIncoming($me, ['requested', 'confirmed']),
             'bookings'   => $this->bookings->listByPassenger($me),
+            'deliveryRequests' => Sections::isEnabled('dostavka')
+                ? (new DeliveryRepository())->listForTripDriver($me, ['requested'], date('Y-m-d')) : [],
         ], 'Мои поездки');
     }
 
@@ -104,30 +108,73 @@ final class TripController
     {
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
+        if ($trip['status'] !== 'active') { $this->alreadyClosed(); return; }
+        // Без транзакции: при сбое между шагами неотвеченная заявка останется
+        // у заказчика в «Моих доставках» как «ждёт водителя» — он может её
+        // отменить и попросить заново. Риск мал, отдельной обработки нет.
         $this->trips->setStatus((int) $trip['id'], 'done');
+        // Взятые водителем заявки остаются за ним; не отвеченные — на доску.
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id'], ['requested']);
         Flash::set('success', 'Поездка отмечена состоявшейся.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released, DeliveryNotify::DONE_TRIP_SUBJECT, DeliveryNotify::doneTripLines(...));
     }
 
     public function cancelTrip(array $params): void
     {
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
+        if ($trip['status'] !== 'active') { $this->alreadyClosed(); return; }
+        // Сначала отменяем: к неактивной поездке новые просьбы не создаются, потом переводим старые.
+        // Без транзакции: при сбое между шагами поездка уже отменена, а заявки
+        // заказчик сам переведёт на доску или отменит — риск мал.
         $this->trips->setStatus((int) $trip['id'], 'cancelled');
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id']);
         Flash::set('info', 'Поездка отменена.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released, DeliveryNotify::TRIP_CANCELLED_SUBJECT, DeliveryNotify::tripCancelledLines(...));
     }
 
     public function delete(array $params): void
     {
         $this->guard();
         $trip = $this->ownedOr404((int) $params['id']);
+        if ($trip['status'] !== 'active') {
+            // Закрытая поездка: просьбы к ней уже решены (взятые остаются за исполнителем,
+            // FK ON DELETE SET NULL лишь отвяжет их от поездки) — просто удаляем.
+            $this->trips->delete((int) $trip['id']); // брони каскадом
+            Flash::set('info', 'Поездка удалена.');
+            header('Location: /poselenie/poezdki/moi');
+            return;
+        }
+        // Без транзакции: при сбое после отмены поездка останется отменённой и видна
+        // водителю — удалить можно повторно; заявки не теряются — риск мал.
+        $this->trips->setStatus((int) $trip['id'], 'cancelled');   // новые просьбы к ней больше не создаются
+        $released = (new DeliveryRepository())->releaseTripRequests((int) $trip['id']); // до удаления: FK обнулил бы trip_id
         $this->trips->delete((int) $trip['id']); // брони каскадом
         Flash::set('info', 'Поездка удалена.');
         header('Location: /poselenie/poezdki/moi');
+        $this->notifyReleased($released, DeliveryNotify::TRIP_CANCELLED_SUBJECT, DeliveryNotify::tripCancelledLines(...));
     }
 
     // --- helpers ---
+
+    /**
+     * Заказчикам просьб, которые из-за отмены (или завершения) поездки ушли на доску.
+     * @param array<int,array<string,mixed>> $released
+     * @param \Closure(array<string,mixed>):array<int,string> $lines тексты DeliveryNotify::*Lines
+     */
+    private function notifyReleased(array $released, string $subject, \Closure $lines): void
+    {
+        DeliveryNotify::sendMany($subject, array_map(
+            static fn(array $d): array => [
+                'family_id' => (int) $d['requester_id'],
+                'email'     => $d['req_email'] ?? null,
+                'lines'     => $lines($d),
+            ],
+            $released
+        ), 'Доска: ', '/poselenie/dostavka');
+    }
 
     /** @return array{0:array<string,mixed>,1:array<string,string>} */
     private function validate(): array
@@ -154,6 +201,13 @@ final class TripController
             'seats_total' => max(1, min(self::MAX_SEATS, $seats)),
             'note' => $note !== '' ? $note : null,
         ], $errors];
+    }
+
+    /** Поездка уже состоялась или отменена — повторное действие ничего не меняет. */
+    private function alreadyClosed(): void
+    {
+        Flash::set('info', 'Поездка уже закрыта.');
+        header('Location: /poselenie/poezdki/moi');
     }
 
     private function guard(): void

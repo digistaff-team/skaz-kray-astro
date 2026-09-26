@@ -5,7 +5,7 @@ namespace SkazResidents\Service;
 use SkazResidents\{Auth, Sections};
 use SkazResidents\Repository\{
     ToolLoanRepository, BookLoanRepository, TripBookingRepository,
-    ProductRepository, DiaryRepository, PurchaseRepository, FamilyRepository
+    ProductRepository, DiaryRepository, PurchaseRepository, FamilyRepository, DeliveryRepository
 };
 
 /**
@@ -35,7 +35,8 @@ final class MyTasks
         private ProductRepository $products = new ProductRepository(),
         private DiaryRepository $diary = new DiaryRepository(),
         private PurchaseRepository $purchases = new PurchaseRepository(),
-        private FamilyRepository $families = new FamilyRepository()
+        private FamilyRepository $families = new FamilyRepository(),
+        private DeliveryRepository $deliveries = new DeliveryRepository()
     ) {}
 
     /**
@@ -81,6 +82,8 @@ final class MyTasks
             ...$this->collect('knigi',       fn(): array => $this->overdueBooks($familyId, $today)),
             ...$this->collect('zakupki',     fn(): array => $this->purchasesAsOrganizer($familyId, $today)),
             ...$this->collect('zakupki',     fn(): array => $this->purchasesAsParticipant($familyId)),
+            ...$this->collect('dostavka',    fn(): array => $this->deliveryRequests($familyId, $today)),
+            ...$this->collect('dostavka',    fn(): array => $this->deliveryConfirms($familyId)),
         ];
         if ($isEditor) {
             $tasks = [...$tasks, ...$this->collect(null, fn(): array => $this->moderationQueue())];
@@ -255,6 +258,39 @@ final class MyTasks
             $out[] = self::task('purchase_pickup', 'Привезли «' . $p['title'] . '» — заберите',
                 $pickup !== '' ? 'Где забрать: ' . $pickup : 'Уточните у организатора: ' . $p['organizer_name'],
                 '/poselenie/zakupki/' . (int) $p['id'], (string) $p['updated_at']);
+        }
+        return $out;
+    }
+
+    /**
+     * Просьбы привезти к поездкам жителя, ждущие решения. Как у броней: отмена
+     * поездки заявку переводит на доску, но старые данные могли остаться — отсекаем
+     * по статусу поездки и дате.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function deliveryRequests(int $me, string $today): array
+    {
+        $out = [];
+        foreach ($this->deliveries->listForTripDriver($me, ['requested'], $today) as $d) {
+            $out[] = self::task('delivery_request',
+                'Просьба привезти: ' . delivery_kind_label((string) $d['kind']) . ' · ' . $d['place'],
+                ($d['need_by'] ?? '') !== '' ? $d['req_name'] . ' · к ' . ru_date((string) $d['need_by']) : (string) $d['req_name'],
+                '/poselenie/dostavka/moi', (string) $d['created_at']);
+        }
+        return $out;
+    }
+
+    /** Исполнитель отметил «Привёз» — заказчику подтвердить получение. @return array<int,array<string,mixed>> */
+    private function deliveryConfirms(int $me): array
+    {
+        $out = [];
+        foreach ($this->deliveries->listByRequester($me, ['delivered']) as $d) {
+            $sum = ($d['receipt_sum'] ?? null) !== null ? 'по чеку ' . buy_money((string) $d['receipt_sum']) . ' ₽' : '';
+            $out[] = self::task('delivery_confirm',
+                'Подтвердите получение: ' . delivery_kind_label((string) $d['kind']) . ' · ' . $d['place'],
+                implode(' · ', array_filter([(string) ($d['car_name'] ?? ''), $sum], static fn(string $p): bool => $p !== '')),
+                '/poselenie/dostavka/' . (int) $d['id'], (string) ($d['delivered_at'] ?? $d['created_at']));
         }
         return $out;
     }

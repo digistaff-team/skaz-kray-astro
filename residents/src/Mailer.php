@@ -84,6 +84,27 @@ final class Mailer
     }
 
     /**
+     * Тело письма для передачи после команды DATA: перевод строк — везде \r\n
+     * (RFC 5321 требует ровно его, а тело могло прийти с любым), и dot-stuffing —
+     * у строки, начинающейся с точки, точка удваивается (RFC 5321 §4.5.2). Без
+     * этого одна строка "." в пользовательском тексте (например, вставленном в
+     * форму "x\n.\nMAIL FROM:...") завершила бы DATA раньше времени, и остаток
+     * тела ушёл бы тому же соединению как SMTP-команды — внедрение через письмо.
+     * Возвращает без завершающего ".\r\n" — его добавляет вызывающий.
+     */
+    public static function smtpData(string $message): string
+    {
+        $normalized = str_replace("\r\n", "\n", $message);
+        $normalized = str_replace("\r", "\n", $normalized);
+        $lines = explode("\n", $normalized);
+        foreach ($lines as &$line) {
+            if (str_starts_with($line, '.')) { $line = '.' . $line; }
+        }
+        unset($line);
+        return implode("\r\n", $lines);
+    }
+
+    /**
      * Отправка через SMTP. Бросает RuntimeException при сбое; вызывающий ловит (fail-open).
      * На служебный адрес не отправляет вовсе: иначе это был бы SMTP-запрос, который
      * заставляет жителя ждать ответа, а письмо всё равно никуда не придёт.
@@ -128,7 +149,7 @@ final class Mailer
         $cmd('MAIL FROM:<' . $cfg['from'] . '>'); $expect('250');
         $cmd('RCPT TO:<' . $to . '>'); $expect('250');
         $cmd('DATA'); $expect('354');
-        fwrite($fp, $message . "\r\n.\r\n"); $expect('250');
+        fwrite($fp, self::smtpData($message) . "\r\n.\r\n"); $expect('250');
         $cmd('QUIT');
         fclose($fp);
     }

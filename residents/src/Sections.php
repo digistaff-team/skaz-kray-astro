@@ -21,6 +21,7 @@ final class Sections
         'instrumenty' => 'Инструменты',
         'knigi'       => 'Книги',
         'poezdki'     => 'Поездки',
+        'dostavka'    => 'Доставка',
         'obshchiy-dom' => 'Общий дом',
         'byudzhet'    => 'Отчёт о расходах',
         'yarmarka'    => 'Ярмарка',

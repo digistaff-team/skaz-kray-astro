@@ -40,3 +40,4 @@ products-unit-migration.sql
 council-duty-ack.sql
 council-claim-code.sql
 household-join-requests.sql
+deliveries.sql

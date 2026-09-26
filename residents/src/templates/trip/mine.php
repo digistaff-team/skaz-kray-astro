@@ -35,6 +35,24 @@ $tripCls = fn(string $s) => 'tool-st--' . ($s === 'active' ? 'free' : ($s === 'd
     <?php endforeach; ?>
 </section>
 
+<?php if ($deliveryRequests): ?>
+<section>
+    <h2>Просьбы привезти</h2>
+    <?php foreach ($deliveryRequests as $d): $did = (int) $d['id']; ?>
+        <div class="res-card tool-mine-row">
+            <div>
+                <a href="/poselenie/dostavka/<?= $did ?>"><strong><?= View::e(delivery_kind_label((string) $d['kind'])) ?> · <?= View::e($d['place']) ?></strong></a>
+                <span class="res-meta"><?= View::e($d['req_name']) ?> · <?= View::e($d['origin']) ?> → <?= View::e($d['destination']) ?>, <?= View::e(ru_date((string) $d['trip_date'])) ?><?php if (!empty($d['need_by'])): ?> · к <?= View::e(ru_date((string) $d['need_by'])) ?><?php endif; ?></span>
+            </div>
+            <div class="tool-mine-actions">
+                <form method="post" action="/poselenie/dostavka/<?= $did ?>/vzyat"><?= Csrf::field() ?><button class="res-btn" type="submit">Возьму</button></form>
+                <form method="post" action="/poselenie/dostavka/<?= $did ?>/ne-smogu"><?= Csrf::field() ?><button class="res-link-btn" type="submit">Не смогу</button></form>
+            </div>
+        </div>
+    <?php endforeach; ?>
+</section>
+<?php endif; ?>
+
 <section>
     <h2>Брони на мои поездки</h2>
     <?php

@@ -64,6 +64,25 @@ final class CatalogAnnounce
         return $origin . ' → ' . $destination . ' · ' . $when . ' · мест: ' . $seats;
     }
 
+    /**
+     * Анонс заявки «Нужно привезти» на общей доске. Что именно купить, в группу
+     * не уходит (может быть личным, например лекарства) — только тип, где и срок.
+     */
+    public static function delivery(int $id, string $kind, string $place, ?string $needBy): void
+    {
+        self::announce('📦 Нужно привезти', self::deliveryLine($kind, $place, $needBy), '/poselenie/dostavka/' . $id);
+    }
+
+    public static function deliveryLine(string $kind, string $place, ?string $needBy): string
+    {
+        $oneLinePlace = trim(preg_replace('/\s+/u', ' ', $place) ?? '');
+        $line = delivery_kind_label($kind) . ' · ' . $oneLinePlace;
+        if (($needBy ?? '') !== '') {
+            $line .= ' · к ' . ru_date((string) $needBy);
+        }
+        return $line;
+    }
+
     /** Анонс нового товара/услуги на Ярмарке: кнопка под сообщением ведёт на карточку товара. */
     public static function product(int $id, string $title, ?string $price, ?string $unit = null): void
     {

@@ -831,3 +831,11 @@ a.prof-card--free:hover .prof-name { color: #3f3f38; }
 }
 /* Плитка-цель, куда встанет перетаскиваемая при отпускании. */
 .app-tile--target { outline: 2px dashed var(--green); outline-offset: -3px; }
+
+/* ==== Вкладки «Поездки | Доставка» и доставка ==== */
+.trip-tabs { display: flex; gap: .4rem; margin: 0 0 1rem; border-bottom: 1px solid #e6e4d8; }
+.trip-tabs a { padding: .5rem .9rem; text-decoration: none; color: var(--muted); font-weight: 700; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.trip-tabs a[aria-current="page"] { color: var(--green); border-bottom-color: var(--green); }
+.delivery-kind { border: 0; padding: 0; margin: 1rem 0 .3rem; display: flex; gap: 1.2rem; }
+.delivery-kind legend { font-weight: 700; padding: 0; margin-bottom: .3rem; }
+.delivery-receipt .tool-gallery { margin-top: .6rem; }

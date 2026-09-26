@@ -58,6 +58,38 @@ function buy_status_class(string $status): string
     };
 }
 
+/** Подпись статуса заявки на доставку. */
+function delivery_status_label(string $status): string
+{
+    return match ($status) {
+        'requested' => 'ждёт водителя',
+        'open'      => 'на доске',
+        'accepted'  => 'взята',
+        'delivered' => 'привезли',
+        'settled'   => 'получено',
+        'declined'  => 'водитель отказался',
+        'cancelled' => 'отменена',
+        default     => $status,
+    };
+}
+
+/** Класс плашки статуса доставки (цвета плашек инструментов). */
+function delivery_status_class(string $status): string
+{
+    return 'tool-st--' . match ($status) {
+        'open', 'requested' => 'free',
+        'accepted', 'delivered' => 'loan',
+        'declined' => 'maint',
+        default => 'hidden',
+    };
+}
+
+/** «Купить» / «Забрать». */
+function delivery_kind_label(string $kind): string
+{
+    return $kind === 'pickup' ? 'Забрать' : 'Купить';
+}
+
 /** «450.00» → «450», «2.50» → «2.5»: хвост нулей в объёмах и ценах только мешает. */
 function buy_qty(string $value): string
 {

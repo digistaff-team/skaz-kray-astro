@@ -370,8 +370,15 @@ final class MyTasksTest extends TestCase
         $trips = new TripRepository();
         $repo = new DeliveryRepository();
         $past = $trips->create($this->me, 'А', 'Б', '2026-09-01', null, 3, null, self::NOW);
-        $repo->create($this->neighbour, $past, 'buy', 'x', 'y', null, null, null, null, self::NOW);
-        $this->assertSame([], $this->kinds());
+        $cancelled = $trips->create($this->me, 'В', 'Г', '2026-10-05', null, 3, null, self::NOW);
+        $trips->setStatus($cancelled, 'cancelled');
+        $repo->create($this->neighbour, $past, 'buy', 'x', 'Прошлая', null, null, null, null, self::NOW);
+        $repo->create($this->neighbour, $cancelled, 'buy', 'x', 'Отменённая', null, null, null, null, self::NOW);
+        // Контроль — поездка сегодня: она ещё не прошла, и просьба к ней должна быть делом.
+        $open = $trips->create($this->me, 'Д', 'Е', self::TODAY, null, 3, null, self::NOW);
+        $repo->create($this->neighbour, $open, 'buy', 'x', 'Контроль', null, null, null, null, self::NOW);
+
+        $this->assertSame(['Просьба привезти: Купить · Контроль'], array_column($this->tasks(), 'title'));
     }
 
     public function test_delivered_asks_requester_to_confirm(): void

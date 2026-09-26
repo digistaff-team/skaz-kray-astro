@@ -199,6 +199,21 @@ $router->get('/poselenie/poezdki/{id}', [$trip, 'show']);
 $router->post('/poselenie/bron/{id}/podtverdit', [$tbook, 'confirm']);
 $router->post('/poselenie/bron/{id}/otklonit', [$tbook, 'decline']);
 $router->post('/poselenie/bron/{id}/otmenit', [$tbook, 'cancel']);
+// ==== Доставка (раздел «Поездки») ====
+$deliv = new DeliveryController();
+$router->get('/poselenie/dostavka', [$deliv, 'board']);
+$router->get('/poselenie/dostavka/novaya', [$deliv, 'showCreate']);
+$router->post('/poselenie/dostavka/novaya', [$deliv, 'create']);
+$router->get('/poselenie/dostavka/moi', [$deliv, 'mine']);
+$router->post('/poselenie/dostavka/{id}/vzyat', [$deliv, 'take']);
+$router->post('/poselenie/dostavka/{id}/ne-smogu', [$deliv, 'cantDo']);
+$router->post('/poselenie/dostavka/{id}/snyat-ispolnitelya', [$deliv, 'unassign']);
+$router->post('/poselenie/dostavka/{id}/privez', [$deliv, 'deliver']);
+$router->post('/poselenie/dostavka/{id}/chek', [$deliv, 'addReceipt']);
+$router->post('/poselenie/dostavka/{id}/rasschitalis', [$deliv, 'settle']);
+$router->post('/poselenie/dostavka/{id}/na-dosku', [$deliv, 'toBoard']);
+$router->post('/poselenie/dostavka/{id}/otmenit', [$deliv, 'cancel']);
+$router->get('/poselenie/dostavka/{id}', [$deliv, 'show']);   // последним среди GET: не перехватить novaya/moi
 
 // ==== Совместные закупки (раздел жителей) ====
 $buy = new PurchaseController();

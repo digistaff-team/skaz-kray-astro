@@ -101,6 +101,7 @@ final class DeliveryController
             'd'        => $d,
             'actions'  => P::actions($d, $me, self::driverOf($d), count($receipts), self::live($d)),
             'private'  => P::seesPrivate($d, $me),
+            'isRequester' => (int) $d['requester_id'] === $me,
             'receipts' => P::seesPrivate($d, $me) ? $receipts : [],
         ], delivery_kind_label((string) $d['kind']) . ': ' . $d['place']);
     }
@@ -169,8 +170,9 @@ final class DeliveryController
         CatalogAnnounce::delivery((int) $d['id'], (string) $d['kind'], (string) $d['place'], $d['need_by'] ?? null);
         // Просьба застряла у неактивной/прошедшей поездки — водителю сказать, что её забрали.
         // После declined водитель сам отказался, ему сообщать нечего.
-        if ($d['status'] === 'requested' && self::driverOf($d) !== null) {
-            N::send((int) self::driverOf($d), (string) $d['driver_email'], 'Просьбу забрали на общую доску',
+        $driver = self::driverOf($d);
+        if ($d['status'] === 'requested' && $driver !== null) {
+            N::send($driver, (string) $d['driver_email'], 'Просьбу забрали на общую доску',
                 N::withdrawnLines($d), 'Другие заявки: ', '/poselenie/dostavka');
         }
     }

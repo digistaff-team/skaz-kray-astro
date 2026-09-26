@@ -1,8 +1,7 @@
 <?php
-use SkazResidents\{Auth, Csrf, View};
+use SkazResidents\{Csrf, View};
 use SkazResidents\Service\DeliveryPolicy as P;
 $id = (int) $d['id'];
-$isRequester = (int) $d['requester_id'] === Auth::id();
 $has = static fn(string $a): bool => in_array($a, $actions, true);
 $room = max(0, P::MAX_RECEIPTS - count($receipts));   // сколько ещё фото чека можно приложить
 $post = static function (string $slug, string $label, string $cls = 'res-btn') use ($id): string {

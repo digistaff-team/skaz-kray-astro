@@ -1,6 +1,18 @@
 ---
 title: "Наш Сказочный Терем: общий дом, который объединяет и ведёт вперёд"
 date: 2026-09-26 12:00:00
+cover: /images/posts/nash-skazochnyj-terem/01.jpg
+gallery:
+  - /images/posts/nash-skazochnyj-terem/01.jpg
+  - /images/posts/nash-skazochnyj-terem/02.jpg
+  - /images/posts/nash-skazochnyj-terem/03.jpg
+  - /images/posts/nash-skazochnyj-terem/04.jpg
+  - /images/posts/nash-skazochnyj-terem/05.jpg
+  - /images/posts/nash-skazochnyj-terem/06.jpg
+  - /images/posts/nash-skazochnyj-terem/07.jpg
+  - /images/posts/nash-skazochnyj-terem/08.jpg
+  - /images/posts/nash-skazochnyj-terem/09.jpg
+  - /images/posts/nash-skazochnyj-terem/10.jpg
 categories:
   - novosti
 ---

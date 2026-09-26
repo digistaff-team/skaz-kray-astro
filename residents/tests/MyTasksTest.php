@@ -369,6 +369,7 @@ final class MyTasksTest extends TestCase
     {
         $trips = new TripRepository();
         $repo = new DeliveryRepository();
+        // Устаревшие данные: в работе отмена поездки уводит просьбы на доску, а прошлые остаются как есть.
         $past = $trips->create($this->me, 'А', 'Б', '2026-09-01', null, 3, null, self::NOW);
         $cancelled = $trips->create($this->me, 'В', 'Г', '2026-10-05', null, 3, null, self::NOW);
         $trips->setStatus($cancelled, 'cancelled');
@@ -395,7 +396,60 @@ final class MyTasksTest extends TestCase
         $this->assertSame('Семья Руденко · по чеку 640 ₽', $t[0]['detail']);
         $this->assertSame('/poselenie/dostavka/' . $d, $t[0]['link']);
 
+        // Семьи исполнителя в базе уже нет — пояснение не начинается с разделителя.
+        Database::pdo()->exec('UPDATE deliveries SET carrier_id = NULL WHERE id = ' . $d);
+        $this->assertSame('по чеку 640 ₽', $this->tasks()[0]['detail']);
+
         $repo->settle($d, self::NOW);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_delivered_without_receipt_sum_shows_only_carrier(): void
+    {
+        $repo = new DeliveryRepository();
+        $d = $repo->create($this->me, null, 'pickup', 'Посылка', 'СДЭК', null, null, null, null, self::NOW);
+        $repo->take($d, $this->neighbour, 'open', self::NOW);
+        $repo->deliver($d, $this->neighbour, null, '2026-09-21 12:00:00');
+
+        $t = $this->tasks();
+        $this->assertSame(['delivery_confirm'], array_column($t, 'kind'));
+        $this->assertSame('Семья Руденко', $t[0]['detail']);
+    }
+
+    public function test_delivery_request_without_need_by_shows_only_requester(): void
+    {
+        $trip = (new TripRepository())->create($this->me, 'Терем', 'Северская', '2026-09-30', null, 3, null, self::NOW);
+        (new DeliveryRepository())->create($this->neighbour, $trip, 'buy', 'Хлеб', 'Магнит', null, null, null, null, self::NOW);
+
+        $t = $this->tasks();
+        $this->assertSame(['delivery_request'], array_column($t, 'kind'));
+        $this->assertSame('Семья Руденко', $t[0]['detail']);
+    }
+
+    public function test_declined_delivery_request_is_not_a_task(): void
+    {
+        $trip = (new TripRepository())->create($this->me, 'Терем', 'Северская', '2026-09-30', null, 3, null, self::NOW);
+        $repo = new DeliveryRepository();
+        $d = $repo->create($this->neighbour, $trip, 'buy', 'Хлеб', 'Магнит', null, null, null, null, self::NOW);
+        $this->assertSame(['delivery_request'], $this->kinds());
+
+        $repo->decline($d);
+        $this->assertSame([], $this->kinds());
+    }
+
+    public function test_disabled_delivery_section_hides_both_kinds(): void
+    {
+        $repo = new DeliveryRepository();
+        $trip = (new TripRepository())->create($this->me, 'Терем', 'Северская', '2026-09-30', null, 3, null, self::NOW);
+        $repo->create($this->neighbour, $trip, 'buy', 'Хлеб', 'Магнит', null, null, null, null, self::NOW);
+        $mine = $repo->create($this->me, null, 'buy', 'Соль', 'Пятёрочка', null, null, null, null, self::NOW);
+        $repo->take($mine, $this->neighbour, 'open', self::NOW);
+        $repo->deliver($mine, $this->neighbour, '90', self::NOW);
+        // Источники работают — иначе проверка ниже прошла бы впустую: сбои источников глотаются.
+        $this->assertEqualsCanonicalizing(['delivery_request', 'delivery_confirm'], $this->kinds());
+
+        (new SectionSettingsRepository())->setEnabled('dostavka', false, self::NOW);
+        Sections::reset();
         $this->assertSame([], $this->kinds());
     }
 }

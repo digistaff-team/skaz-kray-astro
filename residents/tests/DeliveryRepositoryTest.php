@@ -230,4 +230,16 @@ final class DeliveryRepositoryTest extends TestCase
         $this->assertSame([], $this->repo->listForTripDriver($this->other, ['requested']));
         $this->assertNotContains($mine, array_map('intval', array_column($this->repo->listByCarrier($this->other), 'id')));
     }
+
+    public function test_list_by_requester_filters_by_status_and_empty_means_all(): void
+    {
+        $open = $this->board();
+        $done = $this->board();
+        $this->repo->take($done, $this->other, 'open', self::NOW);
+        $this->repo->deliver($done, $this->other, '500', self::NOW);
+
+        $this->assertSame([$done], array_map('intval', array_column($this->repo->listByRequester($this->req, ['delivered']), 'id')));
+        $this->assertEqualsCanonicalizing([$open, $done], array_map('intval', array_column($this->repo->listByRequester($this->req), 'id')));
+        $this->assertEqualsCanonicalizing([$open, $done], array_map('intval', array_column($this->repo->listByRequester($this->req, []), 'id')));
+    }
 }

@@ -100,6 +100,22 @@ final class CouncilBotWebhookTest extends TestCase
         $this->assertSame(100, (int) $this->taskRow($id)['progress']);
     }
 
+    public function test_progress_replaces_status_line(): void
+    {
+        $base = "📋 Новая задача\nПочинить забор\nПодробнее";
+        $taken = BotWebhookController::withStatusLine($base, '✅ Вы взяли задачу в работу');
+        $this->assertSame($base . "\n\n✅ Вы взяли задачу в работу", $taken);
+
+        $p20 = BotWebhookController::withStatusLine($taken, 'Вы выполнили задачу на 20%');
+        $this->assertSame($base . "\n\nВы выполнили задачу на 20%", $p20);
+
+        $p80 = BotWebhookController::withStatusLine($p20, 'Вы выполнили задачу на 80%');
+        $this->assertSame($base . "\n\nВы выполнили задачу на 80%", $p80);
+
+        $done = BotWebhookController::withStatusLine($p80, '🎉 Вы выполнили эту задачу, большое спасибо!');
+        $this->assertSame($base . "\n\n🎉 Вы выполнили эту задачу, большое спасибо!", $done);
+    }
+
     public function test_decline_frees_task(): void
     {
         $id = $this->task('Иван Петров');

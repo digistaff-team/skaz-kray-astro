@@ -115,15 +115,16 @@ final class BotWebhookController
                 $pct = (int) substr($action, 1);
                 $tasks->updateFields($taskId, ['progress' => $pct], $now);
                 TelegramBot::answerCallback($token, $callbackId, "Прогресс: {$pct}%");
-                return; // сообщение и кнопки прогресса не трогаем
+                // Меняем строку статуса, кнопки прогресса оставляем.
+                self::renderEdit($token, $chatId, $msgId,
+                    self::withStatusLine($msgText, "Вы выполнили задачу на {$pct}%"), self::progressKeyboard($taskId));
+                return;
 
             case 'done':
                 $tasks->updateFields($taskId, ['status' => 'выполнена', 'progress' => 100], $now);
                 TelegramBot::answerCallback($token, $callbackId, '🎉 Задача выполнена');
-                $plain = strpos($msgText, '✅ Вы взяли задачу в работу') !== false
-                    ? str_replace('✅ Вы взяли задачу в работу', '🎉 Вы выполнили эту задачу, большое спасибо!', $msgText)
-                    : $msgText . "\n\n🎉 Вы выполнили эту задачу, большое спасибо!";
-                self::renderEdit($token, $chatId, $msgId, $plain, null);
+                self::renderEdit($token, $chatId, $msgId,
+                    self::withStatusLine($msgText, '🎉 Вы выполнили эту задачу, большое спасибо!'), null);
                 // Есть расход (сумма + статья) → казначею уйдёт запрос на одобрение.
                 (new CouncilExpenseApproval())->requestIfNeeded($taskId);
                 return;
@@ -211,6 +212,19 @@ final class BotWebhookController
         if ($token === '' || $chatId === '' || !$msgId) { return; }
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         TelegramBot::editMessageText($token, $chatId, $msgId, $e($plainText), 'HTML', null);
+    }
+
+    /**
+     * Заменить строку статуса задачи («✅ Вы взяли задачу в работу» или
+     * «Вы выполнили задачу на N%») на $line; нет такой строки — дописать в конец.
+     */
+    public static function withStatusLine(string $msgText, string $line): string
+    {
+        $re = '/^(?:✅ Вы взяли задачу в работу|Вы выполнили задачу на \d+%)$/mu';
+        if (preg_match($re, $msgText)) {
+            return (string) preg_replace($re, addcslashes($line, '\\$'), $msgText, 1);
+        }
+        return $msgText . "\n\n" . $line;
     }
 
     /** Клавиатура прогресса, появляется после «Взял в работу». */

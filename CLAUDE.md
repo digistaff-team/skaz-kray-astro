@@ -53,7 +53,7 @@ ssh abconsult 'cd /root/ledger-test && ([ -f vendor/bin/phpunit ] || php8.3 /roo
 ```
 Отдельный тест — `php8.3 vendor/bin/phpunit --filter <TestName>`. Тесты используют SQLite in-memory по образцу существующих в `residents/tests/`.
 
-Деплой раздела — `residents/deploy/deploy.sh` (rsync на `abconsult`, `config.php`/uploads/vendor не трогает). Инструкция по первичной установке — `residents/deploy/README.md`.
+Деплой раздела — `residents/deploy/deploy.sh` (tar-архивом через ssh на `abconsult`, rsync не нужен; `config.php`/`.env`/uploads/vendor/сессии не трогает). Подробности и флаги — `residents/CLAUDE.md`, первичная установка — `residents/deploy/README.md`.
 
 ## Документация проекта
 `docs/superpowers/` — планы (`plans/`) и дизайн-спеки (`specs/`) по крупным фичам (логин редактора v2, раздел жителей, бюджет совета, mobile PWA/app-режим). Это первоисточник контекста по нетривиальным решениям. `docs/kak-obnovit-prevyu-ssylki.md` — инструкция для редактора про превью ссылок.

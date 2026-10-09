@@ -2,10 +2,7 @@
 <section class="sovet-hero" style="margin-bottom:1rem">
     <p class="sovet-eyebrow">Внутренний портал</p>
     <h1>Бухгалтерия Общего дома</h1>
-    <p>Вносите приход и расход по статьям. Жители видят эти же цифры в разделе «Бюджет Общего дома» (только просмотр).</p>
-    <p class="sovet-hero-actions">
-        <a class="res-btn res-btn--ghost" href="/sovet/buhgalteriya/statyi">Статьи бюджета</a>
-    </p>
+    <p class="res-meta">Вносите приход и расход по статьям. Жители видят эти же цифры в разделе «Бюджет Общего дома» (только просмотр).</p>
 </section>
 
 <div class="ledger-forms">

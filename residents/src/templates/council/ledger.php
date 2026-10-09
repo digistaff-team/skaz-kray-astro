@@ -17,7 +17,7 @@
                     <?php foreach ($incomeCats as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </label>
-            <div class="ledger-amount-row has-amount">
+            <div class="ledger-amount-row">
                 <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="42000"></label>
                 <label class="ledger-date">Дата <input type="date" name="entry_date"></label>
             </div>
@@ -37,7 +37,7 @@
                     <?php foreach ($expenseCats as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </label>
-            <div class="ledger-amount-row has-amount">
+            <div class="ledger-amount-row">
                 <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="12400"></label>
                 <label class="ledger-date">Дата <input type="date" name="entry_date"></label>
             </div>

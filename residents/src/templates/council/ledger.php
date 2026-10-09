@@ -7,7 +7,7 @@
 
 <div class="ledger-forms">
     <details class="res-card">
-        <summary style="cursor:pointer;font-weight:700;color:var(--green)">+ Добавить приход</summary>
+        <summary style="cursor:pointer;font-weight:700;color:var(--green)">+ Приход</summary>
         <form method="post" action="/sovet/buhgalteriya/operaciya" class="res-form">
             <?= Csrf::field() ?>
             <input type="hidden" name="kind" value="income">
@@ -25,7 +25,7 @@
     </details>
 
     <details class="res-card">
-        <summary style="cursor:pointer;font-weight:700;color:var(--ochre)">− Добавить расход</summary>
+        <summary style="cursor:pointer;font-weight:700;color:var(--ochre)">− Расход</summary>
         <form method="post" action="/sovet/buhgalteriya/operaciya" class="res-form" enctype="multipart/form-data">
             <?= Csrf::field() ?>
             <input type="hidden" name="kind" value="expense">

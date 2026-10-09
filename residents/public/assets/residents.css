@@ -376,6 +376,11 @@ body.map-open { overflow: hidden; }
 .ledger-empty { padding: 1.5rem 0; color: var(--muted); }
 .ledger-forms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.4rem 0; }
 @media (max-width: 640px) { .ledger-forms { grid-template-columns: 1fr; } }
+/* Строка «Сумма / Дата» в формах бухгалтерии — в одну линию. */
+.res-form .ledger-amount-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .ledger-amount-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .ledger-amount-row.has-amount > .ledger-amount { flex: 1 1 8rem; }
+.res-form .ledger-amount-row.has-amount > .ledger-date { flex: 1 1 11rem; }
 .ledger-op-edit { margin-top: .4rem; }
 .ledger-op-edit summary { cursor: pointer; font-size: .82rem; color: var(--muted); list-style: none; }
 .ledger-op-edit summary::-webkit-details-marker { display: none; }

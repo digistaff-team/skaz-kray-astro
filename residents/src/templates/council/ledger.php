@@ -17,8 +17,10 @@
                     <?php foreach ($incomeCats as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </label>
-            <label>Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="42000"></label>
-            <label>Дата <input type="date" name="entry_date"></label>
+            <div class="ledger-amount-row has-amount">
+                <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="42000"></label>
+                <label class="ledger-date">Дата <input type="date" name="entry_date"></label>
+            </div>
             <label>Описание <input type="text" name="note" maxlength="300" placeholder="Взносы за август"></label>
             <button type="submit" class="res-btn">Добавить приход</button>
         </form>
@@ -35,8 +37,10 @@
                     <?php foreach ($expenseCats as $c): ?><option value="<?= (int) $c['id'] ?>"><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </label>
-            <label>Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="12400"></label>
-            <label>Дата <input type="date" name="entry_date"></label>
+            <div class="ledger-amount-row has-amount">
+                <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="12400"></label>
+                <label class="ledger-date">Дата <input type="date" name="entry_date"></label>
+            </div>
             <label>Описание <input type="text" name="note" maxlength="300" placeholder="Замена автомата на щитке"></label>
             <label>Фото чека (необязательно) <input type="file" name="receipt" accept="image/*"></label>
             <button type="submit" class="res-btn">Добавить расход</button>

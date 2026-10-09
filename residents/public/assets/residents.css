@@ -567,6 +567,7 @@ body.map-open { overflow: hidden; }
    строки сдвигают вниз весь список документов. */
 @media (max-width: 760px) { .sovet-action { padding-left: .8rem; padding-right: .8rem; } }
 .sovet-action { display: flex; align-items: center; justify-content: space-between; }
+.sovet-action > span:first-child { font-weight: 700; }
 .sovet-action-n { font-weight: 700; opacity: .9; }
 .sovet-progress { flex-basis: 100%; height: 8px; background: #f3f1e8; border-radius: 999px; overflow: hidden; margin-top: .3rem; }
 .sovet-progress-fill { display: block; height: 100%; background: var(--green); border-radius: 999px; }

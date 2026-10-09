@@ -65,10 +65,11 @@ final class CouncilData
     public static function documents(): array
     {
         return [
-            ['title' => 'Положение о Попечительском совете',        'kind' => 'Положение', 'href' => 'https://docs.google.com/document/d/1Zx1uI9zBUnd7N_PwWZ4UXus5LH0C6Ey01BhxrkuI6No/edit?usp=sharing'],
+            ['title' => 'Положение о Попечительском совете',        'kind' => 'Положение', 'href' => 'https://docs.google.com/document/d/1SeyM7idSrufAR81c4d4B-vGEZtNiyQe240NWfiME4f0/edit?usp=sharing'],
             ['title' => 'Общие правила пользования Теремом',        'kind' => 'Правила',   'href' => 'https://docs.google.com/document/d/1dTYZLmwyR6KIe74Znr1DPbdQAdL_qiUfvelsn96eQME/edit?usp=drive_link'],
             ['title' => 'Распределение работ по содержанию Терема', 'kind' => 'Работы',    'href' => 'https://docs.google.com/spreadsheets/d/1pxFtEkk8grn80Jhha-xXywo3rCx7QrDbw4eFp0fjXn4/edit?usp=drive_link'],
             ['title' => 'Отчёт о доходах и расходах',              'kind' => 'Финансы',   'href' => 'https://docs.google.com/spreadsheets/d/1QAktBy29tafF0hCAWC8kdKpOInLi6yHQpttMoBxVXCM/edit?usp=sharing'],
+            ['title' => 'Инструкция по экстренным ситуациям',       'kind' => 'Инструкция', 'href' => 'https://docs.google.com/document/d/1FlgAd0bBoG3ZmM5MAfkxdMXZZLsQs6JRKKgyuDRedYY/edit?usp=sharing'],
         ];
     }
 

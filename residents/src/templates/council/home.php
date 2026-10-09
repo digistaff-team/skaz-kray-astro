@@ -52,7 +52,7 @@
 </div>
 
 <div class="sovet-actions">
-    <a class="res-btn sovet-action" href="/sovet/napravleniya"><span>Направления работы</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
+    <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya"><span>Направления</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
     <a class="res-btn res-btn--ghost sovet-action" href="/sovet/zadachi"><span>Текущие задачи</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>
 </div>
 

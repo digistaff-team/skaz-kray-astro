@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev        # локальный дев-сервер
 npm run build      # статическая сборка в dist/
 npm run preview    # предпросмотр собранного
+npm run check      # astro check — типизация шаблонов (smoke-тест)
 ```
 Скрипты в `scripts/*.mjs` запускаются вручную через `node scripts/<имя>.mjs` (не через npm).
 
@@ -46,6 +47,8 @@ npm run preview    # предпросмотр собранного
 - **Секреты** — `config/config.php` (вне git, из `config.example.php`) и `.env`. CLI-утилиты в `bin/`.
 
 ### Тесты и деплой
+CI (`.github/workflows/ci.yml`) на каждый push/PR: **phpunit** (PHP 8.3, SQLite, без секретов) и smoke-тест Astro-части (`npm run check` + `npm run build`). Это быстрый способ поймать регрессию до выкладки.
+
 **Локально PHP нет** — phpunit гоняется на сервере `abconsult`:
 ```bash
 git archive HEAD:residents | ssh abconsult 'tar -x -C /root/ledger-test'

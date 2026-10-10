@@ -10,9 +10,9 @@ import { sortByDateDesc, excerptFrom, postSlug, firstImage } from '../lib/utils.
 export async function getStaticPaths() {
   const pages = await getCollection('pages');
   const posts = await getCollection('posts');
-  const paths = [];
+  const paths: any[] = [];
   const seen = new Set();
-  const add = (slug, props) => {
+  const add = (slug: string, props: any) => {
     if (seen.has(slug)) { console.warn(`[route] duplicate slug skipped: ${slug}`); return; }
     seen.add(slug);
     paths.push({ params: { slug }, props });
@@ -38,7 +38,7 @@ export async function getStaticPaths() {
   }
 
   // Category listings at /category/<nested>/
-  const postsByCat = {};
+  const postsByCat: Record<string, any[]> = {};
   for (const p of posts)
     for (const cs of p.data.categories) (postsByCat[cs] ||= []).push(p);
 
@@ -59,7 +59,7 @@ export async function getStaticPaths() {
   return paths;
 }
 
-const { type, entry, cat, posts, children, to } = Astro.props;
+const { type, entry, cat, posts, children, to } = Astro.props as any;
 
 let title, description, ogImage;
 if (type === 'redirect') {

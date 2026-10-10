@@ -3,7 +3,9 @@ import { render } from 'astro:content';
 const { entry } = Astro.props;
 const { title } = entry.data;
 const hasBody = (entry.body || '').trim().length > 0;
-const { Content } = hasBody ? await render(entry) : { Content: null };
+// Гвард по Content (а не по hasBody): так TS в шаблоне видит, что
+// компонент определён, и не ругается на <Content />.
+const Content = hasBody ? (await render(entry)).Content : undefined;
 ---
 <article class="page">
   <header class="page-head">
@@ -15,7 +17,7 @@ const { Content } = hasBody ? await render(entry) : { Content: null };
     </div>
   </header>
 
-  {hasBody
+  {Content
     ? <div class="wrap page-body prose"><Content /></div>
     : <div class="wrap page-body"><p class="empty">Материал этой страницы скоро появится.</p></div>}
 </article>

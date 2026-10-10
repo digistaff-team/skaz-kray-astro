@@ -114,9 +114,9 @@ const { slides } = Astro.props;
     slides.forEach((s) => io.observe(s));
 
     // Scroll horizontally within the track only — no hash/anchor jump.
-    const goTo = (idx) => track.scrollTo({ left: slides[idx].offsetLeft, behavior: reduce ? 'auto' : 'smooth' });
+    const goTo = (idx) => track.scrollTo({ left: (slides[idx] as HTMLElement).offsetLeft, behavior: reduce ? 'auto' : 'smooth' });
 
-    let timer = null;
+    let timer: ReturnType<typeof setInterval> | null = null;
     const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
     const start = () => { if (!reduce && !timer) timer = setInterval(() => {
       const cur = dots.findIndex((d) => d.getAttribute('aria-selected') === 'true');

@@ -1,0 +1,8 @@
+{
+  "extends": "astro/tsconfigs/base",
+  "compilerOptions": {
+    // Код в основном JS-овый (миграция с WP), строгую типизацию не вводили —
+    // check нужен как smoke-тест (реальные ошибки), а не как линтер стилей.
+    "noImplicitAny": false
+  }
+}

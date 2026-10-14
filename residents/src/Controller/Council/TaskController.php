@@ -34,8 +34,8 @@ final class TaskController
     public function index(): void
     {
         CouncilAuth::requireLogin();
-        $sort = (string) ($_GET['sort'] ?? 'priority');
-        if (!in_array($sort, self::SORTS, true)) { $sort = 'priority'; }
+        $sort = (string) ($_GET['sort'] ?? 'created');
+        if (!in_array($sort, self::SORTS, true)) { $sort = 'created'; }
 
         $active  = $this->tasks->listWithSubtasks(false, $sort);
         $archive = $this->tasks->listWithSubtasks(true, $sort);
@@ -443,8 +443,8 @@ final class TaskController
 
     private function back(): void
     {
-        $sort = (string) ($_POST['sort'] ?? 'priority');
-        if (!in_array($sort, self::SORTS, true)) { $sort = 'priority'; }
+        $sort = (string) ($_POST['sort'] ?? 'created');
+        if (!in_array($sort, self::SORTS, true)) { $sort = 'created'; }
         header('Location: /sovet/zadachi?sort=' . $sort);
     }
 }

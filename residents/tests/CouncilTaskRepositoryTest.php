@@ -7,10 +7,11 @@ use SkazResidents\Repository\CouncilTaskRepository;
 final class CouncilTaskRepositoryTest extends TestCase
 {
     private CouncilTaskRepository $repo;
+    private \PDO $pdo;
 
     protected function setUp(): void
     {
-        make_test_db();
+        $this->pdo = make_test_db();
         $this->repo = new CouncilTaskRepository();
     }
 
@@ -62,6 +63,56 @@ final class CouncilTaskRepositoryTest extends TestCase
         $archive = $this->repo->listWithSubtasks(true, 'priority');
         $this->assertCount(1, $archive);
         $this->assertSame('готовый', $archive[0]['title']);
+    }
+
+    public function test_archive_sorted_newest_completed_first_regardless_of_sort(): void
+    {
+        // Старая выполнена в январе, новая — в сентябре; по приоритету «старая» (высокая)
+        // шла бы первой, но архив всегда идёт свежими выполнениями вверх.
+        $old = $this->repo->create('старая', null, 'А', '', 'высокая');
+        $new = $this->repo->create('новая', null, 'А', '', 'низкая');
+        $this->repo->updateFields($old, ['status' => 'выполнена'], '2026-01-10 12:00:00');
+        $this->repo->updateFields($new, ['status' => 'выполнена'], '2026-09-30 12:00:00');
+
+        foreach (['priority', 'created', 'progress', 'spent'] as $sort) {
+            $archive = $this->repo->listWithSubtasks(true, $sort);
+            $this->assertSame(['новая', 'старая'], array_column($archive, 'title'), "sort=$sort");
+        }
+    }
+
+    public function test_created_sort_oldest_first(): void
+    {
+        // Активный список: старые задачи наверху, новые внизу; при равенстве дат — старее по id.
+        $new = $this->repo->create('новая', null, 'А', '', 'средняя');
+        $mid = $this->repo->create('средняя', null, 'А', '', 'средняя');
+        $old = $this->repo->create('старая', null, 'А', '', 'средняя');
+        $this->pdo->exec("UPDATE council_tasks SET created_at = '2026-10-13 10:00:00' WHERE id = $new");
+        $this->pdo->exec("UPDATE council_tasks SET created_at = '2026-10-10 10:00:00' WHERE id = $mid");
+        $this->pdo->exec("UPDATE council_tasks SET created_at = '2026-10-01 10:00:00' WHERE id = $old");
+
+        $active = $this->repo->listWithSubtasks(false, 'created');
+        $this->assertSame(['старая', 'средняя', 'новая'], array_column($active, 'title'));
+
+        // Одинаковая секунда создания — раньше по id.
+        $tieA = $this->repo->create('tie-a', null, 'А', '', 'средняя');
+        $tieB = $this->repo->create('tie-b', null, 'А', '', 'средняя');
+        $this->pdo->exec("UPDATE council_tasks SET created_at = '2026-10-14 10:00:00' WHERE id IN ($tieA, $tieB)");
+        $active = $this->repo->listWithSubtasks(false, 'created');
+        $this->assertSame('tie-a', $active[count($active) - 2]['title']);
+        $this->assertSame('tie-b', $active[count($active) - 1]['title']);
+    }
+
+    public function test_archive_without_completed_at_falls_back_to_created_at(): void
+    {
+        // Старые строки могли остаться без completed_at — берём дату создания.
+        $legacy = $this->repo->create('без даты выполнения', null, 'А', '', 'низкая');
+        $recent = $this->repo->create('свежая', null, 'А', '', 'высокая');
+        $this->repo->updateFields($legacy, ['status' => 'выполнена'], '2026-09-30 12:00:00');
+        $this->repo->updateFields($recent, ['status' => 'выполнена'], '2026-09-30 12:00:00');
+        $this->pdo->exec("UPDATE council_tasks SET completed_at = NULL, created_at = '2026-09-01 00:00:00' WHERE id = $legacy");
+
+        $archive = $this->repo->listWithSubtasks(true, 'priority');
+        $this->assertSame(['свежая', 'без даты выполнения'], array_column($archive, 'title'));
     }
 
     public function test_subtasks_lifecycle_and_counts(): void

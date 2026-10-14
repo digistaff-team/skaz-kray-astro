@@ -86,7 +86,8 @@ final class CouncilTaskRepository
 
     /**
      * Задачи с прикреплёнными подзадачами. $archived=false → активные (status != выполнена),
-     * true → архив (выполненные). $sort ∈ priority|created|progress|spent.
+     * сортируются по $sort (priority|created|progress|spent; created — старые вверху);
+     * true → архив (выполненные), всегда по убыванию completed_at — свежие выполнения сверху.
      * @return array<int,array<string,mixed>>
      */
     public function listWithSubtasks(bool $archived, string $sort): array
@@ -107,7 +108,23 @@ final class CouncilTaskRepository
         }
         unset($t);
 
-        return $this->sort($tasks, $sort);
+        return $archived ? $this->sortCompleted($tasks) : $this->sort($tasks, $sort);
+    }
+
+    /**
+     * Архив выполненных: самые свежие (ближайшие к текущей дате) — наверху.
+     * Дата выполнения; если completed_at нет (старые строки) — дата создания.
+     * При полном равенстве дат — новее по id.
+     * @param array<int,array<string,mixed>> $tasks
+     */
+    private function sortCompleted(array $tasks): array
+    {
+        usort($tasks, static function ($a, $b) {
+            $ka = (string) (($a['completed_at'] ?? '') !== '' ? $a['completed_at'] : ($a['created_at'] ?? ''));
+            $kb = (string) (($b['completed_at'] ?? '') !== '' ? $b['completed_at'] : ($b['created_at'] ?? ''));
+            return [$kb, (int) ($b['id'] ?? 0)] <=> [$ka, (int) ($a['id'] ?? 0)];
+        });
+        return $tasks;
     }
 
     /** @param array<int,array<string,mixed>> $tasks */
@@ -115,7 +132,9 @@ final class CouncilTaskRepository
     {
         usort($tasks, function ($a, $b) use ($sort) {
             return match ($sort) {
-                'created'  => strcmp((string) $b['created_at'], (string) $a['created_at']),
+                // «по дате»: старые задачи наверху, новые внизу; при равенстве секунд — старее по id.
+                'created'  => strcmp((string) $a['created_at'], (string) $b['created_at'])
+                              ?: ((int) $a['id'] <=> (int) $b['id']),
                 'progress' => $b['progress'] <=> $a['progress'],
                 'spent'    => $b['spent'] <=> $a['spent'],
                 default    => (self::PRIORITY_RANK[$a['priority']] ?? 1) <=> (self::PRIORITY_RANK[$b['priority']] ?? 1),

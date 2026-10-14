@@ -133,7 +133,7 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             </div>
         <?php endif; ?>
 
-        <form id="edit-<?= $id ?>" class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit">
+        <form id="edit-<?= $id ?>" class="res-form sovet-edit" method="post" action="/sovet/zadachi/<?= $id ?>/obnovit" enctype="multipart/form-data">
             <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
             <label>Что сделать<input type="text" name="title" maxlength="300" value="<?= View::e($t['title']) ?>"></label>
             <label>Кто сделает
@@ -198,6 +198,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
                     <?php foreach (($expenseCats ?? []) as $c): ?><option value="<?= (int) $c['id'] ?>"<?= $curCat === (int) $c['id'] ? ' selected' : '' ?>><?= View::e($c['name']) ?></option><?php endforeach; ?>
                 </select>
             </label>
+            <!-- Фото задачи: кнопка видна всегда (не зависит от расходов) — как в форме новой задачи. -->
+            <label class="sovet-addlink">+ Добавить фото
+                <input type="file" name="photos[]" id="taskPhotos<?= $id ?>" accept="image/*" multiple hidden>
+            </label>
+            <div id="taskPhotoPreview<?= $id ?>" class="photo-preview"></div>
             <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
         </form>
 
@@ -291,26 +296,32 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 
 <script>
 // Накопительный выбор фото с превью — та же логика, что в дневнике и профиле.
+// Один обработчик на все инпуты фото задач: новая задача и правка каждой карточки
+// (у каждого своё превью — следующий соседний блок .photo-preview).
 (function () {
-  var inp = document.getElementById('taskPhotos'), box = document.getElementById('taskPhotoPreview');
-  if (!inp || !box || typeof DataTransfer === 'undefined') { return; }
-  var dt = new DataTransfer();
-  inp.addEventListener('change', function () {
-    Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type)) { dt.items.add(f); } });
-    inp.files = dt.files;
-    render();
-  });
-  function render() {
-    box.innerHTML = '';
-    Array.prototype.forEach.call(dt.files, function (f, idx) {
-      var wrap = document.createElement('span'); wrap.className = 'photo-uploaded';
-      var img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(f);
-      var btn = document.createElement('button');
-      btn.type = 'button'; btn.className = 'photo-del'; btn.textContent = '×'; btn.title = 'Убрать';
-      btn.addEventListener('click', function () { dt.items.remove(idx); inp.files = dt.files; render(); });
-      wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
+  if (typeof DataTransfer === 'undefined') { return; }
+  Array.prototype.forEach.call(document.querySelectorAll('input[id^="taskPhotos"]'), function (inp) {
+    var label = inp.closest('label');
+    var box = label ? label.nextElementSibling : null;
+    if (!box || !box.classList.contains('photo-preview')) { return; }
+    var dt = new DataTransfer();
+    inp.addEventListener('change', function () {
+      Array.prototype.forEach.call(inp.files, function (f) { if (/^image\//.test(f.type)) { dt.items.add(f); } });
+      inp.files = dt.files;
+      render();
     });
-  }
+    function render() {
+      box.innerHTML = '';
+      Array.prototype.forEach.call(dt.files, function (f, idx) {
+        var wrap = document.createElement('span'); wrap.className = 'photo-uploaded';
+        var img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(f);
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'photo-del'; btn.textContent = '×'; btn.title = 'Убрать';
+        btn.addEventListener('click', function () { dt.items.remove(idx); inp.files = dt.files; render(); });
+        wrap.appendChild(img); wrap.appendChild(btn); box.appendChild(wrap);
+      });
+    }
+  });
 })();
 </script>
 

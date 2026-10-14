@@ -139,6 +139,7 @@ final class TaskController
 
         $this->tasks->updateFields($id, $patch, date('Y-m-d H:i:s'));
         $this->approval->sync($id);
+        $this->handleUploads($id); // фото, приложенные при правке (кнопка «+ Добавить фото»)
         Flash::set('success', 'Задача обновлена.');
         $this->back();
         if (isset($patch['assignee']) && $patch['assignee'] !== $oldAssignee) {

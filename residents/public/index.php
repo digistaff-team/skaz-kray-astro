@@ -39,6 +39,7 @@ use SkazResidents\Controller\BudgetController;
 use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
 use SkazResidents\Controller\WaterLevelController;
+use SkazResidents\Controller\BroadcastController;
 
 $router = new Router();
 
@@ -144,6 +145,16 @@ $router->post('/poselenie/moderation/entry/approve', [$mod, 'approveEntry']);
 $router->post('/poselenie/moderation/entry/reject', [$mod, 'rejectEntry']);
 $router->post('/poselenie/moderation/product/approve', [$mod, 'approveProduct']);
 $router->post('/poselenie/moderation/product/reject', [$mod, 'rejectProduct']);
+
+// ==== Массовая рассылка в Telegram (внутри модерации, только админ) ====
+$bcast = new BroadcastController();
+$router->get('/poselenie/moderation/rassylka', [$bcast, 'index']);
+$router->post('/poselenie/moderation/rassylka', [$bcast, 'send']);
+// Старый адрес (прямые заходы и закладки) — ведём на новый, чтобы не потерять вход.
+$router->get('/poselenie/rassylka', static function (): void {
+    header('Location: /poselenie/moderation/rassylka', true, 301);
+    exit;
+});
 
 // ==== Шеринг инструментов (раздел жителей) ====
 $tool = new ToolController();

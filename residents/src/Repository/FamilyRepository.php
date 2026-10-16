@@ -164,4 +164,19 @@ final class FamilyRepository
         $st->execute([$status]);
         return $st->fetchAll();
     }
+
+    /**
+     * Активные семьи с привязанным Telegram — адресаты массовой рассылки
+     * (BroadcastController). Только нужные для отправки поля.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listWithTelegram(): array
+    {
+        return $this->db->query(
+            "SELECT id, name, telegram_id FROM families
+             WHERE status = 'active' AND telegram_id IS NOT NULL
+             ORDER BY name"
+        )->fetchAll();
+    }
 }

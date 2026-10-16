@@ -30,7 +30,7 @@ $err = static fn(string $k): string => isset($errors[$k]) ? '<div class="res-fla
         <select name="family_id">
             <option value="0">— выберите семью —</option>
             <?php foreach ($targets as $t): ?>
-                <option value="<?= (int) $t['id'] ?><?= $family === (int) $t['id'] ? ' selected' : '' ?>><?= View::e($t['name']) ?></option>
+                <option value="<?= (int) $t['id'] ?>"<?= $family === (int) $t['id'] ? ' selected' : '' ?>><?= htmlspecialchars((string) $t['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></option>
             <?php endforeach; ?>
         </select>
     </label>

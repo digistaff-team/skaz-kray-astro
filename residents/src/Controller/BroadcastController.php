@@ -29,7 +29,9 @@ final class BroadcastController
 
     public function __construct(
         private FamilyRepository $families = new FamilyRepository(),
-        private BroadcastListRepository $lists = new BroadcastListRepository()
+        private BroadcastListRepository $lists = new BroadcastListRepository(),
+        /** Чаты-группы, доступные как адресаты; null — читать из config('telegram'). */
+        private ?array $groupChats = null
     ) {}
 
     /** Страница с формой рассылки и панелью сохранённых списков адресатов. */
@@ -120,7 +122,9 @@ final class BroadcastController
         View::render('broadcast/list', [
             'list'    => $list,
             'members' => $this->lists->members((int) $list['id']),
+            'chats'   => $this->lists->chats((int) $list['id']),
             'addable' => $this->addableFamilies((int) $list['id']),
+            'group_chats' => $this->availableGroupChats(),
             'errors'  => [],
             'old'     => [],
         ], 'Список адресатов — рассылка');
@@ -144,9 +148,15 @@ final class BroadcastController
             header('Location: ' . self::PATH_INDEX);
         } elseif ($action === 'add') {
             $this->addMember($id, $list);
+        } elseif ($action === 'add_chat') {
+            $this->addChat($id, $list);
         } elseif ($action === 'remove') {
             $this->lists->removeMember($id, (int) ($_POST['family_id'] ?? 0));
             Flash::set('success', 'Адресат убран из списка.');
+            header('Location: ' . self::listPath($id));
+        } elseif ($action === 'remove_chat') {
+            $this->lists->removeChat($id, (int) ($_POST['chat_id'] ?? 0));
+            Flash::set('success', 'Чат убран из списка.');
             header('Location: ' . self::listPath($id));
         } else {
             // Неизвестное действие — просто вернуть на страницу списка.
@@ -170,6 +180,49 @@ final class BroadcastController
         $this->lists->rename($id, $name);
         Flash::set('success', 'Название списка обновлено.');
         header('Location: ' . self::listPath($id));
+    }
+
+    /**
+     * Добавить чат-группу в список: только из списка разрешённых (config
+     * telegram.broadcast_group_chats — «Чат Действуем вместе» и др.). Чужой
+     * chat_id из POST игнорируется.
+     */
+    private function addChat(int $id, array $list): void
+    {
+        $chatId = (int) ($_POST['chat_id'] ?? 0);
+        $allowed = $this->availableGroupChats();
+        $found   = null;
+        foreach ($allowed as $c) {
+            if ((int) $c['chat_id'] === $chatId) { $found = $c; break; }
+        }
+        if (!$found) {
+            Flash::set('error', 'Чат не найден в списке разрешённых — выберите чат из списка.');
+            header('Location: ' . self::listPath($id));
+            return;
+        }
+        $this->lists->addChat($id, $chatId, (string) $found['title']);
+        Flash::set('success', 'Чат «' . (string) $found['title'] . '» добавлен в список.');
+        header('Location: ' . self::listPath($id));
+    }
+
+    /**
+     * Чаты-группы, доступные как адресаты рассылки: инжектированный список
+     * (тесты) либо config('telegram.broadcast_group_chats') в бою.
+     *
+     * @return array<int,array{chat_id:int,title:string}>
+     */
+    private function availableGroupChats(): array
+    {
+        if ($this->groupChats !== null) { return $this->groupChats; }
+        $cfg  = Config::get('telegram');
+        $rows = is_array($cfg) ? ($cfg['broadcast_group_chats'] ?? []) : [];
+        $out  = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            $id = (int) ($row['chat_id'] ?? 0);
+            if ($id === 0) { continue; }
+            $out[] = ['chat_id' => $id, 'title' => (string) ($row['title'] ?? '')];
+        }
+        return $out;
     }
 
     /** Добавить адресата: семья из select и/или свободный email/Telegram ID. */
@@ -207,10 +260,12 @@ final class BroadcastController
             if ($listId <= 0 || !$this->lists->find($listId)) { return []; }
             $onTelegram = $this->lists->recipients($listId);
             $allMembers = $this->lists->members($listId);
-            if (count($onTelegram) < count($allMembers)) {
+            $chats      = $this->lists->chats($listId);
+            $familyOnly = count($onTelegram) - count($chats);
+            if ($familyOnly < count($allMembers)) {
                 // Члены без Telegram (не привязали бота / неактивны) — рассылка их
                 // не заденет, но админ должен знать, что список сузился.
-                error_log('Broadcast: список ' . $listId . ': с Telegram ' . count($onTelegram)
+                error_log('Broadcast: список ' . $listId . ': с Telegram ' . $familyOnly
                     . ' из ' . count($allMembers) . ' адресатов — остальные пропущены');
             }
             return $onTelegram;
@@ -270,6 +325,10 @@ final class BroadcastController
      * лимит 2500 за запуск — страховка от долгого прогона и лимитов Bot API.
      * Ошибки отдельных адресатов (заблокировали бота) — только в error_log.
      *
+     * Адресат — строка {id, name, telegram_id}: семья (id > 0) или чат-группа
+     * (id = 0, telegram_id отрицательный — chat_id супергруппы). SendMessage
+     * принимает chat_id строкой и чатам, и личкам — формат не различаем.
+     *
      * @param array<int,array<string,mixed>> $recipients
      */
     private function deliver(array $recipients, string $text): void
@@ -290,9 +349,11 @@ final class BroadcastController
                     $sent++;
                     // Журнал сообщения — chat_id + message_id, чтобы потом можно
                     // было переписать/удалить рассылку (см. TelegramOutbox).
-                    TelegramOutbox::record($chatId, $messageId, 'broadcast', 'send', $familyId, $text);
+                    // У чата family_id нет — в журнал уйдёт NULL (семьи — свой id).
+                    TelegramOutbox::record($chatId, $messageId, 'broadcast', 'send', $familyId ?: null, $text);
                 } else {
-                    error_log('Broadcast: сообщение не ушло семье ' . $familyId . ' (tg ' . $chatId . ')');
+                    error_log('Broadcast: сообщение не ушло ' . ($familyId > 0 ? 'семье ' . $familyId : 'в чат')
+                        . ' (tg ' . $chatId . ')');
                 }
                 usleep(30_000);
             }

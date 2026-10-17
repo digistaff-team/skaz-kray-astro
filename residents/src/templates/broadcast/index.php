@@ -68,7 +68,37 @@ $e   = static fn(mixed $s): string => htmlspecialchars((string) $s, ENT_QUOTES |
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
+</section>
 
+<?php
+// Чаты-группы, доступные как адресаты (config telegram.broadcast_group_chats).
+// На бою их накидывает сам контроллер; здесь — запасной вариант, если шаблон
+// рендерится без этого поля (например, в старых тестах).
+$groupChats = $group_chats ?? [];
+if (!$groupChats) {
+    $tgCfg = \SkazResidents\Config::get('telegram');
+    foreach (is_array($tgCfg) ? ($tgCfg['broadcast_group_chats'] ?? []) : [] as $row) {
+        if (is_array($row) && (int) ($row['chat_id'] ?? 0) !== 0) {
+            $groupChats[] = ['chat_id' => (int) $row['chat_id'], 'title' => (string) ($row['title'] ?? '')];
+        }
+    }
+}
+?>
+<section>
+    <h2>Чаты-группы</h2>
+    <p class="res-meta">Чат-группа — адресат-группа: сообщение уйдёт в сам чат (например, «Чат Действуем вместе»), а не в личку жителям. Добавляется в список адресатов на его странице.</p>
+    <?php if (!$groupChats): ?>
+        <p class="res-meta">Нет разрешённых чатов — добавьте их в config (telegram.broadcast_group_chats).</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($groupChats as $g): ?>
+                <li><?= $e($g['title']) ?> <span class="res-meta">— <?= (int) $g['chat_id'] ?></span></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+
+<section>
     <form class="res-form" method="post" action="/poselenie/moderation/rassylka/spiski/novyy">
         <?= Csrf::field() ?>
         <label>Название нового списка

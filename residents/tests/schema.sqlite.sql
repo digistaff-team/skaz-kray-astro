@@ -210,8 +210,14 @@ CREATE TABLE broadcast_list_members (
     list_id INTEGER NOT NULL,
     family_id INTEGER NOT NULL,
     added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    chat_id INTEGER,                       -- чат-группа (отрицательный id Telegram); NULL у поместий
+    chat_title TEXT,                       -- название чата — для показа в списке
     PRIMARY KEY (list_id, family_id)
 );
+-- Чат можно добавить в список только один раз: UNIQUE в SQLite пропускает NULL-строки
+-- (поместья), поэтому для чатов нужен частичный индекс (в MySQL — UNIQUE в миграции).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_blm_chat ON broadcast_list_members (list_id, chat_id)
+    WHERE chat_id IS NOT NULL;
 CREATE TABLE council_ledger_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,                 -- income | expense

@@ -68,6 +68,50 @@ $path = '/poselenie/moderation/rassylka/spiski/' . (int) $list['id'];
 </section>
 
 <section>
+    <h2>Чаты-группы (<?= count($chats) ?>)</h2>
+
+    <p class="res-meta">Чат — адресат-группа: сообщение уйдёт в сам чат, а не в личку жителям. Доступны только чаты из разрешённого списка (config telegram.broadcast_group_chats).</p>
+
+    <?php if (!$chats): ?>
+        <p class="res-meta">В списке пока нет чатов-групп.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($chats as $c): ?>
+                <li>
+                    <?= $e($c['chat_title']) ?>
+                    <span class="res-meta">— <?= (int) $c['chat_id'] ?>, получит рассылку</span>
+                    <form method="post" action="<?= $path ?>" style="display:inline">
+                        <?= Csrf::field() ?>
+                        <input type="hidden" name="action" value="remove_chat">
+                        <input type="hidden" name="chat_id" value="<?= (int) $c['chat_id'] ?>">
+                        <button class="res-btn res-btn--ghost" type="submit">Убрать</button>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+
+    <h3>Добавить чат</h3>
+    <form class="res-form" method="post" action="<?= $path ?>">
+        <?= Csrf::field() ?>
+        <input type="hidden" name="action" value="add_chat">
+        <label>Чат-группа (из разрешённого списка)
+            <?php if ($group_chats): ?>
+                <select name="chat_id">
+                    <option value="0">— выберите чат —</option>
+                    <?php foreach ($group_chats as $g): ?>
+                        <option value="<?= (int) $g['chat_id'] ?>"><?= $e($g['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            <?php else: ?>
+                <input type="text" name="chat_id" placeholder="нет разрешённых чатов (config)" disabled>
+            <?php endif; ?>
+        </label>
+        <button class="res-btn" type="submit"<?= $group_chats ? '' : ' disabled' ?>>Добавить чат в список</button>
+    </form>
+</section>
+
+<section>
     <h2>Опасная зона</h2>
     <form class="res-form" method="post" action="<?= $path ?>" data-confirm="Удалить список «<?= $e($list['name']) ?>»?">
         <?= Csrf::field() ?>

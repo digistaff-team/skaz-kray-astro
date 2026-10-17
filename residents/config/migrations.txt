@@ -43,3 +43,4 @@ household-join-requests.sql
 deliveries.sql
 telegram-messages.sql
 broadcast-lists.sql
+broadcast-group-chats.sql

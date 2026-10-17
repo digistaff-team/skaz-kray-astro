@@ -102,4 +102,56 @@ final class BroadcastListRepositoryTest extends TestCase
         $this->assertSame('Семья А', (string) $rows[0]['name']);
         $this->assertSame(111, (int) $rows[0]['telegram_id']);
     }
+
+    /** Чат-группа как второй тип членства: добавить, no-op, убрать. */
+    public function test_add_remove_chat_and_idempotent_readd(): void
+    {
+        $listId = $this->repo->create('С чатом');
+        $this->assertSame([], $this->repo->chats($listId));
+
+        $this->repo->addChat($listId, -1001580770653, 'Чат Действуем вместе');
+        $this->repo->addChat($listId, -1001580770653, 'Чат Действуем вместе');   // повтор — no-op
+        $chats = $this->repo->chats($listId);
+        $this->assertCount(1, $chats);
+        $this->assertSame(-1001580770653, (int) $chats[0]['chat_id']);
+        $this->assertSame('Чат Действуем вместе', (string) $chats[0]['chat_title']);
+        $this->assertSame(1, (int) $this->repo->allWithCounts()[0]['members']);   // чат — адресат
+
+        $this->repo->removeChat($listId, -1001580770653);
+        $this->assertSame([], $this->repo->chats($listId));
+        // Удалённое членство можно завести заново.
+        $this->repo->addChat($listId, -1001580770653, 'Чат Действуем вместе');
+        $this->assertCount(1, $this->repo->chats($listId));
+    }
+
+    /** recipients() — семьи (отбор по status/telegram) плюс чаты списка одним списком. */
+    public function test_recipients_include_chats_beside_families(): void
+    {
+        $pdo = \SkazResidents\Database::pdo();
+        $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status) VALUES
+            (1, 'a@sk.ru', 111, 'x', 'Семья А', 'active')");
+
+        $listId = $this->repo->create('Семья и чат');
+        $this->repo->addMember($listId, 1);
+        $this->repo->addChat($listId, -1001580770653, 'Чат Действуем вместе');
+
+        $rows = $this->repo->recipients($listId);
+        $this->assertCount(2, $rows);
+        $byId = [];
+        foreach ($rows as $r) { $byId[(int) $r['id']] = $r; }
+        $this->assertSame(111, (int) $byId[1]['telegram_id']);              // семья
+        $this->assertSame(-1001580770653, (int) $byId[0]['telegram_id']);  // чат: id=0
+        $this->assertSame('Чат Действуем вместе', (string) $byId[0]['name']);
+    }
+
+    /** Чат привязан к своему списку: в чужом recipients() его нет. */
+    public function test_recipients_chats_are_per_list(): void
+    {
+        $withChat    = $this->repo->create('С чатом');
+        $withoutChat = $this->repo->create('Без чата');
+        $this->repo->addChat($withChat, -1001580770653, 'Чат Действуем вместе');
+
+        $this->assertCount(1, $this->repo->recipients($withChat));
+        $this->assertSame([], $this->repo->recipients($withoutChat));
+    }
 }

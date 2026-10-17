@@ -24,6 +24,13 @@ return [
     // Не задан — сообщения уйдут в общий чат жителей (group_chat_id).
     'water_alert_chat_id' => '-1002339206250',
     'group_chat_id' => '-1001580770653',          // группа жителей для getChatMember (супергруппа: -100 + id)
+        // Чаты-группы как адресаты рассылки (BroadcastController): админ сможет
+        // добавить их в сохранённый список адресатов. На проде ключ заполняется
+        // в config/config.php (не в этом шаблоне):
+        //   'broadcast_group_chats' => [
+        //       ['chat_id' => -1001580770653, 'title' => 'Чат Действуем вместе'],
+        //   ],
+        'broadcast_group_chats' => [],
         'group_link'    => 'https://t.me/+CHANGE_ME',  // ссылка-приглашение в группу (для экрана гейта)
         // Секрет webhook бота (X-Telegram-Bot-Api-Secret-Token) для кнопок под
         // уведомлениями о задачах. Задаётся при setWebhook (bin/council-set-webhook.php).

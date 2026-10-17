@@ -7,6 +7,9 @@
 -- отбираются только активные семьи с telegram_id (BroadcastController::resolveRecipients),
 -- остальные молча пропускаются.
 -- Накатывается bin/migrate.php (deploy.sh с MIGRATE=1), идемпотентно.
+--
+-- Строка списка — ЛИБО поместье (family_id > 0, chat_id IS NULL),
+-- ЛИБО чат-группа в Telegram (chat_id < 0, family_id = 0, см. broadcast-group-chats.sql).
 
 CREATE TABLE IF NOT EXISTS broadcast_lists (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

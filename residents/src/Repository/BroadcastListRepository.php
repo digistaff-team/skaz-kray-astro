@@ -7,13 +7,16 @@ use PDO;
 
 /**
  * Сохранённые списки адресатов массовой рассылки (broadcast_lists +
- * broadcast_list_members). Список — именованный набор поместий: админ составляет
- * его один раз и рассылает по нему, не отмечая адресатов заново.
+ * broadcast_list_members). Список — именованный набор поместий ИЛИ чатов-групп:
+ * админ составляет его один раз и рассылает по нему, не отмечая адресатов заново.
  *
- * Членство намеренно НЕ ссылается на Telegram: привязка бота у семьи меняется,
- * а список остаётся. Какие из членов реально получат сообщение, решает
+ * Строка членства — ЛИБО поместье (family_id > 0, chat_id NULL), ЛИБО чат-группа
+ * (chat_id < 0, family_id = 0): это разные типы адресатов, а не «пустые» семьи.
+ *
+ * Членство намеренно НЕ ссылается на Telegram-привязку семьи: привязка бота
+ * меняется, а список остаётся. Какие из членов реально получат сообщение, решает
  * BroadcastController::resolveRecipients на момент отправки (только активные
- * семьи с telegram_id).
+ * семьи с telegram_id и только чаты из списка разрешённых).
  */
 final class BroadcastListRepository
 {
@@ -108,9 +111,54 @@ final class BroadcastListRepository
     }
 
     /**
+     * Добавить чат-группу в список. Уже добавленный — no-op (UNIQUE на паре
+     * list_id + chat_id). $chatId — отрицательный id супергруппы в Telegram.
+     */
+    public function addChat(int $listId, int $chatId, string $title): void
+    {
+        $st = $this->db->prepare(
+            'SELECT 1 FROM broadcast_list_members WHERE list_id = ? AND chat_id = ?'
+        );
+        $st->execute([$listId, $chatId]);
+        if ($st->fetchColumn() !== false) { return; }
+        $st = $this->db->prepare(
+            'INSERT INTO broadcast_list_members (list_id, family_id, chat_id, chat_title)
+             VALUES (?, 0, ?, ?)'
+        );
+        $st->execute([$listId, $chatId, $title]);
+    }
+
+    /** Убрать чат-группу из списка. */
+    public function removeChat(int $listId, int $chatId): void
+    {
+        $st = $this->db->prepare(
+            'DELETE FROM broadcast_list_members WHERE list_id = ? AND chat_id = ?'
+        );
+        $st->execute([$listId, $chatId]);
+    }
+
+    /** Чаты-группы списка — страница редактирования. *
+     * @return array<int,array<string,mixed>>
+     */
+    public function chats(int $listId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT chat_id, chat_title
+             FROM broadcast_list_members
+             WHERE list_id = ? AND chat_id IS NOT NULL
+             ORDER BY chat_title'
+        );
+        $st->execute([$listId]);
+        return $st->fetchAll();
+    }
+
+    /**
      * Адресаты рассылки по списку: активные семьи с привязанным Telegram —
      * ровно тот же отбор, что и у «Всем с Telegram». Члены без Telegram
      * пропускаются (в журнал уйдёт error_log из BroadcastController).
+     * Плюс чаты-группы списка — строками того же вида, что и семьи
+     * (id = 0, telegram_id = chat_id, name = chat_title): контроллер и
+     * deliver() не различают тип адресата.
      *
      * @return array<int,array<string,mixed>>
      */
@@ -120,10 +168,20 @@ final class BroadcastListRepository
             "SELECT f.id, f.name, f.telegram_id
              FROM broadcast_list_members m
              JOIN families f ON f.id = m.family_id
-             WHERE m.list_id = ? AND f.status = 'active' AND f.telegram_id IS NOT NULL
+             WHERE m.list_id = ? AND m.chat_id IS NULL
+               AND f.status = 'active' AND f.telegram_id IS NOT NULL
              ORDER BY f.name"
         );
         $st->execute([$listId]);
-        return $st->fetchAll();
+        $rows = $st->fetchAll();
+
+        foreach ($this->chats($listId) as $c) {
+            $rows[] = [
+                'id'         => 0,
+                'name'       => (string) $c['chat_title'],
+                'telegram_id' => (int) $c['chat_id'],
+            ];
+        }
+        return $rows;
     }
 }

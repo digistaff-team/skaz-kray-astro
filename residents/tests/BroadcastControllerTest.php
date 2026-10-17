@@ -216,6 +216,89 @@ final class BroadcastControllerTest extends TestCase
         $pdo->exec('DELETE FROM broadcast_list_members');
     }
 
+    /**
+     * Чат-группа как адресат списка: добавление только из разрешённого списка
+     * (config), чужой chat_id отклоняется, удаление работает.
+     */
+    public function test_update_list_add_remove_chat(): void
+    {
+        $pdo = make_test_db();
+        $this->ctrl = new BroadcastController();   // после смены PDO: репозитории пересоздать
+        Config::set(['telegram' => [
+            'bot_token' => '',
+            'broadcast_group_chats' => [['chat_id' => -1001580770653, 'title' => 'Чат Действуем вместе']],
+        ]]);
+        $lists = new \SkazResidents\Repository\BroadcastListRepository();
+        $listId = $lists->create('С чатом');
+
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+
+        // Добавить разрешённый чат.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add_chat', 'chat_id' => '-1001580770653'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $chats = $lists->chats($listId);
+        $this->assertCount(1, $chats);
+        $this->assertSame(-1001580770653, (int) $chats[0]['chat_id']);
+        $this->assertSame('Чат Действуем вместе', (string) $chats[0]['chat_title']);
+
+        // Повторное добавление — no-op (UNIQUE на паре list_id + chat_id).
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add_chat', 'chat_id' => '-1001580770653'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(1, $lists->chats($listId));
+
+        // Чужой (не из разрешённого списка) chat_id — не добавился.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add_chat', 'chat_id' => '-1009999999999'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(1, $lists->chats($listId));
+
+        // Убрать чат.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'remove_chat', 'chat_id' => '-1001580770653'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertSame([], $lists->chats($listId));
+        $this->assertNull($lists->find($listId));   // список жив, только чат убран
+    }
+
+    /**
+     * Рассылка по списку с чатом: resolveRecipients возвращает и семьи, и чат,
+     * deliver() доходит до TelegramBot::sendMessage с chat_id чата (токен в тесте
+     * пустой — сетевых вызовов нет, sendMessage возвращает null без сети).
+     */
+    public function test_send_list_with_chat_delivers_to_chat(): void
+    {
+        $pdo = make_test_db();
+        $this->ctrl = new BroadcastController();
+        $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status, role) VALUES
+            (1, 'a@sk.ru', 111, 'x', 'Семья А', 'active', 'resident')");
+        Config::set(['telegram' => [
+            'bot_token' => '',   // пустой токен — sendMessage не делает сетевых вызовов
+            'broadcast_group_chats' => [['chat_id' => -1001580770653, 'title' => 'Чат Действуем вместе']],
+        ]]);
+        $lists = new \SkazResidents\Repository\BroadcastListRepository();
+        $listId = $lists->create('С чатом');
+        $lists->addMember($listId, 1);
+        $lists->addChat($listId, -1001580770653, 'Чат Действуем вместе');
+
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+        $_POST = [
+            '_csrf' => Csrf::token(), 'text' => 'Привет, чат!',
+            'target' => 'list', 'list_id' => (string) $listId, 'family_id' => 0,
+        ];
+        $this->capture(static fn() => $ctrl->send());   // редирект + deliver() в afterResponse
+
+        // resolveRecipients: семья + чат, чат — строка вида {id=0, telegram_id<0}.
+        $ref = new \ReflectionMethod($ctrl, 'resolveRecipients');
+        $ref->setAccessible(true);
+        $recipients = $ref->invoke($ctrl, 'list', 0, $listId);
+        $this->assertCount(2, $recipients);
+        $byId = [];
+        foreach ($recipients as $r) { $byId[(int) $r['id']] = $r; }
+        $this->assertSame(111, (int) $byId[1]['telegram_id']);          // семья
+        $this->assertSame(-1001580770653, (int) $byId[0]['telegram_id']); // чат
+        $this->assertSame('Чат Действуем вместе', (string) $byId[0]['name']);
+    }
+
     private function loginAs(string $role): void
     {
         $_SESSION = ['family_id' => 1, 'role' => $role, 'family_name' => 'Тест'];

@@ -153,6 +153,9 @@ final class CouncilExpenseApproval
         $this->finishRequest();
         $msgId = TelegramBot::sendMessageId($token, $chatId, $text, 'HTML', $keyboard);
         if ($msgId === null) { return false; }
+        // Журнал исходящего (как и expense_msg_* на задаче, но общий: по всем
+        // сообщениям, а не только висящим) — chat_id + message_id.
+        TelegramOutbox::record($chatId, $msgId, 'council_expense', 'send', null, $text);
         // Запоминаем сообщение, чтобы позже (решение / отмена) переписать его и убрать кнопки.
         $this->tasks->updateFields(
             (int) $task['id'],
@@ -211,7 +214,11 @@ final class CouncilExpenseApproval
               . 'Свяжитесь с ' . $e($this->approverName()) . ', чтобы уточнить детали.';
 
         $this->finishRequest();
-        TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text, 'HTML');
+        $messageId = TelegramBot::sendMessage($token, (string) $member['telegram_id'], $text, 'HTML');
+        if ($messageId !== null) {
+            // Журнал уведомления исполнителю об отклонении.
+            TelegramOutbox::record((string) $member['telegram_id'], $messageId, 'council_expense', 'send', null, $text);
+        }
     }
 
     /** @return array{0:string,1:string} [token, chatId казначея] — пусто, если недоступен. */

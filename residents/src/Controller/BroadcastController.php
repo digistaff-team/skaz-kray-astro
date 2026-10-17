@@ -5,6 +5,7 @@ namespace SkazResidents\Controller;
 use SkazResidents\{Auth, Config, Csrf, Flash, TelegramBot, View};
 use SkazResidents\Repository\FamilyRepository;
 use SkazResidents\Service\BotNotify;
+use SkazResidents\Service\TelegramOutbox;
 
 /**
  * Массовая рассылка жителям в Telegram (@SkazKray_bot) — только админ сайта.
@@ -95,7 +96,7 @@ final class BroadcastController
      */
     private function deliver(array $recipients, string $text): void
     {
-        $token = (string) (Config::get('telegram')['bot_token'] ?? '');
+        $token     = (string) (Config::get('telegram')['bot_token'] ?? '');
         BotNotify::afterResponse(static function () use ($recipients, $text, $token): void {
             $sent = 0;
             foreach ($recipients as $r) {
@@ -103,12 +104,17 @@ final class BroadcastController
                     error_log('Broadcast: достигнут лимит 2500 сообщений за один запуск');
                     break;
                 }
-                $chatId = (string) ($r['telegram_id'] ?? '');
+                $chatId   = (string) ($r['telegram_id'] ?? '');
+                $familyId = (int) ($r['id'] ?? 0);
                 if ($chatId === '') { continue; }
-                if (TelegramBot::sendMessage($token, $chatId, $text)) {
+                $messageId = TelegramBot::sendMessage($token, $chatId, $text);
+                if ($messageId !== null) {
                     $sent++;
+                    // Журнал сообщения — chat_id + message_id, чтобы потом можно
+                    // было переписать/удалить рассылку (см. TelegramOutbox).
+                    TelegramOutbox::record($chatId, $messageId, 'broadcast', 'send', $familyId, $text);
                 } else {
-                    error_log('Broadcast: сообщение не ушло семье ' . (int) $r['id'] . ' (tg ' . $chatId . ')');
+                    error_log('Broadcast: сообщение не ушло семье ' . $familyId . ' (tg ' . $chatId . ')');
                 }
                 usleep(30_000);
             }

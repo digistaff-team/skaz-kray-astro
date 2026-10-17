@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace SkazResidents;
 
+use SkazResidents\Service\TelegramOutbox;
+
 /**
  * Минимальный отправитель сообщений через Telegram Bot API (@SkazKray_bot).
  * Используется для рассылки уведомлений членам совета (bin/council-meeting-notify.php).
@@ -9,44 +11,16 @@ namespace SkazResidents;
 final class TelegramBot
 {
     /**
-     * Отправить текстовое сообщение пользователю. true — доставлено Bot API.
-     * Доступ к api.telegram.org с сервера бывает нестабилен (таймауты) — до 3 попыток.
+     * Отправить текстовое сообщение пользователю: возвращает message_id
+     * отправленного сообщения или null при ошибке. Доступ к api.telegram.org с
+     * сервера бывает нестабилен (таймауты) — до 3 попыток.
      * $parseMode — 'HTML'|'MarkdownV2'|null; $replyMarkup — JSON inline-клавиатуры.
+     *
+     * message_id возвращаем сразу: по нему позже переписывают/удаляют сообщение
+     * (см. {@see sendMessageId}) — у ботов нет метода «удалить последнее»,
+     * удаление/правка требуют точный message_id.
      */
-    public static function sendMessage(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): bool
-    {
-        if ($botToken === '' || $chatId === '') { return false; }
-
-        $url = 'https://api.telegram.org/bot' . $botToken . '/sendMessage';
-        $params = [
-            'chat_id'                  => $chatId,
-            'text'                     => $text,
-            'disable_web_page_preview' => '1',
-        ];
-        if ($parseMode !== null)   { $params['parse_mode']   = $parseMode; }
-        if ($replyMarkup !== null) { $params['reply_markup'] = $replyMarkup; }
-        $payload = http_build_query($params);
-
-        for ($attempt = 1; $attempt <= 3; $attempt++) {
-            $raw = self::httpPost($url, $payload);
-            if ($raw !== null) {
-                $data = json_decode($raw, true);
-                if (is_array($data) && !empty($data['ok'])) { return true; }
-                // Ответ есть, но не ок (403/400 и т.п.) — повтор не поможет.
-                error_log('TelegramBot::sendMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
-                return false;
-            }
-            if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
-        }
-        return false;
-    }
-
-    /**
-     * Как sendMessage, но возвращает message_id отправленного сообщения (или null при
-     * ошибке). Нужен, чтобы позже переписать/убрать это сообщение через editMessageText:
-     * у ботов нет метода «удалить последнее», удаление/правка требуют точный message_id.
-     */
-    public static function sendMessageId(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): ?int
+    public static function sendMessage(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): ?int
     {
         if ($botToken === '' || $chatId === '') { return null; }
 
@@ -65,15 +39,24 @@ final class TelegramBot
             if ($raw !== null) {
                 $data = json_decode($raw, true);
                 if (is_array($data) && !empty($data['ok'])) {
-                    $id = (int) ($data['result']['message_id'] ?? 0);
-                    return $id ?: null;
+                    return (int) ($data['result']['message_id'] ?? 0) ?: null;
                 }
-                error_log('TelegramBot::sendMessageId не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
-                return null;   // ответ есть, но не ок — повтор не поможет
+                // Ответ есть, но не ок (403/400 и т.п.) — повтор не поможет.
+                error_log('TelegramBot::sendMessage не ок для ' . $chatId . ': ' . mb_substr((string) $raw, 0, 200));
+                return null;
             }
             if ($attempt < 3) { sleep(2); }   // сетевой сбой — пробуем ещё
         }
         return null;
+    }
+
+    /**
+     * То же, что {@see sendMessage}: оставлено для явных мест, которым важен
+     * message_id (пометка «я это отправлял, чтобы потом переписать/удалить»).
+     */
+    public static function sendMessageId(string $botToken, string $chatId, string $text, ?string $parseMode = null, ?string $replyMarkup = null): ?int
+    {
+        return self::sendMessage($botToken, $chatId, $text, $parseMode, $replyMarkup);
     }
 
     /**
@@ -156,7 +139,12 @@ final class TelegramBot
             $raw = self::httpPost($url, $payload);
             if ($raw !== null) {
                 $d = json_decode($raw, true);
-                if (is_array($d) && !empty($d['ok'])) { return true; }
+                if (is_array($d) && !empty($d['ok'])) {
+                    // Сообщение переписано — отмечаем в журнале (kind='edit'),
+                    // чтобы по chat_id/message_id было видно актуальный текст.
+                    TelegramOutbox::record($chatId, $messageId, 'council', 'edit', null, $text);
+                    return true;
+                }
                 error_log('TelegramBot::editMessageText не ок: ' . mb_substr((string) $raw, 0, 200));
                 return false;   // ответ есть, но не ок — повтор не поможет
             }

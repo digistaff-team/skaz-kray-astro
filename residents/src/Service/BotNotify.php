@@ -80,9 +80,15 @@ final class BotNotify
         ['tgToken' => $token, 'tgChat' => $chat, 'tgBase' => $tgBase,
          'maxToken' => $mToken, 'maxChat' => $mChat, 'maxBase' => $mBase] = self::groupTargets();
 
-        if ($token !== '' && $chat !== '' && !TelegramBot::sendMessage($token, $chat, $text($tgBase))) {
+        $messageId = TelegramBot::sendMessage($token, $chat, $text($tgBase));
+        if ($messageId !== null) {
+            // Журнал сообщения в группу (chat_id + message_id).
+            TelegramOutbox::record($chat, $messageId, 'group', 'send', null, $text($tgBase));
+        } else {
             error_log('BotNotify: сообщение не ушло в Telegram-группу ' . $chat);
         }
+        // ↑ $messageId === null при пустом токене/чате (без сети) — тогда и error_log
+        // не нужен: настройки просто нет.
         if ($mToken !== '' && $mChat !== '' && $mBase !== '' && !MaxBot::sendToChat($mToken, $mChat, $text($mBase))) {
             error_log('BotNotify: сообщение не ушло в группу MAX ' . $mChat);
         }
@@ -104,7 +110,11 @@ final class BotNotify
             $markup = (string) json_encode([
                 'inline_keyboard' => [[['text' => $buttonLabel, 'url' => self::deepLink($tgBase, $path)]]],
             ], JSON_UNESCAPED_UNICODE);
-            if (!TelegramBot::sendMessage($token, $chat, $text(), null, $markup)) {
+            $messageId = TelegramBot::sendMessage($token, $chat, $text(), null, $markup);
+            if ($messageId !== null) {
+                // Журнал сообщения в группу (chat_id + message_id).
+                TelegramOutbox::record($chat, $messageId, 'group', 'send', null, $text());
+            } else {
                 error_log('BotNotify: сообщение не ушло в Telegram-группу ' . $chat);
             }
         }
@@ -149,8 +159,14 @@ final class BotNotify
         $tgId   = (string) ($family['telegram_id'] ?? '');
         $maxId  = (string) ($family['max_user_id'] ?? '');
 
-        if ($token !== '' && $tgId !== '' && !TelegramBot::sendMessage($token, $tgId, $text(self::appBase('tg')))) {
-            error_log('BotNotify: личное сообщение не ушло в Telegram семье ' . $familyId);
+        if ($token !== '' && $tgId !== '') {
+            $messageId = TelegramBot::sendMessage($token, $tgId, $text(self::appBase('tg')));
+            if ($messageId !== null) {
+                // Журнал личного сообщения семье (chat_id + message_id).
+                TelegramOutbox::record($tgId, $messageId, 'personal', 'send', $familyId, $text(self::appBase('tg')));
+            } else {
+                error_log('BotNotify: личное сообщение не ушло в Telegram семье ' . $familyId);
+            }
         }
         $mBase = self::appBase('max');
         if ($mToken !== '' && $maxId !== '' && $mBase !== '' && !MaxBot::sendMessage($mToken, $maxId, $text($mBase))) {

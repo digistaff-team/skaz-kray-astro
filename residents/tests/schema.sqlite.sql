@@ -356,3 +356,16 @@ CREATE TABLE council_agenda_items (
     sort INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Журнал исходящих Telegram-сообщений (chat_id + message_id) — зеркало
+-- config/telegram-messages.sql: позже по нему переписывают/удаляют сообщения.
+CREATE TABLE telegram_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id TEXT NOT NULL,
+    message_id INTEGER NOT NULL,
+    family_id INTEGER,
+    context TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'send',
+    text TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

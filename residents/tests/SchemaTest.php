@@ -21,6 +21,7 @@ final class SchemaTest extends TestCase
                 'diary_entries', 'families', 'household_cars', 'household_join_requests', 'household_owners', 'household_pets', 'households', 'images',
                 'login_attempts', 'password_resets', 'products',
                 'purchase_orders', 'purchases', 'residents',
+                'telegram_messages',
                 'tool_loans', 'tools', 'trip_bookings', 'trips',
                 'water_alert_state', 'water_level_history',
             ],

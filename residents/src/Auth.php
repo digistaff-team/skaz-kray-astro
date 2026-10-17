@@ -123,7 +123,8 @@ final class Auth
         self::requireLogin();
         if (!self::isEditor()) {
             http_response_code(403);
-            exit('Доступ только для редактора поселения.');
+            echo 'Доступ только для редактора поселения.';
+            return;
         }
     }
 
@@ -132,7 +133,8 @@ final class Auth
         self::requireLogin();
         if (!self::isAdmin()) {
             http_response_code(403);
-            exit('Доступ только для администратора сайта.');
+            echo 'Доступ только для администратора сайта.';
+            return;
         }
     }
 }

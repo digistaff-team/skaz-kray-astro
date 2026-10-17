@@ -150,6 +150,10 @@ $router->post('/poselenie/moderation/product/reject', [$mod, 'rejectProduct']);
 $bcast = new BroadcastController();
 $router->get('/poselenie/moderation/rassylka', [$bcast, 'index']);
 $router->post('/poselenie/moderation/rassylka', [$bcast, 'send']);
+// Сохранённые списки адресатов: создание — отдельным POST, страница и правки — по id.
+$router->post('/poselenie/moderation/rassylka/spiski/novyy', [$bcast, 'createList']);
+$router->get('/poselenie/moderation/rassylka/spiski/{id}', [$bcast, 'showList']);
+$router->post('/poselenie/moderation/rassylka/spiski/{id}', [$bcast, 'updateList']);
 // Старый адрес (прямые заходы и закладки) — ведём на новый, чтобы не потерять вход.
 $router->get('/poselenie/rassylka', static function (): void {
     header('Location: /poselenie/moderation/rassylka', true, 301);

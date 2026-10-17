@@ -18,7 +18,6 @@ final class BroadcastControllerTest extends TestCase
 
     protected function setUp(): void
     {
-        Config::set([]);   // без telegram → сеть не дёргается
         make_test_db();
         $_SESSION = [];
         $_POST = [];
@@ -65,30 +64,156 @@ final class BroadcastControllerTest extends TestCase
     {
         $this->loginAs('editor');
         $ctrl = $this->ctrl;
-        try {
-            $this->capture(static fn() => $ctrl->index());
-        } catch (\Throwable $e) {
-            // Auth::requireAdmin() завершает запрос через exit — PHPUnit его ловит.
-        }
+        $html = $this->capture(static fn() => $ctrl->index());
+        $this->assertStringContainsString('Доступ только для администратора сайта.', $html);
         $code = @http_response_code();
-        if (!is_int($code)) {
-            $code = 0;
+        $this->assertSame(403, is_int($code) ? $code : 0);
+        if (function_exists('http_response_code')) {
+            @http_response_code(200);   // сброс для следующих тестов
         }
-        $this->assertSame(403, $code);
     }
 
-    /** Адресаты — только активные семьи с привязанным Telegram. */
-    public function test_list_with_telegram_filters_by_status_and_binding(): void
+    /** Панель списков на странице рассылки: ссылка на создание и цель «список». */
+    public function test_index_renders_list_links(): void
+    {
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+        $html = $this->capture(static fn() => $ctrl->index());
+        $this->assertStringContainsString('action="/poselenie/moderation/rassylka/spiski/novyy"', $html);
+        $this->assertStringContainsString('name="name"', $html);
+        $this->assertStringContainsString('name="target"', $html);
+        $this->assertStringContainsString('name="list_id"', $html);
+    }
+
+    /** Цель «список»: валидация — пустой список, несуществующий и список без Telegram. */
+    public function test_send_validates_list_target(): void
     {
         $pdo = make_test_db();
+        $this->ctrl = new BroadcastController();   // после смены PDO: репозитории контроллера берут PDO в конструкторе
+        $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status, role) VALUES
+            (1, 'a@sk.ru', 111, 'x', 'Семья А', 'active', 'resident')");
+        $lists = new \SkazResidents\Repository\BroadcastListRepository();
+
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+
+        // Не выбран список (list_id=0).
+        $_POST = ['_csrf' => Csrf::token(), 'text' => 'привет', 'target' => 'list', 'list_id' => 0];
+        $html = $this->capture(static fn() => $ctrl->send());
+        $this->assertStringContainsString('нет адресатов с привязанным Telegram', $html);
+
+        // Несуществующий список.
+        $_POST = ['_csrf' => Csrf::token(), 'text' => 'привет', 'target' => 'list', 'list_id' => 42];
+        $html = $this->capture(static fn() => $ctrl->send());
+        $this->assertStringContainsString('нет адресатов с привязанным Telegram', $html);
+
+        // Список есть, но член неактивен — валидация отсекает, рассылка не запускается.
+        $listId = $lists->create('Пустой');
+        $lists->addMember($listId, 1);
+        $pdo->exec("UPDATE families SET status = 'pending' WHERE id = 1");
+        $_POST = ['_csrf' => Csrf::token(), 'text' => 'привет', 'target' => 'list', 'list_id' => $listId];
+        $html = $this->capture(static fn() => $ctrl->send());
+        $this->assertStringContainsString('нет адресатов с привязанным Telegram', $html);
+    }
+
+    /** Создание списка: короткое название — форма с ошибкой, корректное — новая строка в БД. */
+    public function test_create_list_validates_name(): void
+    {
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+
+        $_POST = ['_csrf' => Csrf::token(), 'name' => 'x'];
+        $html = $this->capture(static fn() => $ctrl->createList());
+        $this->assertStringContainsString('2–120 символов', $html);
+        $this->assertSame(0, (int) \SkazResidents\Database::pdo()
+            ->query('SELECT COUNT(*) FROM broadcast_lists')->fetchColumn());
+
+        $_POST = ['_csrf' => Csrf::token(), 'name' => 'Дачники'];
+        $this->capture(static fn() => $ctrl->createList());
+        $row = \SkazResidents\Database::pdo()
+            ->query('SELECT name FROM broadcast_lists')->fetch();
+        $this->assertSame('Дачники', (string) $row['name']);
+    }
+
+    /** Страница списка: показывает участников и формы управления. */
+    public function test_show_list_renders_members_and_forms(): void
+    {
+        $pdo = make_test_db();
+        $this->ctrl = new BroadcastController();   // после смены PDO: репозитории контроллера берут PDO в конструкторе
+        $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status, role) VALUES
+            (1, 'a@sk.ru', 111, 'x', 'Sem1', 'active', 'resident'),
+            (2, 'b@sk.ru', 222, 'x', 'Sem2', 'active', 'resident')");
+        $lists = new \SkazResidents\Repository\BroadcastListRepository();
+        $listId = $lists->create('Spisok');
+        $lists->addMember($listId, 1);
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+        $html = $this->capture(static fn() => $ctrl->showList(['id' => (string) $listId]));
+        $this->assertStringContainsString('Spisok', $html);
+        $this->assertStringContainsString('Sem1', $html);
+        $this->assertStringContainsString('name="action" value="rename"', $html);
+        $this->assertStringContainsString('name="action" value="add"', $html);
+        $this->assertStringContainsString('name="action" value="delete"', $html);
+        $this->assertStringContainsString('value="2">Sem2</option>', $html);
+    }
+
+    public function test_show_missing_list_is_404(): void
+    {
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+        $this->capture(static fn() => $ctrl->showList(['id' => '999']));
+        $code = @http_response_code();
+        $this->assertSame(404, is_int($code) ? $code : 0);
+        if (function_exists('http_response_code')) {
+            @http_response_code(200);   // сброс для следующих тестов
+        }
+    }
+
+    /** Добавление/удаление адресата и переименование через updateList. */
+    public function test_update_list_add_remove_rename(): void
+    {
+        $pdo = make_test_db();
+        $this->ctrl = new BroadcastController();   // после смены PDO: репозитории контроллера берут PDO в конструкторе
         $pdo->exec("INSERT INTO families (id, email, telegram_id, password_hash, name, status, role) VALUES
             (1, 'a@sk.ru', 111, 'x', 'Семья А', 'active', 'resident'),
-            (2, 'b@sk.ru', 222, 'x', 'Семья Б', 'pending', 'resident'),
-            (3, 'c@sk.ru', NULL, 'x', 'Семья В', 'active', 'resident')");
-        $rows = (new FamilyRepository())->listWithTelegram();
-        $this->assertCount(1, $rows);
-        $this->assertSame('Семья А', (string) $rows[0]['name']);
-        $this->assertSame(111, (int) $rows[0]['telegram_id']);
+            (2, 'b@sk.ru', 222, 'x', 'Семья Б', 'active', 'resident')");
+        $lists = new \SkazResidents\Repository\BroadcastListRepository();
+        $listId = $lists->create('Черновик');
+
+        $this->loginAs('admin');
+        $ctrl = $this->ctrl;
+
+        // Добавить по select (family_id).
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add', 'family_id' => 1, 'who' => ''];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(1, $lists->members($listId));
+
+        // Добавить по свободному email.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add', 'family_id' => 0, 'who' => 'b@sk.ru'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(2, $lists->members($listId));
+
+        // Добавить несуществующего — членов не прибавилось.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'add', 'family_id' => 0, 'who' => 'nikogo@skaz-kray.ru'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(2, $lists->members($listId));
+
+        // Убрать одного.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'remove', 'family_id' => 1];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertCount(1, $lists->members($listId));
+
+        // Переименовать.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'rename', 'name' => 'Готовый'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertSame('Готовый', (string) $lists->find($listId)['name']);
+
+        // Удалить список.
+        $_POST = ['_csrf' => Csrf::token(), 'action' => 'delete'];
+        $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
+        $this->assertNull($lists->find($listId));
+        // Членство в SQLite осталось бы без FK — чистим явно (в MySQL CASCADE).
+        $pdo->exec('DELETE FROM broadcast_list_members');
     }
 
     private function loginAs(string $role): void

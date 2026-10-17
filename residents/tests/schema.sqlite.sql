@@ -200,6 +200,18 @@ CREATE TABLE deliveries (
     delivered_at TEXT,
     settled_at TEXT
 );
+-- Сохранённые списки адресатов рассылки — зеркало config/broadcast-lists.sql
+CREATE TABLE broadcast_lists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE broadcast_list_members (
+    list_id INTEGER NOT NULL,
+    family_id INTEGER NOT NULL,
+    added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (list_id, family_id)
+);
 CREATE TABLE council_ledger_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL,                 -- income | expense

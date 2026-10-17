@@ -460,7 +460,9 @@ final class TaskController
         $sort = (string) ($_REQUEST['sort'] ?? 'created');
         if (!in_array($sort, self::SORTS, true)) { $sort = 'created'; }
         ob_start();
-        require __DIR__ . '/../../../templates/council/_subtasks.php';
+        // Шаблоны лежат в src/templates (как в View::render): два уровня вверх от Council,
+        // а не три — три уводят в корень приложения, где каталога templates нет.
+        require __DIR__ . '/../../templates/council/_subtasks.php';
         header('Content-Type: text/html; charset=utf-8');
         echo (string) ob_get_clean();
     }

@@ -13,6 +13,10 @@ use PHPUnit\Framework\TestCase;
  *  - запасной form.submit() в catch(): он обходит submit-перехваты (confirm,
  *    submit-guard) и уводит со страницы, а при возврате «назад» браузер
  *    повторяет POST — на сервере второй дубль.
+ *
+ * Плюс третий, серверный: путь require к partial считался от корня приложения,
+ * а шаблоны живут в src/templates — сервер отвечал 500, клиент показывал
+ * «Не удалось добавить — попробуйте ещё раз».
  */
 final class SubtasksAjaxTest extends TestCase
 {
@@ -34,7 +38,7 @@ final class SubtasksAjaxTest extends TestCase
 
         $capture = substr($js, $add, strpos($js, '</script>', $add) - $add);
         $this->assertMatchesRegularExpression(
-            "/addEventListener\\(\\s*'submit'[\\s\\S]*?,\\s*true\\s*\\)/",
+            "/addEventListener\(\s*'submit'[\s\S]*?,\s*true\s*\)/",
             $capture,
             'перехват добавления должен висеть на document в capture-фазе — как confirm.php'
         );
@@ -46,7 +50,7 @@ final class SubtasksAjaxTest extends TestCase
         $js = $this->js();
         // Строка с флагом: пока запрос идёт, следующая отправка гасится, но не уходит нативно.
         $this->assertMatchesRegularExpression(
-            "/if\\s*\\(\\s*sent\\s*\\|\\|\\s*!window\\.fetch\\s*\\)\\s*\\{\\s*e\\.preventDefault\\(\\)/",
+            "/if\s*\(\s*sent\s*\|\|\s*!window\.fetch\s*\)\s*\{\s*e\.preventDefault\(\)/",
             $js,
             'повторная отправка должна гаситься preventDefault, а не уходить обычным POST'
         );
@@ -85,5 +89,30 @@ final class SubtasksAjaxTest extends TestCase
         $this->assertStringContainsString('Осмотреть петли', $html);
         // Клиент проверяет фрагмент по маркеру — он должен быть в HTML.
         $this->assertStringContainsString('class="sovet-sub', $html);
+    }
+
+    /**
+     * Путь require в subtasksHtml() обязан разрешаться из __DIR__ контроллера.
+     * Три уровня вверх от Council — это корень приложения, где каталога templates
+     * нет (шаблоны лежат в src/templates): сервер отвечает 500 «Failed opening
+     * required», клиент показывает «Не удалось добавить — попробуйте ещё раз».
+     */
+    public function test_partial_path_resolves_from_controller_dir(): void
+    {
+        $controller = (string) file_get_contents(__DIR__ . '/../src/Controller/Council/TaskController.php');
+        $this->assertMatchesRegularExpression(
+            "#require __DIR__ \. '/\.\./\.\./templates/council/_subtasks\.php'#",
+            $controller,
+            'partial подзадач нужно брать из src/templates — два уровня вверх от Council, не три'
+        );
+        // Три уровня вверх — регресс: так этот путь и был сломан.
+        $this->assertStringNotContainsString(
+            "'/../../../templates/council/_subtasks.php'",
+            $controller,
+            'три уровня вверх от Council ведут в корень, где templates отсутствует'
+        );
+
+        $partial = __DIR__ . '/../src/Controller/Council/../../templates/council/_subtasks.php';
+        $this->assertFileExists($partial, 'путь require в subtasksHtml() не разрешается до файла');
     }
 }

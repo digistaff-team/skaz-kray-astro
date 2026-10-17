@@ -355,15 +355,20 @@ function initSovetSubs(root) {
   });
 
   // --- Форма добавления: POST через fetch, ответ заменяет блок «Подзадачи» ---
+  // Перехват вешаем на document в capture-фазе — как confirm.php. Форма
+  // переиспользуется (после ответа её заменяет новый HTML), поэтому флаг
+  // «уже уходила» здесь испортил бы следующее добавление: после первой же
+  // отправки форма уходила бы обычным POST с редиректом — выход из задачи,
+  // а вместе с ним и дубль подзадачи.
   Array.prototype.forEach.call(root.querySelectorAll('.sovet-sub-add'), function (form) {
     if (form.dataset.subInit) { return; }
     form.dataset.subInit = '1';
-    var done = false;
+    var sent = false;   // подряд идёт только один запрос; флаг снимается, если он не удался
     form.addEventListener('submit', function (e) {
-      if (done || !window.fetch) { done = true; return; } // без fetch / повтор — обычный POST
+      if (sent || !window.fetch) { e.preventDefault(); return; } // идёт запрос / нет fetch — не даём уйти обычным POST
+      sent = true;
       e.preventDefault();
       var box = form.closest('.js-subs');
-      if (!box) { return; }
       var data = new FormData(form);
       fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function (r) {
@@ -371,7 +376,7 @@ function initSovetSubs(root) {
           return r.text();
         })
         .then(function (html) {
-          if (html.indexOf('class="sovet-sub') === -1) { throw new Error('bad fragment'); }
+          if (html.indexOf('class="sovet-sub') === -1 || !box) { throw new Error('bad fragment'); }
           box.innerHTML = html;
           initSovetSubs(box);
           // Следующая подзадача — сразу в поле ввода, без выхода из задачи.
@@ -379,13 +384,29 @@ function initSovetSubs(root) {
           if (next) { next.focus(); }
         })
         .catch(function () {
-          done = true;
-          form.submit();
+          sent = false;
+          if (box) {
+            // Ошибка (сеть, CSRF, 500): поле сохраняем, сообщаем — и даём
+            // нажать «+» ещё раз. Обычный POST здесь не подходит: он увёл бы
+            // со страницы и в итоге создал дубль.
+            var note = box.querySelector('.js-sub-err');
+            if (!note) {
+              note = document.createElement('p');
+              note.className = 'res-meta js-sub-err';
+              box.appendChild(note);
+            }
+            note.textContent = 'Не удалось добавить — попробуйте ещё раз.';
+          }
         });
-    });
+    }, true);
   });
 }
-initSovetSubs(document);
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { initSovetSubs(document); });
+} else {
+  initSovetSubs(document);
+}
 </script>
 
 <script>

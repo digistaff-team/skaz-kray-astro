@@ -256,7 +256,9 @@ final class BroadcastControllerTest extends TestCase
         $_POST = ['_csrf' => Csrf::token(), 'action' => 'remove_chat', 'chat_id' => '-1001580770653'];
         $this->capture(static fn() => $ctrl->updateList(['id' => (string) $listId]));
         $this->assertSame([], $lists->chats($listId));
-        $this->assertNull($lists->find($listId));   // список жив, только чат убран
+        // Список жив, только чат убран: удаление членства не трогает сам список
+        // (аналогично action=remove для семьи — см. test_update_list_add_remove_rename).
+        $this->assertNotNull($lists->find($listId));
     }
 
     /**

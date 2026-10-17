@@ -457,6 +457,9 @@ final class TaskController
         $t = $this->tasks->find($taskId);
         if (!$t || !isset($t['subtasks'])) { http_response_code(404); return; }
 
+        // partial ожидает $id (см. шапку _subtasks.php): в tasks.php он задаётся в
+        // foreach, здесь же без этой строки форма добавления уходила бы на /zadachi/0.
+        $id = $taskId;
         $sort = (string) ($_REQUEST['sort'] ?? 'created');
         if (!in_array($sort, self::SORTS, true)) { $sort = 'created'; }
         ob_start();

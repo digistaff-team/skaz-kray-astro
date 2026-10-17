@@ -115,4 +115,27 @@ final class SubtasksAjaxTest extends TestCase
         $partial = __DIR__ . '/../src/Controller/Council/../../templates/council/_subtasks.php';
         $this->assertFileExists($partial, 'путь require в subtasksHtml() не разрешается до файла');
     }
+
+    /**
+     * Partial ждёт $id — в tasks.php его задаёт foreach, а в subtasksHtml его
+     * нужно объявить отдельно. Иначе форма добавления отрендерилась бы на
+     * /sovet/zadachi/0/podzadacha → 404 и «Не удалось добавить».
+     */
+    public function test_ajax_context_defines_id_for_partial(): void
+    {
+        $controller = (string) file_get_contents(__DIR__ . '/../src/Controller/Council/TaskController.php');
+        $pos = strpos($controller, 'function subtasksHtml');
+        $this->assertNotFalse($pos, 'метод subtasksHtml() не найден');
+
+        $body = substr($controller, $pos, strpos($controller, 'private function guard', $pos) - $pos);
+        $this->assertMatchesRegularExpression(
+            '/\$id\s*=\s*\$taskId\s*;/',
+            $body,
+            'subtasksHtml() должна объявить $id для partial — иначе форма уйдёт на /zadachi/0'
+        );
+
+        // Сверяемся с самим partial: он использует именно $id, не $taskId.
+        $partial = (string) file_get_contents(__DIR__ . '/../src/templates/council/_subtasks.php');
+        $this->assertStringContainsString('/sovet/zadachi/<?= (int) $id ?>/podzadacha', $partial);
+    }
 }

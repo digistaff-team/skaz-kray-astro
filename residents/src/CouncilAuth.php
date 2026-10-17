@@ -61,7 +61,7 @@ final class CouncilAuth
         self::requireLogin();
         if (!self::isAdmin()) {
             http_response_code(403);
-            exit('Доступ только для администратора совета.');
+            echo 'Доступ только для администратора совета.'; // без exit — иначе убивает прогон PHPUnit; рендерящие вызывающие делают return (см. Controller/Council)
         }
     }
 }

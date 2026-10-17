@@ -110,6 +110,7 @@ final class LedgerController
     public function categories(): void
     {
         CouncilAuth::requireAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // отказ гарда: не рендерим список без доступа
         View::render('council/categories', [
             'income'  => $this->cats->listByKind('income', false),
             'expense' => $this->cats->listByKind('expense', false),
@@ -119,6 +120,7 @@ final class LedgerController
     public function addCategory(): void
     {
         $this->guardAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $kind = in_array($_POST['kind'] ?? '', self::KINDS, true) ? $_POST['kind'] : 'expense';
         $name = trim($_POST['name'] ?? '');
         if ($name !== '') { $this->cats->create($kind, $name); Flash::set('success', 'Статья добавлена.'); }
@@ -129,6 +131,7 @@ final class LedgerController
     public function renameCategory(array $params = []): void
     {
         $this->guardAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($params['id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
         if ($name !== '' && $this->cats->find($id)) { $this->cats->rename($id, $name); Flash::set('success', 'Статья переименована.'); }
@@ -138,6 +141,7 @@ final class LedgerController
     public function toggleCategory(array $params = []): void
     {
         $this->guardAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($params['id'] ?? 0);
         $cat = $this->cats->find($id);
         if ($cat) {
@@ -176,6 +180,7 @@ final class LedgerController
     private function guardAdmin(): void
     {
         CouncilAuth::requireAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // отказ гарда: дальше не работаем (ниже — header/рендер)
         Csrf::guard();
     }
 

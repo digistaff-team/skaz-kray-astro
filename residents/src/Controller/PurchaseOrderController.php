@@ -89,7 +89,7 @@ final class PurchaseOrderController
     {
         $this->guard();
         $purchase = $this->purchaseOr404((int) $params['id']);
-        if ((int) $purchase['organizer_id'] !== Auth::id()) { http_response_code(403); exit('Доступ запрещён.'); }
+        if ((int) $purchase['organizer_id'] !== Auth::id()) { http_response_code(403); echo 'Доступ запрещён.'; return; } // 403 — весь ответ (без exit — иначе убивает прогон PHPUnit)
 
         $order = $this->orders->findById((int) $params['order']);
         if (!$order || (int) $order['purchase_id'] !== (int) $purchase['id']) {

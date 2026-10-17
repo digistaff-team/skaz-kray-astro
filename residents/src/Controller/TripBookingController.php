@@ -149,7 +149,7 @@ final class TripBookingController
     private function driverOf(?array $booking): bool
     {
         if (!$booking) { http_response_code(404); View::render('public/notfound', [], 'Бронь не найдена'); return false; }
-        if ((int) $booking['driver_id'] !== Auth::id()) { http_response_code(403); exit('Доступ запрещён.'); }
+        if ((int) $booking['driver_id'] !== Auth::id()) { http_response_code(403); echo 'Доступ запрещён.'; return false; } // вызывающий делает return (без exit — иначе убивает прогон PHPUnit)
         return true;
     }
 

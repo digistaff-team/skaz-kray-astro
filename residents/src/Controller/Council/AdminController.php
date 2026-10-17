@@ -22,6 +22,7 @@ final class AdminController
     public function index(): void
     {
         CouncilAuth::requireAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // отказ гарда: не рендерим панель без доступа
         View::render('council/admin/index', [
             'members' => $this->members->all(),
             'old'     => [],
@@ -32,6 +33,7 @@ final class AdminController
     public function add(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $email = trim($_POST['email'] ?? '');
         $name  = trim($_POST['name'] ?? '');
         $role  = ($_POST['role'] ?? 'member') === 'admin' ? 'admin' : 'member';
@@ -68,6 +70,7 @@ final class AdminController
     public function resetPassword(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($_POST['id'] ?? 0);
         $member = $this->members->findById($id);
         if ($member) {
@@ -81,6 +84,7 @@ final class AdminController
     public function toggleStatus(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($_POST['id'] ?? 0);
         $member = $this->members->findById($id);
         if ($member) {
@@ -103,6 +107,7 @@ final class AdminController
     public function setDutyChair(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($_POST['id'] ?? 0);
         if ($id === 0) {
             $this->members->setDutyChair(0);
@@ -126,6 +131,7 @@ final class AdminController
     public function unbindTelegram(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($_POST['id'] ?? 0);
         $member = $this->members->findById($id);
         if ($member) {
@@ -142,6 +148,7 @@ final class AdminController
     public function issueClaimCode(): void
     {
         $this->guard();
+        if (!CouncilAuth::isAdmin()) { return; } // гард отказал — не выполняем действие
         $id = (int) ($_POST['id'] ?? 0);
         $member = $this->members->findById($id);
         if (!$member) {
@@ -165,6 +172,7 @@ final class AdminController
     private function guard(): void
     {
         CouncilAuth::requireAdmin();
+        if (!CouncilAuth::isAdmin()) { return; } // отказ гарда: дальше не работаем (ниже — header/рендер)
         Csrf::guard();
     }
 }

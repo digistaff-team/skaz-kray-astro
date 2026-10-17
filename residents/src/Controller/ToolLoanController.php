@@ -152,7 +152,7 @@ final class ToolLoanController
     private function ownerOf(?array $loan): bool
     {
         if (!$loan) { http_response_code(404); View::render('public/notfound', [], 'Заявка не найдена'); return false; }
-        if ((int) $loan['owner_id'] !== Auth::id()) { http_response_code(403); exit('Доступ запрещён.'); }
+        if ((int) $loan['owner_id'] !== Auth::id()) { http_response_code(403); echo 'Доступ запрещён.'; return false; } // вызывающий делает return (без exit — иначе убивает прогон PHPUnit)
         return true;
     }
 

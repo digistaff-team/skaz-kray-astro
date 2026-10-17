@@ -217,6 +217,14 @@ final class TaskController
         if ($this->tasks->find($taskId)) {
             $this->tasks->addSubtask($taskId, mb_substr($title, 0, 300));
         }
+        // AJAX (fetch, без перезагрузки): отдаём только блок «Подзадачи» —
+        // страница остаётся открытой, <details> задачи не закрывается,
+        // и можно добавлять следующую подзадачу сразу.
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+            $this->subtasksHtml($params);
+            return;
+        }
+        // Обычный POST (без JS): возврат на страницу без хэша — задача раскрыта по умолчанию.
         $this->back();
     }
 
@@ -434,6 +442,27 @@ final class TaskController
         if ($id <= 0) { return null; }
         $cat = $this->cats->find($id);
         return ($cat && $cat['kind'] === 'expense') ? $id : null;
+    }
+
+    /**
+     * HTML-фрагмент блока «Подзадачи» задачи — для AJAX-добавления: страница
+     * остаётся открытой (без редиректа), <details> задачи не закрывается.
+     * Отдаётся и напрямую (GET /sovet/zadachi/{id}/podzadachi), и из addSubtask()
+     * при заголовке X-Requested-With: XMLHttpRequest.
+     */
+    public function subtasksHtml(array $params = []): void
+    {
+        CouncilAuth::requireLogin();
+        $taskId = (int) ($params['id'] ?? 0);
+        $t = $this->tasks->find($taskId);
+        if (!$t || !isset($t['subtasks'])) { http_response_code(404); return; }
+
+        $sort = (string) ($_REQUEST['sort'] ?? 'created');
+        if (!in_array($sort, self::SORTS, true)) { $sort = 'created'; }
+        ob_start();
+        require __DIR__ . '/../../../templates/council/_subtasks.php';
+        header('Content-Type: text/html; charset=utf-8');
+        echo (string) ob_get_clean();
     }
 
     private function guard(): void

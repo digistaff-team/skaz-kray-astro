@@ -36,7 +36,11 @@ final class CouncilTaskRepository
     {
         $st = $this->db->prepare('SELECT * FROM council_tasks WHERE id = ?');
         $st->execute([$id]);
-        return $st->fetch() ?: null;
+        $row = $st->fetch();
+        if (!$row) { return null; }
+        // Подзадачи сразу с задачей — их рендерит partial блока «Подзадачи» (AJAX-обновление).
+        $row['subtasks'] = $this->subtasksByTask([(int) $row['id']])[(int) $row['id']] ?? [];
+        return $row;
     }
 
     /**

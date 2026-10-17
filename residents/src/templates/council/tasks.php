@@ -206,30 +206,11 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
             <label>Как сделать и что учесть<textarea name="description"><?= View::e($t['description'] ?? '') ?></textarea></label>
         </form>
 
-        <div class="sovet-subs">
+        <div class="sovet-subs js-subs" id="subs-<?= $id ?>">
             <h3 class="sovet-h3">Подзадачи</h3>
-            <?php foreach ($t['subtasks'] as $s): $sid = (int) $s['id']; $done = (int) $s['done'] === 1; ?>
-                <div class="sovet-sub<?= $done ? ' sovet-sub--done' : '' ?>">
-                    <form method="post" action="/sovet/podzadacha/<?= $sid ?>/pereklyuchit">
-                        <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                        <button class="sovet-check" type="submit" title="Отметить"><?= $done ? '☑' : '☐' ?></button>
-                    </form>
-                    <form class="sovet-sub-rename" method="post" action="/sovet/podzadacha/<?= $sid ?>/pereimenovat">
-                        <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                        <input type="text" name="title" maxlength="300" value="<?= View::e($s['title']) ?>">
-                        <button class="res-link-btn" type="submit">✓</button>
-                    </form>
-                    <form method="post" action="/sovet/podzadacha/<?= $sid ?>/udalit">
-                        <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                        <button class="res-link-btn sovet-danger" type="submit">✕</button>
-                    </form>
-                </div>
-            <?php endforeach; ?>
-            <form class="sovet-sub-add" method="post" action="/sovet/zadachi/<?= $id ?>/podzadacha">
-                <?= Csrf::field() ?><input type="hidden" name="sort" value="<?= View::e($sort) ?>">
-                <input type="text" name="title" maxlength="300" placeholder="Новая подзадача">
-                <button class="res-btn" type="submit" title="Добавить подзадачу" aria-label="Добавить подзадачу">+</button>
-            </form>
+            <?php // Список строк и форма добавления — отдельный partial: его же рендерит
+                  // TaskController::subtasksHtml() для AJAX-добавления (без выхода из задачи). ?>
+            <?php require __DIR__ . '/_subtasks.php'; ?>
         </div>
 
         <button class="res-btn sovet-save" type="submit" form="edit-<?= $id ?>">Сохранить</button>
@@ -326,8 +307,92 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
 </script>
 
 <script>
+// Подзадачи: автосохранение названия (по blur / Ctrl+Enter), крестик удаления
+// и AJAX-добавление (без перезагрузки — задача остаётся раскрытой, можно
+// добавлять подзадачи подряд, не заходя каждый раз заново).
+// Кнопки-сабмиты внутри формы переименования нет, поэтому Enter в поле не отправляет её сам.
+function initSovetSubs(root) {
+  function delUrl(form) { return form.action.replace('/pereimenovat', '/udalit'); }
+  function request(url, body) {
+    if (navigator.sendBeacon) { navigator.sendBeacon(url, body); return; }
+    fetch(url, { method: 'POST', body: body, keepalive: true });
+  }
+
+  // --- Строки подзадач: автосохранение и удаление ---
+  Array.prototype.forEach.call(root.querySelectorAll('.sovet-sub-rename'), function (form) {
+    if (form.dataset.subInit) { return; }
+    form.dataset.subInit = '1';
+    var inp = form.querySelector('input[name="title"]');
+    var del = form.querySelector('.js-sub-del');
+    if (!inp) { return; }
+    if (del) {
+      del.addEventListener('click', function () {
+        request(delUrl(form), new FormData(form));
+        var row = form.closest('.sovet-sub');
+        if (row) { row.parentNode.removeChild(row); }
+      });
+    }
+    var saved = inp.value;
+    function syncDel() { if (del) { del.hidden = (inp.value.trim() === ''); } }
+    function save() {
+      var v = inp.value;
+      if (v === saved) { syncDel(); return; }
+      if (v.trim() === '') {
+        // Пустое название не сохраняем: строка остаётся до ввода текста.
+        syncDel();
+        return;
+      }
+      request(form.action, new FormData(form));
+      saved = v;
+      syncDel();
+    }
+    inp.addEventListener('blur', save);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); inp.blur(); }
+    });
+    inp.addEventListener('input', syncDel);
+    syncDel();
+  });
+
+  // --- Форма добавления: POST через fetch, ответ заменяет блок «Подзадачи» ---
+  Array.prototype.forEach.call(root.querySelectorAll('.sovet-sub-add'), function (form) {
+    if (form.dataset.subInit) { return; }
+    form.dataset.subInit = '1';
+    var done = false;
+    form.addEventListener('submit', function (e) {
+      if (done || !window.fetch) { done = true; return; } // без fetch / повтор — обычный POST
+      e.preventDefault();
+      var box = form.closest('.js-subs');
+      if (!box) { return; }
+      var data = new FormData(form);
+      fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error(r.status); }
+          return r.text();
+        })
+        .then(function (html) {
+          if (html.indexOf('class="sovet-sub') === -1) { throw new Error('bad fragment'); }
+          box.innerHTML = html;
+          initSovetSubs(box);
+          // Следующая подзадача — сразу в поле ввода, без выхода из задачи.
+          var next = box.querySelector('.sovet-sub-add input[name="title"]');
+          if (next) { next.focus(); }
+        })
+        .catch(function () {
+          done = true;
+          form.submit();
+        });
+    });
+  });
+}
+initSovetSubs(document);
+</script>
+
+<script>
 // Переход по ссылке из «Бюджета» (#task-N): раскрыть нужную задачу
 // (и, если она в архиве, — блок «Выполненные задачи») и подвести к ней.
+// Формат #task-N-sub-M дополнительно раскрывает задачу, подводит к подзадаче
+// и ставит фокус в её поле названия (после добавления новой подзадачи).
 (function () {
   function openTarget() {
     if (location.hash.indexOf('#task-') !== 0) { return; }
@@ -337,6 +402,12 @@ $sorts = ['created' => 'по дате', 'progress' => 'по прогрессу',
       if (node.tagName === 'DETAILS') { node.open = true; }
     }
     el.scrollIntoView({ block: 'start' });
+    // #task-N-sub-M — фокус в поле названия подзадачи.
+    var m = location.hash.match(/^#task-\d+-sub-(\d+)$/);
+    if (m) {
+      var inp = document.querySelector('#sub-' + m[1] + ' input[name="title"]');
+      if (inp) { inp.focus(); }
+    }
   }
   window.addEventListener('load', openTarget);
   window.addEventListener('hashchange', openTarget);

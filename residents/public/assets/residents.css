@@ -228,6 +228,10 @@ body.map-open { overflow: hidden; }
 .sovet-check { background: none; border: 0; font-size: 1.15rem; cursor: pointer; color: var(--green); padding: 0; }
 .sovet-sub-rename { display: flex; gap: .3rem; flex: 1; align-items: center; }
 .sovet-sub-rename input { flex: 1; padding: .3rem .5rem; font: inherit; border: 1px solid #e0e0da; border-radius: 5px; }
+/* Свежая подзадача без названия: только чек-бокс и поле, никаких символов справа. */
+.sovet-sub--blank .sovet-sub-rename input { border-style: dashed; }
+/* Крестик удаления — тап-таргет как у чек-бокса. */
+.sovet-sub .js-sub-del { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: stretch; }
 .sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
 /* Компактная кнопка «+» — по высоте не выше поля ввода (align-items:stretch). */

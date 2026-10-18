@@ -12,6 +12,20 @@ declare(strict_types=1);
  *   php bin/household-accounts.php set <household_id> <email> "<пароль>"
  *       — создать/переиспользовать аккаунт по email, задать пароль, сделать active
  *         и привязать к поместью. Печатает готовые для отправки семье реквизиты.
+ *
+ *   php bin/household-accounts.php detach <family_id>
+ *       — отвязать аккаунт-семью от поместья целиком: снять первичное владение
+ *         (households.family_id), совладение (household_owners) и ожидающие заявки
+ *         (household_join_requests). Семья остаётся активной — после этого открывается
+ *         выбор поместья заново (/poselenie/moye-pomestie/vybor). Печатает, что было
+ *         отвязано; ключ --notify дополнительно шлёт семье сообщение ботом.
+ *
+ *   php bin/household-accounts.php release <household_id>
+ *       — освободить ПОМЕСТЬЕ от текущего аккаунта: снять первичное владение
+ *         (households.family_id), всех совладельцев (household_owners), ожидающие
+ *         заявки и фамилию привязки (claim_surname). Жители (resident) и название
+ *         сохраняются — поместье становится свободным для повторного выбора на
+ *         /poselenie/moye-pomestie/vybor (с подтверждением фамилии).
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -98,5 +112,146 @@ if ($cmd === 'unlink') {
     exit(0);
 }
 
-fwrite(STDERR, "Команды: list | set <household_id> <email> \"<пароль>\" | unlink <household_id>\n");
+if ($cmd === 'detach') {
+    $args = array_slice($argv, 2);
+    $notify = in_array('--notify', $args, true);
+    $args = array_values(array_filter($args, static fn(string $a): bool => !str_starts_with($a, '--')));
+    $familyId = (int) ($args[0] ?? 0);
+    if ($familyId <= 0) {
+        fwrite(STDERR, "Использование: php bin/household-accounts.php detach <family_id> [--notify]\n");
+        exit(1);
+    }
+    $f = $pdo->prepare('SELECT * FROM families WHERE id = ?');
+    $f->execute([$familyId]);
+    $family = $f->fetch();
+    if (!$family) { fwrite(STDERR, "Семья (аккаунт) id={$familyId} не найдена.\n"); exit(1); }
+
+    $pdo->beginTransaction();
+    try {
+        // 1. Поместья, где семья — первичный владелец (households.family_id).
+        $h = $pdo->prepare('SELECT id, glade, plot, estate_name FROM households WHERE family_id = ?');
+        $h->execute([$familyId]);
+        $primary = $h->fetchAll();
+
+        // 2. Поместья, где семья — совладелец (household_owners).
+        $o = $pdo->prepare('SELECT h.id, h.glade, h.plot, h.estate_name
+                            FROM household_owners o JOIN households h ON h.id = o.household_id
+                            WHERE o.family_id = ?');
+        $o->execute([$familyId]);
+        $shared = $o->fetchAll();
+
+        // 3. Ожидающие заявки в совладельцы (на всякое — снимаем все).
+        $r = $pdo->prepare('SELECT COUNT(*) FROM household_join_requests WHERE family_id = ?');
+        $r->execute([$familyId]);
+        $requests = (int) $r->fetchColumn();
+
+        // Снимаем всё: первичное владение, совладение, заявки (как detachAccount в репозитории).
+        $pdo->prepare('UPDATE households SET family_id = NULL WHERE family_id = ?')->execute([$familyId]);
+        $pdo->prepare('DELETE FROM household_owners WHERE family_id = ?')->execute([$familyId]);
+        $pdo->prepare('DELETE FROM household_join_requests WHERE family_id = ?')->execute([$familyId]);
+
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        $pdo->rollBack();
+        fwrite(STDERR, "Ошибка отвязки: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+
+    $label = trim(($family['name'] ?? '') . ' (' . ($family['email'] ?? '') . ')');
+    echo "OK: аккаунт id={$familyId} «{$label}» отвязан от поместья.\n";
+    if ($primary) {
+        foreach ($primary as $p) {
+            echo "  − первичное владение: поместье id={$p['id']} «{$p['estate_name']}» ({$p['glade']}, уч. {$p['plot']}) — поместье стало свободным.\n";
+        }
+    }
+    if ($shared) {
+        foreach ($shared as $s) {
+            echo "  − совладение снято: поместье id={$s['id']} «{$s['estate_name']}» ({$s['glade']}, уч. {$s['plot']}).\n";
+        }
+    }
+    if ($requests > 0) {
+        echo "  − заявок в совладельцы снято: {$requests}.\n";
+    }
+    if (!$primary && !$shared && $requests === 0) {
+        echo "  Связей с поместьями не было — нечего отвязывать (аккаунт уже свободный).\n";
+    }
+    echo "Семья осталась активной: /poselenie/moye-pomestie/vybor — выбор поместья снова доступен.\n";
+
+    if ($notify) {
+        $lines = [
+            'Ваш аккаунт отвязан от поместья.',
+            'Если это ошибка — напишите редактору поселения.',
+            'Выбрать поместье заново можно в приложении.',
+        ];
+        try {
+            \SkazResidents\Service\BotNotify::toFamily($familyId,
+                static fn(string $base): string => \SkazResidents\Service\BotNotify::personalText($lines, 'Выбрать поместье: ', $base, '/poselenie/moye-pomestie/vybor'));
+            echo "Уведомление семье отправлено ботом.\n";
+        } catch (\Throwable $e) {
+            echo "Уведомление не ушло (" . $e->getMessage() . ") — не критично.\n";
+        }
+    }
+    exit(0);
+}
+
+if ($cmd === 'release') {
+    $hid = (int) ($argv[2] ?? 0);
+    if ($hid <= 0) {
+        fwrite(STDERR, "Использование: php bin/household-accounts.php release <household_id>\n");
+        exit(1);
+    }
+    $h = $pdo->prepare('SELECT * FROM households WHERE id = ?');
+    $h->execute([$hid]);
+    $house = $h->fetch();
+    if (!$house) { fwrite(STDERR, "Поместье id={$hid} не найдено.\n"); exit(1); }
+
+    $pdo->beginTransaction();
+    try {
+        // Кого отвязываем (для отчёта).
+        $prevFamily = null;
+        if (!empty($house['family_id'])) {
+            $p = $pdo->prepare('SELECT id, name, email FROM families WHERE id = ?');
+            $p->execute([(int) $house['family_id']]);
+            $prevFamily = $p->fetch() ?: null;
+        }
+        $owners = $pdo->prepare('SELECT o.family_id, f.name, f.email
+                                 FROM household_owners o JOIN families f ON f.id = o.family_id
+                                 WHERE o.household_id = ?');
+        $owners->execute([$hid]);
+        $ownerRows = $owners->fetchAll();
+
+        $reqs = $pdo->prepare('SELECT COUNT(*) FROM household_join_requests WHERE household_id = ?');
+        $reqs->execute([$hid]);
+        $requests = (int) $reqs->fetchColumn();
+
+        // Снимаем всё: первичное владение, всех совладельцев, заявки, фамилию привязки.
+        // Жители (resident) и название НЕ трогаем — поместье остаётся собой.
+        $pdo->prepare('UPDATE households SET family_id = NULL WHERE id = ?')->execute([$hid]);
+        $pdo->prepare('DELETE FROM household_owners WHERE household_id = ?')->execute([$hid]);
+        $pdo->prepare('DELETE FROM household_join_requests WHERE household_id = ?')->execute([$hid]);
+        $pdo->prepare('UPDATE households SET claim_surname = NULL WHERE id = ?')->execute([$hid]);
+
+        $pdo->commit();
+    } catch (\Throwable $e) {
+        $pdo->rollBack();
+        fwrite(STDERR, "Ошибка освобождения: " . $e->getMessage() . "\n");
+        exit(1);
+    }
+
+    echo "OK: поместье id={$hid} «{$house['estate_name']}» ({$house['glade']}, уч. {$house['plot']}) освобождено от аккаунта.\n";
+    if ($prevFamily) {
+        echo "  − первичное владение снято с: {$prevFamily['name']} ({$prevFamily['email']}).\n";
+    }
+    foreach ($ownerRows as $o) {
+        echo "  − совладелец отвязан: {$o['name']} ({$o['email']}).\n";
+    }
+    if ($requests > 0) { echo "  − заявок в совладельцы снято: {$requests}.\n"; }
+    if (!$prevFamily && !$ownerRows && $requests === 0) {
+        echo "  Поместье уже было свободным.\n";
+    }
+    echo "Поместье теперь свободно: любой житель может привязать его на /poselenie/moye-pomestie/vybor (подтверждение — фамилия из жителей поместья).\n";
+    exit(0);
+}
+
+fwrite(STDERR, "Команды: list | set <household_id> <email> \"<пароль>\" | unlink <household_id> | detach <family_id> [--notify] | release <household_id>\n");
 exit(1);

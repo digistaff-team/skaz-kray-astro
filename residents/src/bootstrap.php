@@ -63,6 +63,10 @@ if (isset($_SESSION['family_id']) || isset($_SESSION['council_id'])) {
 // Хелперы шаблонов — отдельным файлом, чтобы их могли брать и тесты.
 require __DIR__ . '/helpers.php';
 
+// Автономный режим cron-скриптов (bin/*.php): только .env + конфиг,
+// без сессий и подключения к БД. Скрипт подключается сам после своих
+// проверок (см. bin/vk-vechesk-sync.php — пустой токен → exit до БД).
+if (defined('SKAZ_CRON_NO_DB') && SKAZ_CRON_NO_DB) { return; }
 
 Database::connect(Config::get('db'));
 

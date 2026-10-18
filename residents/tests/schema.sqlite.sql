@@ -375,6 +375,14 @@ CREATE TABLE council_agenda_items (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Пересылка постов ВК-группы «Вече» в рассылку (bin/vk-vechesk-sync.php) —
+-- зеркало config/vk-vechesk-state.sql: одна строка, id = 1, id последнего поста.
+CREATE TABLE vk_vechesk_state (
+    id INTEGER NOT NULL PRIMARY KEY,
+    last_post_id INTEGER,
+    updated_at TEXT
+);
+
 -- Журнал исходящих Telegram-сообщений (chat_id + message_id) — зеркало
 -- config/telegram-messages.sql: позже по нему переписывают/удаляют сообщения.
 CREATE TABLE telegram_messages (

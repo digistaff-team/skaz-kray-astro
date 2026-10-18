@@ -60,7 +60,7 @@ try {
         exit(1);
     }
 
-    $db = Database::connect(Config::database());
+    $db = Database::connect(Config::get('db'));
 
     $bridge = new VKBridge(
         $db,

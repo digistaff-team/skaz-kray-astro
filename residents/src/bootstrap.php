@@ -24,7 +24,12 @@ Config::load(__DIR__ . '/../config/config.php');
  * его сами встроенным сборщиком PHP (1% запросов).
  */
 const SESSION_TTL = 30 * 24 * 3600;
-$sessionDir = __DIR__ . '/../var/sessions';
+// Сессия нужна только веб-запросам; cron-скрипты поднимают bootstrap в
+// автономном режиме (SKAZ_CRON_NO_DB) и возвращаются раньше этого места.
+// Запуск от root (--root) сессию тоже пропускает: var/sessions ему не писать.
+$skipSession = (defined('SKAZ_CRON_ROOT') && SKAZ_CRON_ROOT);
+if (!$skipSession) {
+    $sessionDir = __DIR__ . '/../var/sessions';
 if (!is_dir($sessionDir)) { @mkdir($sessionDir, 0700, true); }
 if (is_dir($sessionDir) && is_writable($sessionDir)) {
     session_save_path($sessionDir);
@@ -58,7 +63,7 @@ if (isset($_SESSION['family_id']) || isset($_SESSION['council_id'])) {
         'httponly' => $sessionCookie['httponly'],
         'samesite' => $sessionCookie['samesite'],
     ]);
-}
+}   // if (!$skipSession)
 
 // Хелперы шаблонов — отдельным файлом, чтобы их могли брать и тесты.
 require __DIR__ . '/helpers.php';

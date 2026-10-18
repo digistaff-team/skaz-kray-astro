@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
-/** Автономный режим: bootstrap поднимает только .env + конфиг, без сессий и БД. */
+/** Автономный режим: bootstrap поднимает только .env + конфиг, без сессий и БД.
+ *  ROOT=1 — то же, но и без session_start() (запуск от root по ssh: у root нет
+ *  прав на var/sessions, и обычный bootstrap в этом случае падает). */
 define('SKAZ_CRON_NO_DB', true);
+define('SKAZ_CRON_ROOT', in_array('--root', $argv ?? [], true));
 
 /**
  * Пересылка новых постов ВК-группы «Вече» (https://vk.ru/vechesk, id 63502598)
@@ -11,6 +14,8 @@ define('SKAZ_CRON_NO_DB', true);
  * Запуск:
  *   php bin/vk-vechesk-sync.php            — боевой прогон
  *   php bin/vk-vechesk-sync.php --dry-run  — показать, что было бы отправлено
+ *   (от root по ssh добавляется --root: без него bootstrap спотыкается о
+ *    каталог сессий var/sessions, который root'у не писать)
  *
  * Состояние (id последнего пересланного поста) хранится в таблице
  * vk_vechesk_state (config/vk-vechesk-state.sql, накатывается вручную).
@@ -33,6 +38,12 @@ require __DIR__ . '/../src/timezone.php';   // время приложения �
 require __DIR__ . '/../src/bootstrap.php';  // .env и config/config.local.php
 
 $dryRun = in_array('--dry-run', $argv, true);
+
+// --root: запуск от root по ssh — bootstrap пропускает сессию (var/sessions
+// root'у не писать). В cron скрипт идёт от www-data и без этой опции.
+if (in_array('--root', $argv, true)) {
+    $argv = array_values(array_filter($argv, static fn(string $a): bool => $a !== '--root'));
+}
 
 try {
     $conf = (array) (Config::get('vk_vechesk') ?? []);

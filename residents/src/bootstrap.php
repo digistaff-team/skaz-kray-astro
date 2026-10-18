@@ -12,6 +12,11 @@ use SkazResidents\Env;
 Env::load(__DIR__ . '/../config/.env');
 Config::load(__DIR__ . '/../config/config.php');
 
+// Автономный режим cron-скриптов (bin/*.php): только .env + конфиг,
+// без сессий и подключения к БД. Скрипт подключается сам после своих
+// проверок (см. bin/vk-vechesk-sync.php — пустой токен → exit до БД).
+if (defined('SKAZ_CRON_NO_DB') && SKAZ_CRON_NO_DB) { return; }
+
 /*
  * Сессия живёт 30 дней с последнего визита.
  *
@@ -24,54 +29,50 @@ Config::load(__DIR__ . '/../config/config.php');
  * его сами встроенным сборщиком PHP (1% запросов).
  */
 const SESSION_TTL = 30 * 24 * 3600;
-// Сессия нужна только веб-запросам; cron-скрипты поднимают bootstrap в
-// автономном режиме (SKAZ_CRON_NO_DB) и возвращаются раньше этого места.
-// Запуск от root (--root) сессию тоже пропускает: var/sessions ему не писать.
+
+// Запуск от root (--root, например bin/vk-vechesk-sync.php по ssh) сессию
+// пропускает: var/sessions root'у не писать, а веб-запросы сюда не приходят.
 $skipSession = (defined('SKAZ_CRON_ROOT') && SKAZ_CRON_ROOT);
 if (!$skipSession) {
     $sessionDir = __DIR__ . '/../var/sessions';
-if (!is_dir($sessionDir)) { @mkdir($sessionDir, 0700, true); }
-if (is_dir($sessionDir) && is_writable($sessionDir)) {
-    session_save_path($sessionDir);
-    ini_set('session.gc_probability', '1');
-    ini_set('session.gc_divisor', '100');
-} else {
-    // Без своего каталога сессии уйдут в общий — и cron снова срежет их до 24 минут.
-    error_log('bootstrap: каталог сессий недоступен, ' . $sessionDir);
-}
-ini_set('session.gc_maxlifetime', (string) SESSION_TTL);
+    if (!is_dir($sessionDir)) { @mkdir($sessionDir, 0700, true); }
+    if (is_dir($sessionDir) && is_writable($sessionDir)) {
+        session_save_path($sessionDir);
+        ini_set('session.gc_probability', '1');
+        ini_set('session.gc_divisor', '100');
+    } else {
+        // Без своего каталога сессии уйдут в общий — и cron снова срежет их до 24 минут.
+        error_log('bootstrap: каталог сессий недоступен, ' . $sessionDir);
+    }
+    ini_set('session.gc_maxlifetime', (string) SESSION_TTL);
 
-$sessionCookie = [
-    'lifetime' => SESSION_TTL,
-    'path'     => '/',
-    'secure'   => true,
-    'httponly' => true,
-    'samesite' => 'Lax',
-];
-session_name(Config::get('session_name', 'skazres'));
-session_set_cookie_params($sessionCookie);
-session_start();
+    $sessionCookie = [
+        'lifetime' => SESSION_TTL,
+        'path'     => '/',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    session_name(Config::get('session_name', 'skazres'));
+    session_set_cookie_params($sessionCookie);
+    session_start();
 
-// PHP ставит куку заново только при смене идентификатора, то есть её 30 дней
-// отсчитывались бы от входа, а не от последнего визита. Продлеваем её сами —
-// и только вошедшим: анонимную сессию на месяц держать незачем.
-if (isset($_SESSION['family_id']) || isset($_SESSION['council_id'])) {
-    setcookie(session_name(), session_id(), [
-        'expires'  => time() + SESSION_TTL,
-        'path'     => $sessionCookie['path'],
-        'secure'   => $sessionCookie['secure'],
-        'httponly' => $sessionCookie['httponly'],
-        'samesite' => $sessionCookie['samesite'],
-    ]);
+    // PHP ставит куку заново только при смене идентификатора, то есть её 30 дней
+    // отсчитывались бы от входа, а не от последнего визита. Продлеваем её сами —
+    // и только вошедшим: анонимную сессию на месяц держать незачем.
+    if (isset($_SESSION['family_id']) || isset($_SESSION['council_id'])) {
+        setcookie(session_name(), session_id(), [
+            'expires'  => time() + SESSION_TTL,
+            'path'     => $sessionCookie['path'],
+            'secure'   => $sessionCookie['secure'],
+            'httponly' => $sessionCookie['httponly'],
+            'samesite' => $sessionCookie['samesite'],
+        ]);
+    }
 }   // if (!$skipSession)
 
 // Хелперы шаблонов — отдельным файлом, чтобы их могли брать и тесты.
 require __DIR__ . '/helpers.php';
-
-// Автономный режим cron-скриптов (bin/*.php): только .env + конфиг,
-// без сессий и подключения к БД. Скрипт подключается сам после своих
-// проверок (см. bin/vk-vechesk-sync.php — пустой токен → exit до БД).
-if (defined('SKAZ_CRON_NO_DB') && SKAZ_CRON_NO_DB) { return; }
 
 Database::connect(Config::get('db'));
 

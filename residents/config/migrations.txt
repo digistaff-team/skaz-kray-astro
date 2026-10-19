@@ -45,3 +45,4 @@ telegram-messages.sql
 broadcast-lists.sql
 broadcast-group-chats.sql
 vk-vechesk-state.sql
+council-duty-rotation-drop-malinovskaya.sql

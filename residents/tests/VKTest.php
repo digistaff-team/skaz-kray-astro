@@ -133,4 +133,35 @@ final class VKTest extends TestCase
         putenv('SKAZKRAY_VK_TOKEN');
         $this->assertSame('', VK::token());
     }
+
+    /**
+     * Фолбэк при ERR 27: wall.get отвечает ошибкой 27 → клиент переходит на
+     * wall.getById (посты читаются по известным id, стена идёт подряд с 1).
+     */
+    public function test_wall_posts_fallback_to_wall_get_by_id_on_err27(): void
+    {
+        $urls = [];
+        $vk = new VK(static function (string $u) use (&$urls): string {
+            $urls[] = $u;
+            if (str_contains($u, 'method/wall.get?')) {
+                return json_encode(['error' => ['error_code' => 27, 'error_msg' => 'Access to group wall denied']]);
+            }
+            // wall.getById: отдаём два поста (id 8 и 9 — «свежие» в окне).
+            return json_encode(['response' => [
+                'count' => 2,
+                'items' => [
+                    ['id' => 8, 'date' => 80, 'text' => 'старее'],
+                    ['id' => 9, 'date' => 90, 'text' => 'новее'],
+                ],
+            ]]);
+        });
+
+        $posts = $vk->wallPosts(63502598, 2);
+        $this->assertSame([8, 9], array_column($posts, 'id'), 'фолбэк отдаёт посты по id, от старых к новым');
+
+        $joined = implode("\n", $urls);
+        $this->assertStringContainsString('method/wall.get?', $joined, 'сначала пробуем wall.get');
+        $this->assertStringContainsString('method/wall.getById?', $joined, 'при ERR 27 — переходим на wall.getById');
+        $this->assertStringContainsString('63502598_', $joined, 'wall.getById получает id вида <gid>_<id>');
+    }
 }

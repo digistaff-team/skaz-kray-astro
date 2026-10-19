@@ -12,6 +12,10 @@ namespace SkazResidents\Service;
  * решает, что делать (см. bin/vk-vechesk-sync.php — там dry-run с ошибкой).
  * Токен доступен для wall.get и groups.getMembers даже у обычного участника
  * группы — отдельных прав не требуем.
+ *
+ * ВАЖНО (сентябрь 2026): у фактического токена в prod нет прав на wall.get
+ * (ERR 27 Access to group wall denied), при этом wall.getById работает.
+ * wallPosts() при ERR 27 автоматически переходит на wall.getById (см. ниже).
  */
 final class VK
 {
@@ -39,20 +43,78 @@ final class VK
     /**
      * Свежие посты стены группы, от старых к новым (сортировка wall.get по умолчанию).
      *
+     * Если wall.get отвечает ERR 27 (нет прав на стену — так и есть у нашего
+     * токена), переходим на wall.getById: берём известный опорный id (высокий,
+     * ниже любого реально существующего — стена идёт подряд с 1), читаем окно
+     * постов и расширяем окно назад, пока не наберём $count.
+     *
      * @return array<int,array<string,mixed>> поля id, date, text, attachments
-     * @throws \RuntimeException токен пуст или API ответил ошибкой
+     * @throws \RuntimeException токен пуст или API ответил ошибкой (не ERR 27)
      */
     public function wallPosts(int $groupId, int $count = 10): array
     {
-        $res = $this->call('wall.get', [
-            'owner_id' => '-' . $groupId,
-            'count'    => $count,
-        ]);
+        try {
+            $res = $this->call('wall.get', [
+                'owner_id' => '-' . $groupId,
+                'count'    => $count,
+            ]);
+        } catch (\RuntimeException $e) {
+            if (!preg_match('/ошибка 27:/', $e->getMessage())) {
+                throw $e;
+            }
+            return $this->wallPostsById($groupId, $count);
+        }
         $items = $res['items'] ?? [];
         if (!is_array($items)) { return []; }
         // wall.get отдаёт новые первыми — нам нужен хронологический порядок.
         usort($items, static fn(array $a, array $b): int => ((int) ($a['id'] ?? 0)) <=> ((int) ($b['id'] ?? 0)));
         return $items;
+    }
+
+    /**
+     * Фолбэк wallPosts() при ERR 27: чтение через wall.getById по известным id.
+     *
+     * Стена группы — монотонный ряд id от 1..N. Начинаем с высокого опорного id
+     * (100000 — выше любого реального поста в маленькой группе) и расширяем
+     * окно назад на 100, пока не наберём $count постов. Пропуски (удалённые
+     * посты) перекрываются за счёт расширения окна.
+     *
+     * @return array<int,array<string,mixed>> от старых к новым
+     * @throws \RuntimeException токен пуст или wall.getById ответил ошибкой
+     */
+    private function wallPostsById(int $groupId, int $count): array
+    {
+        $start = 100000;                       // опорный id (выше любого реального)
+        $width = max(100, $count * 10);        // первоначальное окно
+        $posts = [];
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            // Запрашиваем окно [start - width + 1 .. start] одним вызовом
+            // (wall.getById принимает список id через запятую).
+            $ids = [];
+            for ($id = $start - $width + 1; $id <= $start; $id++) {
+                $ids[] = $groupId . '_' . $id;
+            }
+            $res = $this->call('wall.getById', [
+                'posts' => implode(',', $ids),
+            ]);
+            $items = $res['items'] ?? [];
+            if (is_array($items)) {
+                foreach ($items as $it) { $posts[(int) ($it['id'] ?? 0)] = $it; }
+            }
+            ksort($posts);                     // от старых к новым
+            if (count($posts) >= $count) {
+                break;
+            }
+            // Не хватает — расширяем окно назад и повторяем.
+            $start -= $width;
+            $width *= 2;
+            if ($start <= 0) { break; }        // дошли до начала стены (id=1)
+        }
+
+        // Берём последние $count (свежие) и отдаём от старых к новым.
+        $posts = array_slice($posts, -$count);
+        return array_values($posts);
     }
 
     /**
@@ -90,7 +152,7 @@ final class VK
      * @param array<string,scalar> $params
      * @return array<string,mixed> поле "response"
      */
-    private function call(string $method, array $params): array
+    public function call(string $method, array $params): array
     {
         $token = self::token();
         if ($token === '') {

@@ -54,6 +54,7 @@
 <div class="sovet-actions">
     <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya"><span>Направления</span><span class="sovet-action-n"><?= (int) $directionsCount ?></span></a>
     <a class="res-btn res-btn--ghost sovet-action" href="/sovet/zadachi"><span>Задачи в работе</span><span class="sovet-action-n"><?= (int) $activeCount ?></span></a>
+    <a class="res-btn res-btn--ghost sovet-action sovet-action--wide" href="/sovet/buhgalteriya"><span>Бюджет Общего дома</span></a>
 </div>
 
 <details class="res-card sovet-acc">
@@ -64,9 +65,6 @@
                 <a href="<?= View::e($d['href']) ?>" target="_blank" rel="noopener"><?= View::e($d['title']) ?></a>
             </li>
         <?php endforeach; ?>
-        <li>
-            <a href="/sovet/buhgalteriya">Бюджет Общего дома — приход, расход, остатки</a>
-        </li>
     </ul>
 </details>
 

@@ -60,14 +60,13 @@ final class CouncilData
         ];
     }
 
-    /** Основные документы (Положение, правила, финансы). kind — тип/бейдж. */
+    /** Основные документы (Положение, правила, работы, инструкции). kind — тип/бейдж. */
     public static function documents(): array
     {
         return [
             ['title' => 'Положение о Попечительском совете',        'kind' => 'Положение', 'href' => 'https://docs.google.com/document/d/1SeyM7idSrufAR81c4d4B-vGEZtNiyQe240NWfiME4f0/edit?usp=sharing'],
             ['title' => 'Общие правила пользования Теремом',        'kind' => 'Правила',   'href' => 'https://docs.google.com/document/d/1dTYZLmwyR6KIe74Znr1DPbdQAdL_qiUfvelsn96eQME/edit?usp=drive_link'],
             ['title' => 'Распределение работ по содержанию Терема', 'kind' => 'Работы',    'href' => 'https://docs.google.com/spreadsheets/d/1pxFtEkk8grn80Jhha-xXywo3rCx7QrDbw4eFp0fjXn4/edit?usp=drive_link'],
-            ['title' => 'Отчёт о доходах и расходах',              'kind' => 'Финансы',   'href' => 'https://docs.google.com/spreadsheets/d/1QAktBy29tafF0hCAWC8kdKpOInLi6yHQpttMoBxVXCM/edit?usp=sharing'],
             ['title' => 'Инструкция по экстренным ситуациям',       'kind' => 'Инструкция', 'href' => 'https://docs.google.com/document/d/1FlgAd0bBoG3ZmM5MAfkxdMXZZLsQs6JRKKgyuDRedYY/edit?usp=sharing'],
         ];
     }
@@ -76,6 +75,7 @@ final class CouncilData
     public static function protocols(): array
     {
         return [
+            ['title' => 'Протокол встречи Совета 19.10.2026', 'href' => 'https://docs.google.com/document/d/1HXjvRVpAGT8R0qkCZ_hHdczE8f9mU8e-S65hB8ZuBu4/edit?usp=sharing'],
             ['title' => 'Протокол встречи Совета 12.10.2026', 'href' => 'https://docs.google.com/document/d/1vs9sBGs_FbT7ohZ8Rw3GOopSrNfokIE0jXUFB8yvIdE/edit?usp=sharing'],
             ['title' => 'Протокол встречи Совета 05.10.2026', 'href' => 'https://docs.google.com/document/d/1_7cXG0V6up1Xq1zemjJwtti4AgpRram4JMNOVeu9x_U/edit?usp=sharing'],
             ['title' => 'Протокол встречи Совета 28.09.2026', 'href' => 'https://docs.google.com/document/d/1Ix19-Dkq-_HMlImVTEAwnmWukHsSyxVHd5IW4qEo6tA/edit?usp=sharing'],

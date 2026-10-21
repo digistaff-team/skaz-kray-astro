@@ -12,11 +12,12 @@ final class CouncilDutyNotifyTest extends TestCase
 {
     public function test_text_addresses_chair_by_first_name(): void
     {
-        $text = CouncilDutyNotify::text('Сергей Шубин', '28 сентября 2026, 18:00', 'Терем', 'https://t.me/x?startapp=y');
+        $text = CouncilDutyNotify::text('Сергей Шубин', '28 сентября 2026, 18:00', 'Терем', 'https://t.me/x?startapp=y', true);
         $this->assertStringStartsWith('Сергей, Вы — дежурный председатель', $text);
         $this->assertStringContainsString('28 сентября 2026, 18:00', $text);
         $this->assertStringContainsString('Терем', $text);
         $this->assertStringContainsString('Положении о ПС', $text);
+        $this->assertStringContainsString('Подтвердите принятие дежурства, нажав кнопку под сообщением', $text);
         $this->assertStringEndsWith('https://t.me/x?startapp=y', $text);
     }
 
@@ -26,6 +27,18 @@ final class CouncilDutyNotifyTest extends TestCase
         $this->assertStringStartsWith('Вы — дежурный председатель', $text);
         $this->assertStringContainsString('Дата встречи уточняется', $text);
         $this->assertStringNotContainsString("\n\n\n", $text);   // пустое место не оставляет дыру
+    }
+
+    /**
+     * Без кнопки (MAX) — строки про подтверждение нет: кнопок под сообщением
+     * в MAX не шлём, фраза была бы ложью (см. CouncilDutyNotify::newChair()).
+     */
+    public function test_text_without_ack_button_omits_confirm_line(): void
+    {
+        $text = CouncilDutyNotify::text('Сергей Шубин', '28 сентября 2026, 18:00', 'Терем', 'https://max.ru/x');
+        $this->assertStringNotContainsString('Подтвердите принятие дежурства', $text);
+        $this->assertStringContainsString('Положении о ПС', $text);
+        $this->assertStringEndsWith('https://max.ru/x', $text);
     }
 
     public function test_ack_button_carries_rotation_index(): void

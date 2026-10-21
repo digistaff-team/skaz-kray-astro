@@ -20,8 +20,12 @@ final class CouncilDutyNotify
     /** Подпись кнопки-подтверждения под сообщением. */
     public const ACK_LABEL = 'Дежурство принял';
 
-    /** Текст сообщения. Отдельно от отправки — чтобы его можно было проверить тестом и --dry-run. */
-    public static function text(string $chair, string $when, string $place, string $link): string
+    /**
+     * Текст сообщения. Отдельно от отправки — чтобы его можно было проверить тестом и --dry-run.
+     * $withAckButton — добавить строку про кнопку «Дежурство принял»: она есть только
+     * в Telegram, в MAX кнопок под сообщением не шлём (см. newChair()).
+     */
+    public static function text(string $chair, string $when, string $place, string $link, bool $withAckButton = false): string
     {
         $first = self::firstName($chair);
         $lines = [
@@ -32,6 +36,10 @@ final class CouncilDutyNotify
         $lines[] = '';
         $lines[] = 'Обязанности Дежурного председателя смотрите в Положении о ПС.';
         $lines[] = '';
+        if ($withAckButton) {
+            $lines[] = 'Подтвердите принятие дежурства, нажав кнопку под сообщением.';
+            $lines[] = '';
+        }
         $lines[] = 'Повестка встречи здесь:';
         $lines[] = $link;
         return implode("\n", $lines);
@@ -74,7 +82,7 @@ final class CouncilDutyNotify
 
         $sent = false;
         if ($tgToken !== '' && !empty($member['telegram_id'])) {
-            $text = self::text($chair, $when, $place, self::link(self::base('tg')));
+            $text = self::text($chair, $when, $place, self::link(self::base('tg')), true);
             $keyboard = self::ackKeyboard($rotationIndex);
             if (TelegramBot::sendMessage($tgToken, (string) $member['telegram_id'], $text, null, $keyboard)) {
                 $sent = true;

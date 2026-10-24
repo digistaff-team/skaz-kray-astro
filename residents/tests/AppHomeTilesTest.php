@@ -126,4 +126,59 @@ final class AppHomeTilesTest extends TestCase
         $this->assertStringNotContainsString('<b>x</b>', $html);
         $this->assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $html);
     }
+
+    /** Посев именинника: поместье привязано к семье из setUp (id=1), если familyId не задан. */
+    private function seedBirthday(string $name, string $birthDate, ?int $familyId = 1): void
+    {
+        $pdo = Database::pdo();
+        if (!$pdo->query('SELECT COUNT(*) FROM households WHERE id = 1')->fetchColumn()) {
+            $family = $familyId === null ? 'NULL' : (string) $familyId;
+            $pdo->exec("INSERT INTO households (id, glade, plot, estate_name, family_id, sort)
+                        VALUES (1, '(1) Обережная', '1', 'АгудариЯ', $family, 0)");
+        }
+        $st = $pdo->prepare('INSERT INTO residents (household_id, full_name, birth_date, sort) VALUES (1, ?, ?, 0)');
+        $st->execute([$name, $birthDate]);
+    }
+
+    public function test_birthday_banner_shows_todays_celebrant(): void
+    {
+        $this->seedBirthday('Крылов Владислав', date('Y-m-d'));
+        $html = $this->render();
+
+        $this->assertStringContainsString('<div class="app-birthday">', $html);
+        $this->assertStringContainsString('🎉 С Днём Рождения, Крылов Владислав!', $html);
+        // Баннер — первым блоком: и выше «Мои дела», и выше дневника.
+        $this->assertLessThan(strpos($html, 'class="app-diary"'), strpos($html, 'class="app-birthday"'));
+    }
+
+    public function test_no_birthday_today_no_banner(): void
+    {
+        // Дата есть, но не сегодняшняя (вчера не совпадёт с сегодня ни при каком календаре).
+        $this->seedBirthday('Крылов Владислав', date('Y-m-d', strtotime('-1 day')));
+        $this->assertStringNotContainsString('app-birthday', $this->render());
+    }
+
+    public function test_unclaimed_household_keeps_the_name_hidden(): void
+    {
+        // ПДн непривязанного поместья не раскрываем — даже ради дня рождения.
+        $this->seedBirthday('Крылов Владислав', date('Y-m-d'), null);
+        $html = $this->render();
+        $this->assertStringNotContainsString('app-birthday', $html);
+        $this->assertStringNotContainsString('Крылов', $html);
+    }
+
+    public function test_banner_lists_all_todays_celebrants(): void
+    {
+        $this->seedBirthday('Крылов Владислав', date('Y-m-d'));
+        $this->seedBirthday('Мельникова Ася', date('Y-m-d'));
+        $this->assertStringContainsString('🎉 С Днём Рождения, Крылов Владислав и Мельникова Ася!', $this->render());
+    }
+
+    public function test_banner_escapes_names(): void
+    {
+        $this->seedBirthday('Крылов <b>Владислав</b>', date('Y-m-d'));
+        $html = $this->render();
+        $this->assertStringNotContainsString('Крылов <b>', $html);
+        $this->assertStringContainsString('Крылов &lt;b&gt;Владислав&lt;/b&gt;', $html);
+    }
 }

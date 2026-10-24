@@ -435,6 +435,10 @@ body.map-open { overflow: hidden; }
 .app-tasks { margin-bottom: 14px; background: #008757; color: #fff; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
 .app-tasks b { font-weight: 700; font-size: 15px; }
 .app-tasks span { font-size: 14px; opacity: .92; }
+/* День рождения жителя: баннер на главной — виден, только когда сегодня есть
+   у кого поздравить; греет тем же тёплым тоном, что и срочные дела. */
+.app-birthday { margin-bottom: 14px; background: #fdf4ea; border: 1px solid #f0dcb8; border-radius: 14px; padding: 14px 18px; }
+.app-birthday b { font-weight: 700; font-size: 15px; color: #a4540f; }
 /* Список на странице «Мои дела»; срочные («пора вернуть») — тёплым цветом. */
 .task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
 .task-item { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; color: var(--ink); text-decoration: none; }

@@ -242,6 +242,36 @@ final class ResidentsRepository
         return false;
     }
 
+    /**
+     * Жители, у которых сегодня день рождения (совпадают день и месяц) —
+     * для баннера на главной приложения. ПДн-гард тот же, что в grouped():
+     * жителей непривязанных поместий не раскрываем. Само сравнение даты —
+     * в PHP: прод работает на MySQL, тесты на SQLite, а общих функций
+     * «день-месяц» у них нет.
+     *
+     * @return array<int,string> полные имена в порядке справочника
+     */
+    public function birthdaysToday(): array
+    {
+        $rows = $this->db->query(
+            "SELECT r.full_name, r.birth_date
+             FROM residents r
+             JOIN households h ON h.id = r.household_id
+             JOIN families f ON f.id = h.family_id AND f.status = 'active'
+             WHERE r.birth_date IS NOT NULL AND r.birth_date <> ''
+             ORDER BY h.sort, h.id, r.sort, r.id"
+        )->fetchAll();
+        $today = date('m-d');
+        $names = [];
+        foreach ($rows as $row) {
+            // birth_date в формате Y-m-d (MySQL DATE и SQLite TEXT) — интересуют день и месяц.
+            if (substr((string) $row['birth_date'], 5, 5) === $today) {
+                $names[] = (string) $row['full_name'];
+            }
+        }
+        return $names;
+    }
+
     /** @return array{households:int,people:int} */
     public function stats(): array
     {

@@ -2,11 +2,11 @@
 declare(strict_types=1);
 namespace SkazResidents\Service;
 
-use SkazResidents\Repository\{DiaryRepository, PurchaseRepository};
+use SkazResidents\Repository\{DiaryRepository, PurchaseRepository, ResidentsRepository};
 
 /**
- * Данные мобильного лаунчера /poselenie/app: статус дневника семьи и счётчик
- * закупок. Только чтение.
+ * Данные мобильного лаунчера /poselenie/app: статус дневника семьи, счётчик
+ * закупок и баннер дня рождения. Только чтение.
  * Совет-специфики (собрание, задачи совета) в лаунчере больше нет — она живёт
  * в разделе совета (/sovet).
  *
@@ -19,7 +19,8 @@ final class AppDashboard
 {
     public function __construct(
         private DiaryRepository $diary = new DiaryRepository(),
-        private PurchaseRepository $purchases = new PurchaseRepository()
+        private PurchaseRepository $purchases = new PurchaseRepository(),
+        private ResidentsRepository $residents = new ResidentsRepository()
     ) {}
 
     /**
@@ -65,6 +66,8 @@ final class AppDashboard
             'counts' => [
                 'purchases' => $this->collectingPurchases(),
             ],
+            // Баннер дня рождения на главной: имена жителей с сегодняшним ДР.
+            'birthdays' => $this->residents->birthdaysToday(),
         ];
     }
 }

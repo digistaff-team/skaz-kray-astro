@@ -12,6 +12,14 @@
     </div>
   </div>
 
+  <?php
+    // Баннер дня рождения — только когда сегодня есть у кого поздравить;
+    // имена собирает AppDashboard (жители привязанных поместий).
+    $birthdays = $dash['birthdays'] ?? []; ?>
+  <?php if ($birthdays): ?>
+    <div class="app-birthday"><b>🎉 С Днём Рождения, <?= View::e(implode(' и ', $birthdays)) ?>!</b></div>
+  <?php endif; ?>
+
   <?php $tasks = $tasks ?? []; ?>
   <?php if ($tasks): /* «Мои дела» — только когда есть что делать; нет дел — блока нет. */ ?>
     <a class="app-tasks" href="/poselenie/dela">

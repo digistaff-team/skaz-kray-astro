@@ -98,4 +98,4 @@ seoDescription: >-
 
 ---
 
-**Источник:** [«Что даёт переход на восстановительное земледелие» — база знаний «Агроархитектор», Владимир Писаренко](https://community.agroarchitect.ru/ams/chto-dayet-perekhod-na-vosstanovitel-noye-zemledeliye.43/). Обложка — иллюстрация из оригинала статьи.
+**Автор:** Владимир Писаренко. **Источник:** [база знаний «Агроархитектор»](https://community.agroarchitect.ru/ams/chto-dayet-perekhod-na-vosstanovitel-noye-zemledeliye.43/)

@@ -67,9 +67,13 @@ try {
         static fn(int $gid): array => (new VK())->wallPosts($gid, 10),
         static fn(int $gid): array => (new VK())->groupMembers($gid),
         static function (int $familyId, int $telegramId, string $text): int {
-            // message_id для журнала исходящих (TelegramOutbox внутри моста)
+            // message_id для журнала исходящих (TelegramOutbox внутри моста).
+            // Токен — вложенный ключ: Config::get('telegram.token') не работает
+            // (Config не ходит по точкам), возвращает null → пустой токен →
+            // sendMessage сразу отдаёт null и пост не уходит никому.
+            $tg = Config::get('telegram');
             return TelegramBot::sendMessageId(
-                (string) Config::get('telegram.token'),
+                (string) (is_array($tg) ? ($tg['bot_token'] ?? '') : ''),
                 (string) $telegramId,
                 $text
             ) ?? 0;

@@ -10,12 +10,14 @@ use SkazResidents\Repository\TelegramMessageRepository;
 /**
  * Пересылка постов ВК-группы «Вече» в рассылку (VKBridge): курсор состояния,
  * отбор получателей (список + telegram_id + vk-аккаунт в подписчиках ВК),
- * dry-run, нормализация residents.vk. Сеть не трогаем — зависимости
- * подменены колбэками, БД — SQLite in-memory (make_test_db).
+ * чаты-группы списка (уходят всегда, без проверки подписки), dry-run,
+ * нормализация residents.vk. Сеть не трогаем — зависимости подменены
+ * колбэками, БД — SQLite in-memory (make_test_db).
  */
 final class VKBridgeTest extends TestCase
 {
     private const LIST_ID = 7;
+    private const CHAT_ID = -100;
 
     private \PDO $pdo;
 
@@ -55,10 +57,14 @@ final class VKBridgeTest extends TestCase
         foreach ([1, 2, 3, 5] as $fid) {
             $insM->execute([self::LIST_ID, $fid]);
         }
-        // Строка-чат в списке — не должна попадать в кандидаты.
+    }
+
+    /** Чат-группа в списке — отдельный адресат ВК-пересылки (в seed() её нет). */
+    private function attachChat(): void
+    {
         $this->pdo->exec(
             'INSERT INTO broadcast_list_members (list_id, family_id, chat_id, chat_title)
-             VALUES (' . self::LIST_ID . ", 0, -100, 'Чат Вече')"
+             VALUES (' . self::LIST_ID . ', 0, ' . self::CHAT_ID . ", 'Чат Вече')"
         );
     }
 
@@ -216,5 +222,96 @@ final class VKBridgeTest extends TestCase
         $this->assertSame(['id123'], VKBridge::vkKeys('id123'));
         $this->assertSame(['12345', 'id12345'], VKBridge::vkKeys('12345'));
         $this->assertSame([], VKBridge::vkKeys('   '));
+    }
+
+    /** Чат-группа списка получает пост вместе с семьями и попадает в журнал. */
+    public function test_new_post_also_sent_to_group_chat(): void
+    {
+        $sent = [];
+        $this->attachChat();
+        $this->pdo->exec('INSERT INTO vk_vechesk_state (id, last_post_id) VALUES (1, 500)');
+
+        $b = $this->bridge(
+            [['id' => 501, 'date' => 1730000000, 'text' => 'Встреча в субботу']],
+            [['id' => 11, 'screen_name' => 'ivan']],   // подписан только Иван (семья 1)
+            $sent
+        );
+        $stats = $b->sync($this->conf());
+
+        $this->assertCount(2, $sent);
+        $byTg = [];
+        foreach ($sent as $s) { $byTg[(int) $s['tg']] = $s; }
+        $this->assertSame(1, $byTg[1001]['family']);              // семья-подписчик
+        $this->assertSame(0, $byTg[self::CHAT_ID]['family']);     // чат: семьи нет
+        $this->assertStringContainsString('vk.ru/wall-63502598_501', $byTg[self::CHAT_ID]['text']);
+        $this->assertSame(2, $stats['sent']);
+
+        // Журнал: у чата family_id NULL (в MySQL колонка NULL-able).
+        $rows = (new TelegramMessageRepository())->listByChat((string) self::CHAT_ID);
+        $this->assertNotEmpty($rows);
+        $this->assertSame(VKBridge::CONTEXT, (string) $rows[0]['context']);
+        $this->assertNull($rows[0]['family_id']);
+    }
+
+    /**
+     * Ни у одной семьи нет подписки на ВК — чат всё равно получает пост,
+     * и статистика «постов без подписчиков» не растёт (некому — не про нас).
+     */
+    public function test_group_chat_gets_post_even_without_subscribers(): void
+    {
+        $sent = [];
+        $this->attachChat();
+        $this->pdo->exec('INSERT INTO vk_vechesk_state (id, last_post_id) VALUES (1, 500)');
+
+        $b = $this->bridge(
+            [['id' => 501, 'date' => 0, 'text' => 'пост']],
+            [['id' => 77, 'screen_name' => 'kto-to']],   // никто из кандидатов не подписан
+            $sent
+        );
+        $stats = $b->sync($this->conf());
+
+        $this->assertCount(1, $sent);
+        $this->assertSame(self::CHAT_ID, (int) $sent[0]['tg']);
+        $this->assertSame(1, $stats['sent']);
+        $this->assertSame(0, $stats['no_subscribers']);
+        $this->assertSame(501, $b->lastPostId());
+    }
+
+    /** Первый запуск (курсор 0) — чату тоже ничего не уходит, только запоминаем пост. */
+    public function test_first_run_does_not_touch_chat(): void
+    {
+        $sent = [];
+        $this->attachChat();
+        $b = $this->bridge(
+            [['id' => 501, 'date' => 0, 'text' => 'пост']],
+            [['id' => 11, 'screen_name' => 'ivan']],
+            $sent
+        );
+        $stats = $b->sync($this->conf());
+        $this->assertSame([], $sent);
+        $this->assertSame(0, $stats['sent']);
+        $this->assertSame(501, $b->lastPostId());
+    }
+
+    /** dry-run: чат показан среди адресатов, но ни ему, ни семьям ничего не уходит. */
+    public function test_dry_run_lists_chat_but_sends_nothing(): void
+    {
+        $sent = [];
+        $this->attachChat();
+        $this->pdo->exec('INSERT INTO vk_vechesk_state (id, last_post_id) VALUES (1, 500)');
+        $b = $this->bridge(
+            [['id' => 501, 'date' => 0, 'text' => 'пост']],
+            [['id' => 11, 'screen_name' => 'ivan']],
+            $sent,
+            true
+        );
+        ob_start();
+        $stats = $b->sync($this->conf());
+        $log = (string) ob_get_clean();
+
+        $this->assertSame([], $sent);
+        $this->assertSame(2, $stats['sent']);        // семья + чат: «отправили бы»
+        $this->assertStringContainsString('чат ' . self::CHAT_ID, $log);
+        $this->assertSame(500, $b->lastPostId());    // курсор не изменился
     }
 }

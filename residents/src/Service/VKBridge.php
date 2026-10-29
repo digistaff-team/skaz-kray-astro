@@ -15,6 +15,12 @@ use PDO;
  * кто реально подписан на группу в ВК. Сопоставление «житель ↔ подписчик» —
  * по экранным именам (screen_name) и числовым id в одном нормализованном виде.
  *
+ * Плюс чаты-группы, состоящие в том же списке (broadcast_list_members.chat_id):
+ * им пост уходит всегда, без проверки подписки — у чата нет vk-аккаунта,
+ * сопоставлять не с чем, а сам чат в список добавляет админ осознанно.
+ * Плюс чаты-группы того же списка (broadcast_list_members.chat_id): им пост
+ * уходит всегда, без проверки подписки — у чата личной ВК-аккаунта нет.
+ *
  * Как: пост → короткое сообщение с ссылкой (без вложений) → TelegramBot::sendMessage
  * синхронно + запись в TelegramOutbox (журнал исходящих). После доставки id поста
  * фиксируется в vk_vechesk_state — следующий прогон берёт только более новые.
@@ -98,8 +104,10 @@ final class VKBridge
             if (isset($m['id'])) { $subKeys['id' . (int) $m['id']] = true; }
         }
 
-        // Кому: семьи списка → telegram_id → резиденты с residents.vk.
-        $rows = $this->candidates($listId);
+        // Кому: семьи списка → telegram_id → резиденты с residents.vk;
+        // плюс чаты-группы того же списка (им пост уходит всегда).
+        $rows  = $this->candidates($listId);
+        $chats = $this->chatRecipients($listId);
         $listName = (string) ($conf['list_name'] ?? 'рассылка #' . $listId);
         $groupName = (string) ($conf['group_name'] ?? 'Вече');
 
@@ -134,7 +142,31 @@ final class VKBridge
                 }
             }
 
-            if ($active > 0 && $sent === 0) { $stats['no_subscribers']++; }
+            // Чаты — тем же колбэком отправки, но family_id = 0 (у чата его нет)
+            // и без сверки с подписчиками ВК.
+            foreach ($chats as $c) {
+                $chatId = (int) $c['telegram_id'];
+                if ($this->dryRun) {
+                    $sent++;
+                    echo 'DRY-RUN [' . $listName . '] пост #' . $postId
+                        . ' → чат ' . $chatId . ' (' . $c['name'] . ")\n";
+                    continue;
+                }
+                try {
+                    $messageId = (int) ($this->sendMessage)(0, $chatId, $text);
+                } catch (\Throwable $e) {
+                    error_log('VK->TG (chat ' . $chatId . '): ' . $e->getMessage());
+                    $messageId = 0;
+                }
+                if ($messageId > 0) {
+                    $sent++;
+                    self::recordOutbox($chatId, $messageId, $text, null);
+                }
+            }
+
+            // «Пост без подписчиков» — только когда реально некому было уходить:
+            // хоть одна семья-кандидат или хоть один чат в списке.
+            if ($chats === [] && $active > 0 && $sent === 0) { $stats['no_subscribers']++; }
             $stats['sent'] += $sent;
 
             if (!$this->dryRun) {
@@ -157,8 +189,8 @@ final class VKBridge
 
     /**
      * Семьи-получатели (список → активные с telegram_id) с vk-аккаунтами жителей
-     * через запятую. Резолв списка — как в BroadcastListRepository::recipients:
-     * строки-чаты (chat_id NOT NULL) мимо, их не пересылаем.
+     * через запятую. Строки-чаты (chat_id NOT NULL) здесь отсекаются: они
+     * адресаты отдельного блока — см. chatRecipients().
      */
     private function candidates(int $listId): array
     {
@@ -175,6 +207,25 @@ final class VKBridge
                 AND m.chat_id IS NULL
                 AND f.status = 'active'
                 AND f.telegram_id IS NOT NULL AND f.telegram_id > 0"
+        );
+        $st->execute([$listId]);
+        return $st->fetchAll() ?: [];
+    }
+
+    /**
+     * Чаты-группы того же списка — вторым адресатом ВК-пересылки. Пост уходит
+     * им всегда, без сверки с подписчиками: сопоставлять vk-аккаунт чата не с
+     * чем, а добавляет чат в список админ осознанно.
+     *
+     * @return array<int,array{telegram_id:int,name:string}>
+     */
+    private function chatRecipients(int $listId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT chat_id AS telegram_id, chat_title AS name
+             FROM broadcast_list_members
+             WHERE list_id = ? AND chat_id IS NOT NULL
+             ORDER BY chat_title'
         );
         $st->execute([$listId]);
         return $st->fetchAll() ?: [];
@@ -251,10 +302,11 @@ final class VKBridge
     /**
      * Журнал исходящих: запись в TelegramOutbox — chat_id + message_id, чтобы
      * пост появился в «Исходящих» рассылки (как при обычной рассылке).
+     * У чата семьи нет — $familyId null (в MySQL колонка NULL-able).
      * TelegramOutbox пишет через Database::pdo(), а cron соединения в Database
      * не ставит (вызывался Database::connect) — поднимаем его сами.
      */
-    private static function recordOutbox(int $telegramId, int $messageId, string $text, int $familyId): void
+    private static function recordOutbox(int $telegramId, int $messageId, string $text, ?int $familyId): void
     {
         if ($messageId <= 0) { return; }
         try {

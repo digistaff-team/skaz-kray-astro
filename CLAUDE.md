@@ -34,8 +34,9 @@ npm run check      # astro check — типизация шаблонов (smoke-
 ### CMS (Decap)
 - Две точки входа: `public/admin/` (backend GitHub OAuth) и `public/editor/` (тот же GitHub-репозиторий, но вход по паролю на сервере, для редактора без GitHub-аккаунта).
 - **`config.yml` в обоих — генерируемые**: правьте генераторы `scripts/gen-decap-config.mjs` / `scripts/gen-editor-config.mjs`, затем перегенерируйте и закоммитьте `config.yml` (файлы под git). Общие описания коллекций — `scripts/novosti-collection.mjs` и `scripts/article-collections.mjs` (последний выводит вкладки рубрик из `src/data/categories.js`). При добавлении рубрики правьте `categories.js` и регенерируйте конфиги.
-- `public/admin/cms-tg-image.js` — кастомный виджет для картинок, хостящихся в Telegram.
+- `public/cms-tg-image.js` — кастомный виджет для картинок, хостящихся в Telegram (подключается из `public/admin/index.html` и `public/editor/index.html`).
 - `scripts/convert-content.mjs` — одноразовый импортёр WP-контента (чистит шорткоды/MSO-мусор, локализует ссылки). `scripts/optimize-images.mjs` — ужимает `public/images/` на месте.
+- `scripts/announce-post.mjs` — анонс статьи в чат жителей от @SkazKray_bot одной командой `node scripts/announce-post.mjs` (свежая статья по date; конкретная — `--slug <слаг>`; проба — `--dry-run`). Дубли отсекаются по журналу `telegram_messages` (`context=post-announce:<slug>`).
 
 ## Раздел жителей (`residents/`)
 

@@ -287,15 +287,26 @@ final class VKBridge
         return $out . $url;
     }
 
-    /** Фиксация курсора состояния (таблица vk_vechesk_state, строка id=1). */
+    /**
+     * Фиксация курсора состояния (таблица vk_vechesk_state, строка id=1).
+     * Портируемо между MariaDB (прод) и SQLite (тесты): сначала проверяем
+     * наличие строки, потом UPDATE либо INSERT — без ON DUPLICATE/ON CONFLICT
+     * (последний MariaDB не понимает вовсе, см. SectionSettingsRepository::setEnabled).
+     */
     private function saveLastPostId(int $postId): void
     {
         $now = date('Y-m-d H:i:s');
-        $st = $this->db->prepare(
-            'INSERT INTO vk_vechesk_state (id, last_post_id, updated_at) VALUES (1, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET last_post_id = excluded.last_post_id,
-                                           updated_at = excluded.updated_at'
-        );
+        $exists = $this->db->prepare('SELECT 1 FROM vk_vechesk_state WHERE id = 1');
+        $exists->execute();
+        if ($exists->fetchColumn() !== false) {
+            $st = $this->db->prepare(
+                'UPDATE vk_vechesk_state SET last_post_id = ?, updated_at = ? WHERE id = 1'
+            );
+        } else {
+            $st = $this->db->prepare(
+                'INSERT INTO vk_vechesk_state (id, last_post_id, updated_at) VALUES (1, ?, ?)'
+            );
+        }
         $st->execute([$postId, $now]);
     }
 

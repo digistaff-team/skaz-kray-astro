@@ -96,6 +96,18 @@ final class VKTest extends TestCase
         $vk->wallPosts(1);
     }
 
+    /** Явный токен (из VKOauth) важнее переменной окружения и уходит в запрос. */
+    public function test_explicit_token_overrides_env(): void
+    {
+        $url = '';
+        $vk = new VK(static function (string $u) use (&$url): string {
+            $url = $u;
+            return json_encode(['response' => ['count' => 0, 'items' => []]]);
+        }, 'oauth-token');
+        $vk->wallPosts(63502598, 10);
+        $this->assertStringContainsString('access_token=oauth-token', $url);
+    }
+
     /** Пустой токен → исключение ещё до сетевого вызова. */
     public function test_empty_token_throws_without_http(): void
     {

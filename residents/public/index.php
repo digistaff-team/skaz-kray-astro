@@ -40,6 +40,7 @@ use SkazResidents\Controller\AppController;
 use SkazResidents\Controller\PwaController;
 use SkazResidents\Controller\WaterLevelController;
 use SkazResidents\Controller\BroadcastController;
+use SkazResidents\Controller\VkOauthController;
 
 $router = new Router();
 
@@ -159,6 +160,14 @@ $router->get('/poselenie/rassylka', static function (): void {
     header('Location: /poselenie/moderation/rassylka', true, 301);
     exit;
 });
+
+// ==== Доступ к стене ВК «Вече» (пересылка постов в Telegram-рассылку) ====
+// Стена читается только user-токеном, поэтому нужен одноразовый вход через
+// VK ID; дальше токен обновляется по refresh_token (Service\VKOauth).
+$vkoauth = new VkOauthController();
+$router->get('/poselenie/vk-vechesk', [$vkoauth, 'index']);
+$router->get('/poselenie/vk-vechesk/oauth-callback', [$vkoauth, 'callback']);
+$router->post('/poselenie/vk-vechesk/otklyuchit', [$vkoauth, 'disconnect']);
 
 // ==== Шеринг инструментов (раздел жителей) ====
 $tool = new ToolController();

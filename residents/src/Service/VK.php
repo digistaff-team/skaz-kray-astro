@@ -7,9 +7,8 @@ namespace SkazResidents\Service;
  * (https://vk.ru/vechesk) в Telegram-рассылку. Только нужные методы:
  * wall.get (свежие посты) и groups.getMembers (подписчики, с пагинацией).
  *
- * Токен — из окружения (config/.env: VECHESK_GROUP_VK_TOKEN, читается в bootstrap
- * через Env::load). Пустой токен → исключение: вызывающий cron-скрипт сам
- * решает, что делать (см. bin/vk-vechesk-sync.php — там dry-run с ошибкой).
+ * Токен передаётся явно (user-токен VK ID из Service\VKOauth) либо берётся из
+ * окружения (VECHESK_GROUP_VK_TOKEN). Пустой токен → исключение.
  * Токен доступен для wall.get и groups.getMembers даже у обычного участника
  * группы — отдельных прав не требуем.
  *
@@ -25,10 +24,14 @@ final class VK
     /** Сетевой вызов (только для инжекции в тесты вместо реального HTTP). */
     private $http;
 
+    /** Явный токен (user-токен VK ID); null — взять из окружения через token(). */
+    private ?string $token;
+
     /** @param null|callable(string):?string $http */
-    public function __construct(?callable $http = null)
+    public function __construct(?callable $http = null, ?string $token = null)
     {
         $this->http = $http;
+        $this->token = $token;
     }
 
     /** Токен VK из окружения; '' — не задан (вызывающий обязан это обработать). */
@@ -154,7 +157,7 @@ final class VK
      */
     public function call(string $method, array $params): array
     {
-        $token = self::token();
+        $token = $this->token ?? self::token();
         if ($token === '') {
             throw new \RuntimeException('VK: не задан токен VECHESK_GROUP_VK_TOKEN (config/.env)');
         }

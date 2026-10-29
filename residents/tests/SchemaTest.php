@@ -24,7 +24,7 @@ final class SchemaTest extends TestCase
                 'purchase_orders', 'purchases', 'residents',
                 'telegram_messages',
                 'tool_loans', 'tools', 'trip_bookings', 'trips',
-                'vk_vechesk_state',
+                'vk_group_members_cache', 'vk_oauth_token', 'vk_vechesk_state',
                 'water_alert_state', 'water_level_history',
             ],
             $names

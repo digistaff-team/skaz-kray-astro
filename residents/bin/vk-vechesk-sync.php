@@ -19,9 +19,10 @@ define('SKAZ_CRON_ROOT', in_array('--root', $argv ?? [], true));
  *
  * Состояние (id последнего пересланного поста) хранится в таблице
  * vk_vechesk_state (config/vk-vechesk-state.sql, накатывается вручную).
- * Токен VK API — из config/.env: VECHESK_GROUP_VK_TOKEN (фолбэк —
- * SKAZKRAY_VK_TOKEN). Без токена прогон
- * завершается с ошибкой и ничего не отправляет (даже в dry-run).
+ * Чтение стены — user-токен VK ID (Service\VKOauth, таблица vk_oauth_token,
+ * подключается на /poselenie/vk-vechesk). Без подключения прогон завершается
+ * с ошибкой и ничего не отправляет (даже в dry-run). Подписчики кешируются
+ * в vk_group_members_cache на сутки.
  *
  * cron (каждые 15 минут):
  *   каждые 15 мин: cd /path/residents && php bin/vk-vechesk-sync.php >> storage/logs/vk-vechesk-sync.log 2>&1
@@ -29,8 +30,10 @@ define('SKAZ_CRON_ROOT', in_array('--root', $argv ?? [], true));
 
 use SkazResidents\Config;
 use SkazResidents\Database;
+use SkazResidents\Repository\VkOauthTokenRepository;
 use SkazResidents\Service\VK;
 use SkazResidents\Service\VKBridge;
+use SkazResidents\Service\VKOauth;
 use SkazResidents\TelegramBot;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -54,18 +57,24 @@ try {
         exit(1);
     }
 
-    if (VK::token() === '') {
-        fwrite(STDERR, 'нет VECHESK_GROUP_VK_TOKEN в config/.env — нечего запрашивать у ВК'
-            . ($dryRun ? ' (даже для dry-run)' : '') . "\n");
-        exit(1);
-    }
-
     $db = Database::connect(Config::get('db'));
+
+    $tokens = new VkOauthTokenRepository();
+    $vk = new VK(null, (new VKOauth(null, $tokens))->accessToken(date('Y-m-d H:i:s')));
 
     $bridge = new VKBridge(
         $db,
-        static fn(int $gid): array => (new VK())->wallPosts($gid, 10),
-        static fn(int $gid): array => (new VK())->groupMembers($gid),
+        static fn(int $gid): array => $vk->wallPosts($gid, 10),
+        static function (int $gid) use ($vk, $tokens): array {
+            $fetched = $tokens->membersFetchedAt($gid);
+            if ($fetched !== '' && strtotime($fetched) > time() - 86400) {
+                $cached = $tokens->membersCache($gid);
+                if ($cached !== null) { return $cached; }
+            }
+            $members = $vk->groupMembers($gid);
+            $tokens->saveMembers($gid, $members, date('Y-m-d H:i:s'));
+            return $members;
+        },
         static function (int $familyId, int $telegramId, string $text): int {
             // message_id для журнала исходящих (TelegramOutbox внутри моста).
             // Токен — вложенный ключ: Config::get('telegram.token') не работает

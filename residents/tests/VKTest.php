@@ -7,26 +7,26 @@ use SkazResidents\Service\VK;
 
 /**
  * Клиент VK API (wall.get / groups.getMembers): разбор ответа, хронологический
- * порядок постов, пагинация подписчиков, ошибки API и отсутствие токена.
- * Сеть подменена колбэком $http; токен — переменная окружения.
+ * порядок постов, пагинация подписчиков, ошибки API и отсутствие ключа.
+ * Сеть подменена колбэком $http; сервисный ключ — переменная окружения.
  */
 final class VKTest extends TestCase
 {
-    /** @var string|false сохранённое значение токена окружения */
+    /** @var string|false сохранённое значение ключа окружения */
     private $saved;
 
     protected function setUp(): void
     {
-        $this->saved = getenv('VECHESK_GROUP_VK_TOKEN');
-        putenv('VECHESK_GROUP_VK_TOKEN=test-token');
+        $this->saved = getenv('VK_VECHESK_SERVICE_TOKEN');
+        putenv('VK_VECHESK_SERVICE_TOKEN=test-token');
     }
 
     protected function tearDown(): void
     {
         if ($this->saved === false) {
-            putenv('VECHESK_GROUP_VK_TOKEN');   // убрать
+            putenv('VK_VECHESK_SERVICE_TOKEN');   // убрать
         } else {
-            putenv('VECHESK_GROUP_VK_TOKEN=' . $this->saved);
+            putenv('VK_VECHESK_SERVICE_TOKEN=' . $this->saved);
         }
     }
 
@@ -96,23 +96,35 @@ final class VKTest extends TestCase
         $vk->wallPosts(1);
     }
 
-    /** Явный токен (из VKOauth) важнее переменной окружения и уходит в запрос. */
-    public function test_explicit_token_overrides_env(): void
+    /**
+     * Ключ доступа сообщества стену не читает (ERR 27). Фолбэка на wall.getById
+     * нет: он упирается в ту же ошибку, поэтому пробрасываем её как есть.
+     */
+    public function test_group_auth_err27_throws_without_fallback(): void
     {
-        $url = '';
-        $vk = new VK(static function (string $u) use (&$url): string {
-            $url = $u;
-            return json_encode(['response' => ['count' => 0, 'items' => []]]);
-        }, 'oauth-token');
-        $vk->wallPosts(63502598, 10);
-        $this->assertStringContainsString('access_token=oauth-token', $url);
+        $urls = [];
+        $vk = new VK(static function (string $u) use (&$urls): string {
+            $urls[] = $u;
+            return json_encode(['error' => [
+                'error_code' => 27,
+                'error_msg'  => 'Group authorization failed: method is unavailable with group auth.',
+            ]]);
+        });
+
+        try {
+            $vk->wallPosts(63502598, 2);
+            $this->fail('ожидали исключение');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('ошибка 27', $e->getMessage());
+        }
+        $this->assertCount(1, $urls, 'только один вызов — wall.getById больше не пробуем');
+        $this->assertStringContainsString('method/wall.get?', $urls[0]);
     }
 
-    /** Пустой токен → исключение ещё до сетевого вызова. */
+    /** Пустой ключ → исключение ещё до сетевого вызова. */
     public function test_empty_token_throws_without_http(): void
     {
-        putenv('VECHESK_GROUP_VK_TOKEN');
-        putenv('SKAZKRAY_VK_TOKEN');   // и фолбэк-имя тоже пусто
+        putenv('VK_VECHESK_SERVICE_TOKEN');
         $called = false;
         $vk = new VK(static function (string $u) use (&$called): string {
             $called = true;
@@ -122,9 +134,9 @@ final class VKTest extends TestCase
             $vk->wallPosts(1);
             $this->fail('ожидали исключение');
         } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('VECHESK_GROUP_VK_TOKEN', $e->getMessage());
+            $this->assertStringContainsString('VK_VECHESK_SERVICE_TOKEN', $e->getMessage());
         }
-        $this->assertFalse($called, 'HTTP не должен вызываться без токена');
+        $this->assertFalse($called, 'HTTP не должен вызываться без ключа');
     }
 
     /** Не-JSON ответ → исключение. */
@@ -135,45 +147,12 @@ final class VKTest extends TestCase
         $vk->wallPosts(1);
     }
 
-    /** Токен: основное имя env имеет приоритет над фолбэком. */
-    public function test_token_prefers_new_env_name(): void
+    /** token(): значение из окружения без хвостовых пробелов, пусто → ''. */
+    public function test_token_reads_env(): void
     {
-        putenv('SKAZKRAY_VK_TOKEN=old');
-        $this->assertSame('test-token', VK::token());
-        putenv('VECHESK_GROUP_VK_TOKEN');
-        $this->assertSame('old', VK::token());
-        putenv('SKAZKRAY_VK_TOKEN');
+        putenv('VK_VECHESK_SERVICE_TOKEN= abc123 ');
+        $this->assertSame('abc123', VK::token());
+        putenv('VK_VECHESK_SERVICE_TOKEN');
         $this->assertSame('', VK::token());
-    }
-
-    /**
-     * Фолбэк при ERR 27: wall.get отвечает ошибкой 27 → клиент переходит на
-     * wall.getById (посты читаются по известным id, стена идёт подряд с 1).
-     */
-    public function test_wall_posts_fallback_to_wall_get_by_id_on_err27(): void
-    {
-        $urls = [];
-        $vk = new VK(static function (string $u) use (&$urls): string {
-            $urls[] = $u;
-            if (str_contains($u, 'method/wall.get?')) {
-                return json_encode(['error' => ['error_code' => 27, 'error_msg' => 'Access to group wall denied']]);
-            }
-            // wall.getById: отдаём два поста (id 8 и 9 — «свежие» в окне).
-            return json_encode(['response' => [
-                'count' => 2,
-                'items' => [
-                    ['id' => 8, 'date' => 80, 'text' => 'старее'],
-                    ['id' => 9, 'date' => 90, 'text' => 'новее'],
-                ],
-            ]]);
-        });
-
-        $posts = $vk->wallPosts(63502598, 2);
-        $this->assertSame([8, 9], array_column($posts, 'id'), 'фолбэк отдаёт посты по id, от старых к новым');
-
-        $joined = implode("\n", $urls);
-        $this->assertStringContainsString('method/wall.get?', $joined, 'сначала пробуем wall.get');
-        $this->assertStringContainsString('method/wall.getById?', $joined, 'при ERR 27 — переходим на wall.getById');
-        $this->assertStringContainsString('63502598_', $joined, 'wall.getById получает id вида <gid>_<id>');
     }
 }

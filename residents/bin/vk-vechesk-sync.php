@@ -19,10 +19,10 @@ define('SKAZ_CRON_ROOT', in_array('--root', $argv ?? [], true));
  *
  * Состояние (id последнего пересланного поста) хранится в таблице
  * vk_vechesk_state (config/vk-vechesk-state.sql, накатывается вручную).
- * Чтение стены — user-токен VK ID (Service\VKOauth, таблица vk_oauth_token,
- * подключается на /poselenie/vk-vechesk). Без подключения прогон завершается
+ * Стену читает сервисный ключ доступа приложения VK ID (VK_VECHESK_SERVICE_TOKEN
+ * в config/.env): он статичный, refresh не нужен. Без ключа прогон завершается
  * с ошибкой и ничего не отправляет (даже в dry-run). Подписчики кешируются
- * в vk_group_members_cache на сутки.
+ * в vk_group_members_cache на сутки (vk_vechesk.members_ttl).
  *
  * cron (каждые 15 минут):
  *   каждые 15 мин: cd /path/residents && php bin/vk-vechesk-sync.php >> storage/logs/vk-vechesk-sync.log 2>&1
@@ -30,10 +30,9 @@ define('SKAZ_CRON_ROOT', in_array('--root', $argv ?? [], true));
 
 use SkazResidents\Config;
 use SkazResidents\Database;
-use SkazResidents\Repository\VkOauthTokenRepository;
+use SkazResidents\Repository\VkMembersCacheRepository;
 use SkazResidents\Service\VK;
 use SkazResidents\Service\VKBridge;
-use SkazResidents\Service\VKOauth;
 use SkazResidents\TelegramBot;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -59,20 +58,21 @@ try {
 
     $db = Database::connect(Config::get('db'));
 
-    $tokens = new VkOauthTokenRepository();
-    $vk = new VK(null, (new VKOauth(null, $tokens))->accessToken(date('Y-m-d H:i:s')));
+    $vk = new VK();
+    $cache = new VkMembersCacheRepository();
+    $membersTtl = (int) ($conf['members_ttl'] ?? 86400);
+    $now = date('Y-m-d H:i:s');
 
     $bridge = new VKBridge(
         $db,
         static fn(int $gid): array => $vk->wallPosts($gid, 10),
-        static function (int $gid) use ($vk, $tokens): array {
-            $fetched = $tokens->membersFetchedAt($gid);
-            if ($fetched !== '' && strtotime($fetched) > time() - 86400) {
-                $cached = $tokens->membersCache($gid);
+        static function (int $gid) use ($vk, $cache, $membersTtl, $now): array {
+            if ($cache->isFresh($gid, $now, $membersTtl)) {
+                $cached = $cache->members($gid);
                 if ($cached !== null) { return $cached; }
             }
             $members = $vk->groupMembers($gid);
-            $tokens->saveMembers($gid, $members, date('Y-m-d H:i:s'));
+            $cache->save($gid, $members, $now);
             return $members;
         },
         static function (int $familyId, int $telegramId, string $text): int {

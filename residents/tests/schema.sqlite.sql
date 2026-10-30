@@ -396,20 +396,10 @@ CREATE TABLE telegram_messages (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Ключи доступа VK ID для чтения стены ВК-группы «Вече» — зеркало
--- config/vk-oauth-token.sql. Одна строка (id = 1): user-токен живёт 1 час,
--- refresh_token ротируется при каждом обновлении.
-CREATE TABLE vk_oauth_token (
-    id INTEGER NOT NULL PRIMARY KEY,
-    access_token TEXT NOT NULL,
-    refresh_token TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    last_error TEXT
-);
-
 -- Кеш подписчиков ВК-группы (groups.getMembers дорог по лимиту API) — зеркало
--- config/vk-oauth-token.sql, обновляется раз в сутки.
+-- config/vk-oauth-token.sql, обновляется раз в сутки. Таблицу vk_oauth_token
+-- из той же миграции удаляет config/vk-oauth-token-drop.sql — стена читается
+-- сервисным ключом, OAuth-ветки больше нет.
 CREATE TABLE vk_group_members_cache (
     id INTEGER NOT NULL PRIMARY KEY,
     group_id INTEGER NOT NULL,

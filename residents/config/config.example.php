@@ -77,13 +77,14 @@ return [
     'reset_ttl'    => 3600,                              // срок жизни токена сброса, сек
     'login_throttle' => ['max' => 5, 'window' => 900],  // 5 попыток за 15 мин
     // Пересылка постов ВК-группы «Вече» (https://vk.ru/vechesk) в Telegram-рассылку
-    // «Участники Вече» — bin/vk-vechesk-sync.php (cron каждые 15 мин). Доступ к стене —
-    // user-токен VK ID (подключается на /poselenie/vk-vechesk), в конфиг не пишется.
+    // «Участники Вече» — bin/vk-vechesk-sync.php (cron каждые 15 мин). Стену читает
+    // сервисный ключ доступа приложения VK ID — VK_VECHESK_SERVICE_TOKEN в config/.env
+    // (в конфиг не пишется: это секрет, а deploy .env не перезаписывает).
     'vk_vechesk' => [
-        'client_id'   => '',                   // id приложения VK ID (секрет — VK_VECHESK_CLIENT_SECRET в .env)
         'group_id'    => 63502598,             // числовой id группы ВК
         'group_name'  => 'Вече',               // как называть в тексте поста
         'list_id'     => 1,                    // id списка рассылки «Участники группы Вече»
         'list_name'   => 'Участники группы Вече', // для лога/заголовка dry-run
+        'members_ttl' => 86400,                // как часто обновлять кеш подписчиков, сек
     ],
 ];

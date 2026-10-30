@@ -14,7 +14,7 @@ Config::load(__DIR__ . '/../config/config.php');
 
 // Автономный режим cron-скриптов (bin/*.php): только .env + конфиг,
 // без сессий и подключения к БД. Скрипт подключается сам после своих
-// проверок (см. bin/vk-vechesk-sync.php — пустой токен → exit до БД).
+// проверок.
 if (defined('SKAZ_CRON_NO_DB') && SKAZ_CRON_NO_DB) { return; }
 
 /*
@@ -30,7 +30,7 @@ if (defined('SKAZ_CRON_NO_DB') && SKAZ_CRON_NO_DB) { return; }
  */
 const SESSION_TTL = 30 * 24 * 3600;
 
-// Запуск от root (--root, например bin/vk-vechesk-sync.php по ssh) сессию
+// Запуск от root (--root, по ssh) сессию
 // пропускает: var/sessions root'у не писать, а веб-запросы сюда не приходят.
 $skipSession = (defined('SKAZ_CRON_ROOT') && SKAZ_CRON_ROOT);
 if (!$skipSession) {

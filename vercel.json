@@ -1,0 +1,48 @@
+{
+  "buildCommand": "npm ci --prefer-offline && npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/editor/(.*)",
+      "destination": "/editor/index.html"
+    },
+    {
+      "source": "/cms-tg-image.js",
+      "destination": "/cms-tg-image.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        }
+      ]
+    }
+  ],
+  "trailingSlash": true
+}

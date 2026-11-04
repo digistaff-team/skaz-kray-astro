@@ -83,7 +83,7 @@ seoDescription: Правила поселения родовых помести�
 <p>В случае несоблюдения этих правил в первый раз гостю делают замечание, при повторном нарушении правил – просят покинуть территорию поселения.</p>
 <hr />
 <p>&nbsp;</p>
-<p>Наши правила просты. Коль согласны с <a href="/pravila/">Правилами</a> вы, так в Анкете нам и напишите (в ответе на серию писем "<a href="/o-nas/novichkam/">Путь в Сказочный Край</a>").</p>
+<p>Наши правила просты. Коль согласны с <a href="/o-nas/pravila/">Правилами</a> вы, так в Анкете нам и напишите (в ответе на серию писем "<a href="/o-nas/novichkam/">Путь в Сказочный Край</a>").</p>
 <p style="text-align: center;"><a href="/o-nas/novichkam/"><img class="aligncenter" src="/wp-content/uploads/2014/02/sk_1_1500.jpg" alt="sk_1_1500" width="300" height="225" /></a></p>
 <p style="text-align: center;"><a href="/skazochnyj-kraj-dlya-predprinimatelej-s-chistymi-pomyslami/">Обращение к Предпринимателям с чистыми помыслами от предпринимателей Сказочного Края!</a></p>
 <div></div>

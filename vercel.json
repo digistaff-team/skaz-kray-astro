@@ -13,6 +13,28 @@
       "destination": "/editor/index.html"
     }
   ],
+  "redirects": [
+    {
+      "source": "/dnevniki-pomestiy",
+      "destination": "/category/dnevniki-pomestij/",
+      "permanent": true
+    },
+    {
+      "source": "/dnevniki-pomestiy/",
+      "destination": "/category/dnevniki-pomestij/",
+      "permanent": true
+    },
+    {
+      "source": "/tag/prazdnik/",
+      "destination": "/o-nas/prazdniki/",
+      "permanent": true
+    },
+    {
+      "source": "/pravila/",
+      "destination": "/o-nas/pravila/",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/fonts/(.*)",

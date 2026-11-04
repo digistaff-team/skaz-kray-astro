@@ -12,7 +12,7 @@ seoTitle: >-
 ---
 
 <p>Здравствуйте! Мы, <a href="/pomeste-semi-rudenko-agudariya-budem-znakomy/">семья Руденко</a>, продолжаем вести <a href="/category/dnevniki-pomestij/pomeste-rudenko-agudariya/">Дневник нашего поместья «АгудариЯ»</a>.</p>
-<p>Пока <a href="/pomeste-raduzhnyj-kot-28-aprelya-6-maya-2013-chast-1-deti-poseleniya/">дети занимались своими делами и играми</a>, взрослым в поместье тоже скучать не пришлось.</p>
+<p>Пока <a href="/pomeste-agudariya-28-aprelya-6-maya-2013-chast-1-deti-poseleniya/">дети занимались своими делами и играми</a>, взрослым в поместье тоже скучать не пришлось.</p>
 <p>Муж освоил новый инструмент - косу. Теперь у нас на полянке прокошены дорожки к любимым выходам на реку.</p>
 <p><a href="http://img-fotki.yandex.ru/get/6445/55385274.13/0_874b9_d0f8327e_XXL.jpg" target="_blank" rel="nofollow"><img title="" alt="" src="http://img-fotki.yandex.ru/get/6445/55385274.13/0_874b9_d0f8327e_XL.jpg" width="600" border="0" /></a></p>
 <p>И я тоже освоила косу - вот заплетаю утром, что осталось. В поместье захотелось снова отрастить волосы до пояса, и челку тоже. А вот пользоваться косметикой тут как-то совсем не хочется. Разве только голубой глиной на речке обмазываемся.</p>

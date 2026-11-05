@@ -1,10 +1,12 @@
-import express, { Request, Response, NextFunction } from 'express';
+// dotenv/config обязан быть ПЕРВЫМ импортом: lib/auth.ts читает process.env.JWT_SECRET
+// на уровне модуля, а в собранном CommonJS все require идут строго в этом порядке.
+// Просто вызвать dotenv.config() между импортами нельзя — сборка поднимет её наверх.
+import 'dotenv/config';
+import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import serverless from 'serverless-http';
 
 import { authRoutes } from './routes/auth';
 import { cabinetRoutes } from './routes/cabinet';
@@ -41,8 +43,10 @@ app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 app.use(cookieParser());
 
-// Статика
-app.use('/poselenie/uploads', express.static('./uploads'));
+// Статика (только при локальном запуске — на Vercel её нет)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/poselenie/uploads', express.static('./uploads'));
+}
 
 // Роуты
 app.use('/api/auth', authRoutes);
@@ -63,22 +67,28 @@ app.use('/api/public', publicRoutes);
 app.use('/api/health', healthRoutes);
 
 // Health check
-app.get('/api/health', (_req: Request, res: Response) => {
+app.get('/api/health', (_req: any, res: any) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // 404
-app.use((_req: Request, res: Response) => {
+app.use((_req: any, res: any) => {
   res.status(404).json({ error: 'Not found' });
 });
 
 // Error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error, _req: any, res: any, _next: any) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Residents V2 running on port ${PORT}`);
-});
+// Локальный запуск (для dev-тестов на abconsult)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`Residents V2 running on port ${PORT}`);
+  });
+}
+
+// Vercel serverless export
+export const handler = serverless(app);

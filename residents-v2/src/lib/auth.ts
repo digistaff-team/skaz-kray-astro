@@ -6,17 +6,22 @@ export interface AuthPayload {
   role: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+// Секреты читаются внутри функций, а не на уровне модуля: при холодном старте
+// серверлесс-функции порядок инициализации окружения не гарантирован.
+function secret(): string {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error('JWT_SECRET не задан');
+  return s;
+}
 
 export function signToken(payload: AuthPayload): string {
-  const opts: SignOptions = { expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'] };
-  return jwt.sign(payload, JWT_SECRET, opts);
+  const opts: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'] };
+  return jwt.sign(payload, secret(), opts);
 }
 
 export function verifyToken(token: string): AuthPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthPayload;
+    return jwt.verify(token, secret()) as AuthPayload;
   } catch {
     return null;
   }

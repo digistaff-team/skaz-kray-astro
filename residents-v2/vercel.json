@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "buildCommand": "prisma generate",
+  "installCommand": "npm ci",
+
+  "framework": null,
+
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://skaz-kray.ru" },
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Content-Length, Content-Type, Authorization"
+        }
+      ]
+    }
+  ]
+}

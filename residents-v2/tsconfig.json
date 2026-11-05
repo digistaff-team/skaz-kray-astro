@@ -18,6 +18,8 @@
       "@/*": ["src/*"]
     }
   },
+  // api/ здесь не перечисляем: rootDir=src не пускает чужие файлы, а Vercel
+  // компилирует её сам. Проверка типов api/ — в tsconfig.api.json.
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

@@ -6,7 +6,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import serverless from 'serverless-http';
 
 import { authRoutes } from './routes/auth';
 import { cabinetRoutes } from './routes/cabinet';
@@ -90,6 +89,7 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Vercel требует именно default-экспорт: именованный `handler` он не находит
-// и роняет функцию с «The default export must be a function or server».
-export default serverless(app);
+// Vercel сам принимает (req, res) в нативном рантайме — serverless-http здесь
+// не нужен: он ждёт событие AWS Lambda и зависает до таймаута (504/Task timed out).
+// Express-приложение само является функцией (req, res) и валидно как default export.
+export default app;

@@ -90,5 +90,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Vercel serverless export
-export const handler = serverless(app);
+// Vercel требует именно default-экспорт: именованный `handler` он не находит
+// и роняет функцию с «The default export must be a function or server».
+export default serverless(app);

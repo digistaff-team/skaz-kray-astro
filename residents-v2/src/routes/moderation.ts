@@ -11,9 +11,9 @@ router.use(requireEditor);
 router.get('/', async (_req: AuthRequest, res) => {
   try {
     const [families, entries, products] = await Promise.all([
-      db.family.findMany({ where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } }),
-      db.diaryEntry.findMany({ where: { status: 'PENDING' }, include: { family: true } }),
-      db.product.findMany({ where: { status: 'PENDING' }, include: { family: true } }),
+      db.family.findMany({ where: { status: 'pending' }, orderBy: { createdAt: 'asc' } }),
+      db.diaryEntry.findMany({ where: { status: 'pending' }, include: { family: true } }),
+      db.product.findMany({ where: { status: 'pending' }, include: { family: true } }),
     ]);
     res.json({ families, entries, products });
   } catch (err) {
@@ -52,7 +52,7 @@ router.post('/family/approve', async (req: AuthRequest, res) => {
   try {
     const family = await db.family.update({
       where: { id: Number(req.body.familyId) },
-      data: { status: 'ACTIVE', approvedAt: new Date() },
+      data: { status: 'active', approvedAt: new Date() },
     });
     res.json(family);
   } catch (err) {
@@ -65,7 +65,7 @@ router.post('/family/reject', async (req: AuthRequest, res) => {
   try {
     const family = await db.family.update({
       where: { id: Number(req.body.familyId) },
-      data: { status: 'BLOCKED' },
+      data: { status: 'blocked' },
     });
     res.json(family);
   } catch (err) {
@@ -93,7 +93,7 @@ router.post('/entry/approve', async (req: AuthRequest, res) => {
     const entry = await db.diaryEntry.update({
       where: { id: Number(req.body.entryId) },
       data: {
-        status: 'PUBLISHED',
+        status: 'published',
         publishedAt: new Date(),
         visibility: req.body.public ? 'public' : 'residents',
       },
@@ -109,7 +109,7 @@ router.post('/entry/reject', async (req: AuthRequest, res) => {
   try {
     const entry = await db.diaryEntry.update({
       where: { id: Number(req.body.entryId) },
-      data: { status: 'REJECTED', rejectReason: req.body.reason || '' },
+      data: { status: 'rejected', rejectReason: req.body.reason || '' },
     });
     res.json(entry);
   } catch (err) {
@@ -122,7 +122,7 @@ router.post('/product/approve', async (req: AuthRequest, res) => {
   try {
     const product = await db.product.update({
       where: { id: Number(req.body.productId) },
-      data: { status: 'PUBLISHED', publishedAt: new Date() },
+      data: { status: 'published', publishedAt: new Date() },
     });
     res.json(product);
   } catch (err) {
@@ -135,7 +135,7 @@ router.post('/product/reject', async (req: AuthRequest, res) => {
   try {
     const product = await db.product.update({
       where: { id: Number(req.body.productId) },
-      data: { status: 'REJECTED', rejectReason: req.body.reason || '' },
+      data: { status: 'rejected', rejectReason: req.body.reason || '' },
     });
     res.json(product);
   } catch (err) {

@@ -8,7 +8,7 @@ const router = Router();
 router.get('/board', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const deliveries = await db.delivery.findMany({
-      where: { status: { in: ['REQUESTED', 'OPEN'] } },
+      where: { status: { in: ['requested', 'open'] } },
       include: {
         requester: { include: { householdOwners: { include: { household: true } } } },
         trip: { include: { driver: true } },
@@ -43,7 +43,7 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res) => {
 router.post('/create', requireAuth, async (req: AuthRequest, res) => {
   try {
     const { kind, what, place, needBy, budget, note, tripId } = req.body;
-    const status = tripId ? 'REQUESTED' : 'OPEN';
+    const status = tripId ? 'requested' : 'open';
 
     const delivery = await db.delivery.create({
       data: {
@@ -77,7 +77,7 @@ router.post('/take/:id', requireAuth, async (req: AuthRequest, res) => {
       where: { id: delivery.id },
       data: {
         carrierId: req.user!.familyId,
-        status: 'ACCEPTED',
+        status: 'accepted',
         acceptedAt: new Date(),
       },
     });
@@ -97,7 +97,7 @@ router.post('/cant-do/:id', requireAuth, async (req: AuthRequest, res) => {
 
     const updated = await db.delivery.update({
       where: { id: delivery.id },
-      data: { carrierId: null, status: 'OPEN' },
+      data: { carrierId: null, status: 'open' },
     });
     res.json(updated);
   } catch (err) {
@@ -116,7 +116,7 @@ router.post('/deliver/:id', requireAuth, async (req: AuthRequest, res) => {
     const updated = await db.delivery.update({
       where: { id: delivery.id },
       data: {
-        status: 'DELIVERED',
+        status: 'delivered',
         deliveredAt: new Date(),
         receiptSum: req.body.receiptSum ? Number(req.body.receiptSum) : null,
       },
@@ -137,7 +137,7 @@ router.post('/settle/:id', requireAuth, async (req: AuthRequest, res) => {
 
     const updated = await db.delivery.update({
       where: { id: delivery.id },
-      data: { status: 'SETTLED', settledAt: new Date() },
+      data: { status: 'settled', settledAt: new Date() },
     });
     res.json(updated);
   } catch (err) {
@@ -155,7 +155,7 @@ router.post('/cancel/:id', requireAuth, async (req: AuthRequest, res) => {
 
     const updated = await db.delivery.update({
       where: { id: delivery.id },
-      data: { status: 'CANCELLED' },
+      data: { status: 'cancelled' },
     });
     res.json(updated);
   } catch (err) {

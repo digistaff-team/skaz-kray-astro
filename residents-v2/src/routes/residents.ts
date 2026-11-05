@@ -25,7 +25,7 @@ router.post('/approve', requireAuth, async (req: AuthRequest, res) => {
   try {
     const family = await db.family.update({
       where: { id: Number(req.body.familyId) },
-      data: { status: 'ACTIVE', approvedAt: new Date() },
+      data: { status: 'active', approvedAt: new Date() },
     });
     res.json(family);
   } catch (err) {
@@ -38,7 +38,7 @@ router.post('/reject', requireAuth, async (req: AuthRequest, res) => {
   try {
     const family = await db.family.update({
       where: { id: Number(req.body.familyId) },
-      data: { status: 'BLOCKED' },
+      data: { status: 'blocked' },
     });
     res.json(family);
   } catch (err) {

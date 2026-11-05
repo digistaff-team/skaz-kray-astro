@@ -8,7 +8,7 @@ const router = Router();
 router.get('/catalog', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const tools = await db.tool.findMany({
-      where: { status: { not: 'HIDDEN' } },
+      where: { status: { not: 'hidden' } },
       include: { family: { include: { householdOwners: { include: { household: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -97,7 +97,7 @@ router.post('/toggle-hidden/:id', requireAuth, async (req: AuthRequest, res) => 
 
     const updated = await db.tool.update({
       where: { id: tool.id },
-      data: { status: tool.status === 'HIDDEN' ? 'AVAILABLE' : 'HIDDEN' },
+      data: { status: tool.status === 'hidden' ? 'available' : 'hidden' },
     });
     res.json(updated);
   } catch (err) {
@@ -115,7 +115,7 @@ router.post('/toggle-maintenance/:id', requireAuth, async (req: AuthRequest, res
 
     const updated = await db.tool.update({
       where: { id: tool.id },
-      data: { status: tool.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE' },
+      data: { status: tool.status === 'maintenance' ? 'available' : 'maintenance' },
     });
     res.json(updated);
   } catch (err) {
@@ -127,7 +127,7 @@ router.post('/toggle-maintenance/:id', requireAuth, async (req: AuthRequest, res
 router.post('/request/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const tool = await db.tool.findUnique({ where: { id: Number(req.params.id) } });
-    if (!tool || tool.status !== 'AVAILABLE') {
+    if (!tool || tool.status !== 'available') {
       return res.status(400).json({ error: 'Инструмент недоступен' });
     }
 
@@ -163,11 +163,11 @@ router.post('/loans/give/:id', requireAuth, async (req: AuthRequest, res) => {
     await db.$transaction([
       db.toolLoan.update({
         where: { id: loan.id },
-        data: { status: 'ON_LOAN', handedOutAt: new Date(), decidedAt: new Date() },
+        data: { status: 'on_loan', handedOutAt: new Date(), decidedAt: new Date() },
       }),
       db.tool.update({
         where: { id: loan.toolId },
-        data: { status: 'ON_LOAN' },
+        data: { status: 'on_loan' },
       }),
     ]);
 
@@ -191,7 +191,7 @@ router.post('/loans/decline/:id', requireAuth, async (req: AuthRequest, res) => 
 
     await db.toolLoan.update({
       where: { id: loan.id },
-      data: { status: 'DECLINED', decidedAt: new Date() },
+      data: { status: 'declined', decidedAt: new Date() },
     });
     res.json({ message: 'Отклонено' });
   } catch (err) {
@@ -215,7 +215,7 @@ router.post('/loans/return/:id', requireAuth, async (req: AuthRequest, res) => {
       db.toolLoan.update({
         where: { id: loan.id },
         data: {
-          status: 'RETURNED',
+          status: 'returned',
           returnedAt: new Date(),
           returnCondition: req.body.condition || 'ok',
           returnNote: req.body.note || null,
@@ -223,7 +223,7 @@ router.post('/loans/return/:id', requireAuth, async (req: AuthRequest, res) => {
       }),
       db.tool.update({
         where: { id: loan.toolId },
-        data: { status: req.body.condition === 'broken' ? 'MAINTENANCE' : 'AVAILABLE' },
+        data: { status: req.body.condition === 'broken' ? 'maintenance' : 'available' },
       }),
     ]);
 
@@ -243,7 +243,7 @@ router.post('/loans/cancel/:id', requireAuth, async (req: AuthRequest, res) => {
 
     await db.toolLoan.update({
       where: { id: loan.id },
-      data: { status: 'CANCELLED' },
+      data: { status: 'cancelled' },
     });
     res.json({ message: 'Отменено' });
   } catch (err) {

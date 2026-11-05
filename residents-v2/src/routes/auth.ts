@@ -29,7 +29,7 @@ router.post('/register', async (req: Request, res: Response) => {
         email,
         passwordHash: hashPassword(password),
         name,
-        status: 'PENDING',
+        status: 'pending',
       },
     });
 
@@ -58,7 +58,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const family = await db.family.findUnique({ where: { email } });
-    if (!family || family.status === 'BLOCKED') {
+    if (!family || family.status === 'blocked') {
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
 
@@ -66,7 +66,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
 
-    if (family.status === 'PENDING') {
+    if (family.status === 'pending') {
       return res.status(403).json({ error: 'Аккаунт ожидает модерации' });
     }
 

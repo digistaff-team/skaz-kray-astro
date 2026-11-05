@@ -8,7 +8,7 @@ const router = Router();
 router.get('/board', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const purchases = await db.purchase.findMany({
-      where: { status: { in: ['COLLECTING', 'ORDERED'] } },
+      where: { status: { in: ['collecting', 'ordered'] } },
       include: {
         organizer: { include: { householdOwners: { include: { household: true } } } },
         orders: { include: { family: true } },
@@ -70,7 +70,7 @@ router.post('/create', requireAuth, async (req: AuthRequest, res) => {
 router.post('/order/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const purchase = await db.purchase.findUnique({ where: { id: Number(req.params.id) } });
-    if (!purchase || purchase.status !== 'COLLECTING') {
+    if (!purchase || purchase.status !== 'collecting') {
       return res.status(400).json({ error: 'Сбор закрыт' });
     }
 

@@ -44,7 +44,7 @@ router.post('/create', requireAuth, async (req: AuthRequest, res) => {
 router.get('/feed', requireAuth, async (req: AuthRequest, res) => {
   try {
     const entries = await db.diaryEntry.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'published' },
       include: { family: { include: { householdOwners: { include: { household: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 50,

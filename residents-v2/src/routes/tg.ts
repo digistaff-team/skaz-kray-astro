@@ -38,12 +38,12 @@ router.get('/login', async (req: Request, res: Response) => {
           email: `tg_${telegramId}@skazkray.local`,
           passwordHash: '$2a$10$placeholder', // placeholder
           name: user?.first_name || 'Новый житель',
-          status: 'PENDING',
+          status: 'pending',
         },
       });
     }
 
-    if (family.status === 'BLOCKED') {
+    if (family.status === 'blocked') {
       return res.status(403).json({ error: 'Аккаунт заблокирован' });
     }
 
@@ -90,6 +90,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
       data: {
         messageId: message.message_id,
         chatId: message.chat?.id || 0,
+        context: 'webhook',
         text: data,
       },
     });

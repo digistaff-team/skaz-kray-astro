@@ -73,7 +73,7 @@ router.post('/claim/:id', requireAuth, async (req: AuthRequest, res) => {
       }),
       db.family.update({
         where: { id: familyId },
-        data: { status: 'ACTIVE', approvedAt: new Date() },
+        data: { status: 'active', approvedAt: new Date() },
       }),
     ]);
 

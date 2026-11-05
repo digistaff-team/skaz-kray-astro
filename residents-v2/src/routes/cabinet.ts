@@ -13,8 +13,8 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
         householdOwners: { include: { household: true } },
         diaryEntries: { take: 5, orderBy: { createdAt: 'desc' } },
         products: { take: 5, orderBy: { createdAt: 'desc' } },
-        toolLoansAsBorrow: { where: { status: { in: ['ON_LOAN', 'REQUESTED'] } }, take: 5 },
-        bookLoansAsBorrow: { where: { status: { in: ['ON_LOAN', 'REQUESTED'] } }, take: 5 },
+        toolLoansAsBorrow: { where: { status: { in: ['on_loan', 'requested'] } }, take: 5 },
+        bookLoansAsBorrow: { where: { status: { in: ['on_loan', 'requested'] } }, take: 5 },
         joinRequests: true,
       },
     });

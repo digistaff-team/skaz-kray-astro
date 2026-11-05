@@ -8,10 +8,10 @@ const router = Router();
 router.get('/board', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const trips = await db.trip.findMany({
-      where: { status: 'ACTIVE', tripDate: { gte: new Date() } },
+      where: { status: 'active', tripDate: { gte: new Date() } },
       include: {
         driver: { include: { householdOwners: { include: { household: true } } } },
-        bookings: { where: { status: 'CONFIRMED' } },
+        bookings: { where: { status: 'confirmed' } },
       },
       orderBy: { tripDate: 'asc' },
     });
@@ -70,7 +70,7 @@ router.post('/create', requireAuth, async (req: AuthRequest, res) => {
 router.post('/book/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const trip = await db.trip.findUnique({ where: { id: Number(req.params.id) } });
-    if (!trip || trip.status !== 'ACTIVE') {
+    if (!trip || trip.status !== 'active') {
       return res.status(400).json({ error: 'Поездка недоступна' });
     }
 
@@ -98,7 +98,7 @@ router.post('/done/:id', requireAuth, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Не найдено' });
     }
 
-    const updated = await db.trip.update({ where: { id: trip.id }, data: { status: 'DONE' } });
+    const updated = await db.trip.update({ where: { id: trip.id }, data: { status: 'done' } });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Ошибка' });
@@ -113,7 +113,7 @@ router.post('/cancel-trip/:id', requireAuth, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Не найдено' });
     }
 
-    const updated = await db.trip.update({ where: { id: trip.id }, data: { status: 'CANCELLED' } });
+    const updated = await db.trip.update({ where: { id: trip.id }, data: { status: 'cancelled' } });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: 'Ошибка' });
@@ -154,7 +154,7 @@ router.post('/bookings/confirm/:id', requireAuth, async (req: AuthRequest, res) 
     await db.$transaction([
       db.tripBooking.update({
         where: { id: booking.id },
-        data: { status: 'CONFIRMED', decidedAt: new Date() },
+        data: { status: 'confirmed', decidedAt: new Date() },
       }),
       db.trip.update({
         where: { id: booking.tripId },
@@ -182,7 +182,7 @@ router.post('/bookings/decline/:id', requireAuth, async (req: AuthRequest, res) 
 
     await db.tripBooking.update({
       where: { id: booking.id },
-      data: { status: 'DECLINED', decidedAt: new Date() },
+      data: { status: 'declined', decidedAt: new Date() },
     });
     res.json({ message: 'Отклонено' });
   } catch (err) {
@@ -200,7 +200,7 @@ router.post('/bookings/cancel/:id', requireAuth, async (req: AuthRequest, res) =
 
     await db.tripBooking.update({
       where: { id: booking.id },
-      data: { status: 'CANCELLED' },
+      data: { status: 'cancelled' },
     });
     res.json({ message: 'Отменено' });
   } catch (err) {

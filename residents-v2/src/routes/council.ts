@@ -22,7 +22,7 @@ router.post('/login', async (req: AuthRequest, res) => {
     }
 
     const member = await db.councilMember.findUnique({ where: { email } });
-    if (!member || member.status === 'BLOCKED') {
+    if (!member || member.status === 'blocked') {
       return res.status(401).json({ error: 'Неверные данные' });
     }
 

@@ -1,5 +1,10 @@
 // Prisma-схема для Supabase (PostgreSQL)
-// Полная копия БД skazkray_residents с учётом всех миграций
+// Полное зеркало БД skazkray_residents (MySQL с abconsult) — 38 таблиц.
+//
+// Ключевое решение: статусы/роли остаются VARCHAR, а не enum. Прод (PHP) пишет
+// их в НИЖНЕМ регистре ('pending', 'active', 'available', 'новая', 'в работе'),
+// enum в Prisma был бы отдельным типом и сделал бы перенос данных невозможным.
+// Совпадение строк с PHP — критично: от него зависят гейты доступа и фильтрация.
 
 datasource db {
   provider = "postgresql"
@@ -18,62 +23,54 @@ generator client {
 // ======================== СЕМЬЯ / ЖИТЕЛИ ========================
 
 model Family {
-  id             Int             @id @default(autoincrement()) @map("id")
-  email          String          @unique @db.VarChar(255)
-  telegramId     BigInt?         @unique @map("telegram_id") @db.BigInt
-  passwordHash   String          @map("password_hash") @db.VarChar(255)
-  name           String          @db.VarChar(160)
-  status         FamilyStatus    @default(PENDING)
-  role           FamilyRole      @default(RESIDENT)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  approvedAt     DateTime?       @map("approved_at")
+  id                Int      @id @default(autoincrement())
+  email             String   @unique @db.VarChar(255)
+  telegramId        BigInt?  @unique @map("telegram_id")
+  maxUserId         BigInt?  @unique @map("max_user_id")
+  telegramUsername  String?  @map("telegram_username") @db.VarChar(64)
+  passwordHash      String   @map("password_hash") @db.VarChar(255)
+  name              String   @db.VarChar(160)
+  status            String   @default("pending") @db.VarChar(16)
+  role              String   @default("resident") @db.VarChar(16)
+  createdAt         DateTime @default(now()) @map("created_at")
+  approvedAt        DateTime? @map("approved_at")
 
-  diaryEntries       DiaryEntry[]
-  products           Product[]
-  tools              Tool[]
-  books              Book[]
-  toolLoansAsBorrow  ToolLoan[]  @relation("ToolLoanBorrower")
-  bookLoansAsBorrow  BookLoan[]  @relation("BookLoanBorrower")
-  tripsAsDriver      Trip[]      @relation("TripDriver")
-  bookingsAsPass     TripBooking[] @relation("TripBookingPassenger")
-  purchasesAsOrg     Purchase[]  @relation("PurchaseOrganizer")
-  purchaseOrders     PurchaseOrder[]
-  deliveriesAsReq    Delivery[]  @relation("DeliveryRequester")
-  deliveriesAsCarr   Delivery[]  @relation("DeliveryCarrier")
-  householdOwners    HouseholdOwner[]
-  household          Household?
-  joinRequests       HouseholdJoinRequest[]
-  passwordResets     PasswordReset[]
+  diaryEntries      DiaryEntry[]
+  products          Product[]
+  tools             Tool[]
+  books             Book[]
+  toolLoansAsBorrow ToolLoan[]      @relation("ToolLoanBorrower")
+  bookLoansAsBorrow BookLoan[]      @relation("BookLoanBorrower")
+  tripsAsDriver     Trip[]          @relation("TripDriver")
+  bookingsAsPass    TripBooking[]   @relation("TripBookingPassenger")
+  purchasesAsOrg    Purchase[]      @relation("PurchaseOrganizer")
+  purchaseOrders    PurchaseOrder[]
+  deliveriesAsReq   Delivery[]      @relation("DeliveryRequester")
+  deliveriesAsCarr  Delivery[]      @relation("DeliveryCarrier")
+  householdOwners   HouseholdOwner[]
+  // family_id в households — «голова» хозяйства; в MySQL это обычный KEY, не UNIQUE
+  households        Household[]     @relation("HouseholdHead")
+  joinRequests      HouseholdJoinRequest[]
+  passwordResets    PasswordReset[]
 
   @@map("families")
-}
-
-enum FamilyStatus {
-  PENDING
-  ACTIVE
-  BLOCKED
-}
-enum FamilyRole {
-  RESIDENT
-  EDITOR
-  ADMIN
 }
 
 // ======================== ПОМЕСТЬЯ ========================
 
 model Household {
-  id           Int               @id @default(autoincrement()) @map("id")
-  glade        String            @default("") @db.VarChar(120)
-  plot         String            @default("") @db.VarChar(40)
-  estateName   String            @default("") @map("estate_name") @db.VarChar(160)
-  statusRaw    String            @default("") @map("status_raw") @db.VarChar(40)
-  joinedText   String            @default("") @map("joined_text") @db.VarChar(120)
-  familyId     Int?              @unique @map("family_id")
-  sort         Int               @default(0)
-  claimSurname String?           @map("claim_surname") @db.VarChar(120)
-  createdAt    DateTime          @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  glade        String   @default("") @db.VarChar(120)
+  plot         String   @default("") @db.VarChar(40)
+  estateName   String   @default("") @map("estate_name") @db.VarChar(160)
+  statusRaw    String   @default("") @map("status_raw") @db.VarChar(40)
+  joinedText   String   @default("") @map("joined_text") @db.VarChar(120)
+  familyId     Int?     @map("family_id")
+  sort         Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  claimSurname String?  @map("claim_surname") @db.VarChar(120)
 
-  family       Family?           @relation(fields: [familyId], references: [id])
+  family       Family?  @relation("HouseholdHead", fields: [familyId], references: [id], onDelete: SetNull)
   owners       HouseholdOwner[]
   cars         HouseholdCar[]
   pets         HouseholdPet[]
@@ -86,60 +83,58 @@ model Household {
 }
 
 model HouseholdOwner {
-  id         Int     @id @default(autoincrement()) @map("id")
-  householdId Int    @map("household_id")
-  familyId   Int    @map("family_id")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  householdId Int      @map("household_id")
+  familyId    Int      @unique @map("family_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  household  Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  family     Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  family      Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  @@unique([familyId])
   @@index([householdId])
   @@map("household_owners")
 }
 
 model HouseholdCar {
-  id           Int     @id @default(autoincrement()) @map("id")
-  householdId  Int     @map("household_id")
-  title        String  @db.VarChar(200)
-  plate        String  @default("") @db.VarChar(40)
-  note         String  @default("") @db.VarChar(255)
-  sort         Int     @default(0)
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  householdId Int      @map("household_id")
+  title       String   @db.VarChar(200)
+  plate       String   @default("") @db.VarChar(40)
+  note        String   @default("") @db.VarChar(255)
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId, sort])
   @@map("household_cars")
 }
 
 model HouseholdPet {
-  id           Int     @id @default(autoincrement()) @map("id")
-  householdId  Int     @map("household_id")
-  name         String  @db.VarChar(120)
-  kind         String  @default("") @db.VarChar(60)
-  note         String  @default("") @db.VarChar(255)
-  sort         Int     @default(0)
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  householdId Int      @map("household_id")
+  name        String   @db.VarChar(120)
+  kind        String   @default("") @db.VarChar(60)
+  note        String   @default("") @db.VarChar(255)
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId, sort])
   @@map("household_pets")
 }
 
 model HouseholdJoinRequest {
-  id           Int     @id @default(autoincrement()) @map("id")
-  householdId  Int     @map("household_id")
-  familyId     Int     @map("family_id")
-  surname      String  @default("") @db.VarChar(120)
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  householdId Int      @map("household_id")
+  familyId    Int      @unique @map("family_id")
+  surname     String   @default("") @db.VarChar(120)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  family       Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  family      Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
-  @@unique([familyId])
   @@index([householdId])
   @@map("household_join_requests")
 }
@@ -147,27 +142,27 @@ model HouseholdJoinRequest {
 // ======================== СПРАВОЧНИК ЖИТЕЛЕЙ ========================
 
 model Resident {
-  id             Int      @id @default(autoincrement()) @map("id")
-  householdId    Int      @map("household_id")
-  fullName       String   @map("full_name") @db.VarChar(200)
-  birthRaw       String   @default("") @map("birth_raw") @db.VarChar(60)
-  birthDate      DateTime? @map("birth_date") @db.Date
-  phone          String   @default("") @db.VarChar(60)
-  vk             String   @default("") @db.VarChar(200)
-  skills         String?  @db.Text
-  communityRole  String?  @map("community_role") @db.Text
-  movedText      String   @default("") @map("moved_text") @db.VarChar(120)
-  residence      String   @default("") @db.VarChar(200)
-  car            String   @default("") @db.VarChar(200)
-  hometown       String   @default("") @db.VarChar(160)
-  email          String   @default("") @db.VarChar(255)
-  questionnaire  String   @default("") @db.VarChar(255)
-  comment        String?  @db.Text
-  updatedText    String   @default("") @map("updated_text") @db.VarChar(60)
-  sort           Int      @default(0)
-  createdAt      DateTime @default(now()) @map("created_at")
+  id            Int       @id @default(autoincrement())
+  householdId   Int       @map("household_id")
+  fullName      String    @map("full_name") @db.VarChar(200)
+  birthRaw      String    @default("") @map("birth_raw") @db.VarChar(60)
+  birthDate     DateTime? @map("birth_date") @db.Date
+  phone         String    @default("") @db.VarChar(60)
+  vk            String    @default("") @db.VarChar(200)
+  skills        String?   @db.Text
+  communityRole String?   @map("community_role") @db.Text
+  movedText     String    @default("") @map("moved_text") @db.VarChar(120)
+  residence     String    @default("") @db.VarChar(200)
+  car           String    @default("") @db.VarChar(200)
+  hometown      String    @default("") @db.VarChar(160)
+  email         String    @default("") @db.VarChar(255)
+  questionnaire String    @default("") @db.VarChar(255)
+  comment       String?   @db.Text
+  updatedText   String    @default("") @map("updated_text") @db.VarChar(60)
+  sort          Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
 
-  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household     Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId, sort])
   @@index([fullName])
@@ -177,33 +172,29 @@ model Resident {
 // ======================== КОНТЕНТ: ДНЕВНИК ========================
 
 model DiaryEntry {
-  id           Int       @id @default(autoincrement()) @map("id")
+  id           Int       @id @default(autoincrement())
   familyId     Int       @map("family_id")
   title        String    @db.VarChar(200)
   body         String    @db.Text
+  isPublic     Boolean   @default(false) @map("is_public")
   visibility   String    @default("residents") @db.VarChar(16)
-  status       EntryStatus @default(PENDING)
-  rejectReason String?   @db.VarChar(500)
+  status       String    @default("pending") @db.VarChar(16)
+  rejectReason String?   @map("reject_reason") @db.VarChar(500)
   createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
   publishedAt  DateTime? @map("published_at")
 
-  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family       Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
+  @@index([familyId])
   @@index([status, publishedAt])
   @@map("diary_entries")
-}
-
-enum EntryStatus {
-  PENDING
-  PUBLISHED
-  REJECTED
 }
 
 // ======================== КОНТЕНТ: ТОВАРЫ ========================
 
 model Product {
-  id           Int       @id @default(autoincrement()) @map("id")
+  id           Int       @id @default(autoincrement())
   familyId     Int       @map("family_id")
   title        String    @db.VarChar(200)
   description  String    @db.Text
@@ -211,30 +202,34 @@ model Product {
   unit         String?   @db.VarChar(20)
   contact      String    @db.VarChar(200)
   visibility   String    @default("public") @db.VarChar(16)
-  status       EntryStatus @default(PENDING)
-  rejectReason String?   @db.VarChar(500)
+  status       String    @default("pending") @db.VarChar(16)
+  rejectReason String?   @map("reject_reason") @db.VarChar(500)
   createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
   publishedAt  DateTime? @map("published_at")
 
-  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family       Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
+  @@index([familyId])
   @@index([status, publishedAt])
   @@map("products")
 }
 
 // ======================== ИЗОБРАЖЕНИЯ (полиморфные) ========================
-// Примечание: Prisma не поддерживает полиморфные relation'ы.
-// ownerType = 'entry' | 'product' | 'tool' | 'book'
-// ownerType + ownerId связываются на уровне приложения.
+// owner_type принимает 'entry' | 'product' | 'tool' | 'book' | 'resident' |
+// 'car' | 'pet' | 'purchase' | 'task' — одна таблица на все сущности.
+// FK здесь сознательно НЕТ (в MySQL его тоже нет): owner_id ссылается на
+// разный таблицы в зависимости от owner_type, а Prisma полиморфизм не
+// выражает. Объявленный FK к diary_entries отклонял бы каждую карточку
+// товара/питомца/задачи и блокировал загрузку данных.
 
 model Image {
-  id         Int      @id @default(autoincrement()) @map("id")
-  ownerType  String   @map("owner_type") @db.VarChar(16)
-  ownerId    Int      @map("owner_id")
-  path       String   @db.VarChar(255)
-  sort       Int      @default(0)
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  ownerType String   @map("owner_type") @db.VarChar(16)
+  ownerId   Int      @map("owner_id")
+  path      String   @db.VarChar(255)
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([ownerType, ownerId])
   @@map("images")
@@ -243,48 +238,41 @@ model Image {
 // ======================== ШЕРИНГ: ИНСТРУМЕНТЫ ========================
 
 model Tool {
-  id            Int        @id @default(autoincrement()) @map("id")
-  familyId      Int        @map("family_id")
-  name          String     @db.VarChar(200)
-  category      String     @default("") @db.VarChar(80)
-  description   String?    @db.Text
-  conditionNote String?    @map("condition_note") @db.VarChar(200)
-  terms         String?    @db.VarChar(200)
-  status        ToolStatus @default(AVAILABLE)
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  id            Int       @id @default(autoincrement())
+  familyId      Int       @map("family_id")
+  name          String    @db.VarChar(200)
+  category      String    @default("") @db.VarChar(80)
+  description   String?   @db.Text
+  conditionNote String?   @map("condition_note") @db.VarChar(200)
+  terms         String?   @db.VarChar(200)
+  status        String    @default("available") @db.VarChar(16)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @map("updated_at")
 
-  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  loans  ToolLoan[]
+  family        Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  loans         ToolLoan[]
 
   @@index([status])
   @@index([familyId])
   @@map("tools")
 }
 
-enum ToolStatus {
-  AVAILABLE
-  ON_LOAN
-  MAINTENANCE
-  HIDDEN
-}
-
 model ToolLoan {
-  id              Int         @id @default(autoincrement()) @map("id")
-  toolId          Int         @map("tool_id")
-  borrowerId      Int         @map("borrower_id")
-  status          LoanStatus  @default(REQUESTED)
-  message         String?     @db.VarChar(500)
-  dueDate         DateTime?   @db.Date
-  requestedAt     DateTime    @default(now()) @map("requested_at")
-  handedOutAt     DateTime?   @map("handed_out_at")
-  returnedAt      DateTime?   @map("returned_at")
-  decidedAt       DateTime?   @map("decided_at")
-  returnCondition String?     @map("return_condition") @db.VarChar(16)
-  returnNote      String?     @map("return_note") @db.VarChar(500)
+  id              Int       @id @default(autoincrement())
+  toolId          Int       @map("tool_id")
+  borrowerId      Int       @map("borrower_id")
+  status          String    @default("requested") @db.VarChar(16)
+  message         String?   @db.VarChar(500)
+  dueDate         DateTime? @map("due_date") @db.Date
+  requestedAt     DateTime  @default(now()) @map("requested_at")
+  handedOutAt     DateTime? @map("handed_out_at")
+  returnedAt      DateTime? @map("returned_at")
+  decidedAt       DateTime? @map("decided_at")
+  returnCondition String?   @map("return_condition") @db.VarChar(16)
+  returnNote      String?   @map("return_note") @db.VarChar(500)
 
-  tool     Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  borrower Family  @relation("ToolLoanBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
+  tool            Tool      @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  borrower        Family    @relation("ToolLoanBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
 
   @@index([toolId, status])
   @@index([borrowerId, status])
@@ -294,19 +282,19 @@ model ToolLoan {
 // ======================== ШЕРИНГ: КНИГИ ========================
 
 model Book {
-  id            Int        @id @default(autoincrement()) @map("id")
-  familyId      Int        @map("family_id")
-  title         String     @db.VarChar(250)
-  author        String     @default("") @db.VarChar(200)
-  genre         String     @default("") @db.VarChar(80)
-  description   String?    @db.Text
-  conditionNote String?    @map("condition_note") @db.VarChar(200)
-  status        ToolStatus @default(AVAILABLE)
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  id            Int       @id @default(autoincrement())
+  familyId      Int       @map("family_id")
+  title         String    @db.VarChar(250)
+  author        String    @default("") @db.VarChar(200)
+  genre         String    @default("") @db.VarChar(80)
+  description   String?   @db.Text
+  conditionNote String?   @map("condition_note") @db.VarChar(200)
+  status        String    @default("available") @db.VarChar(16)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @map("updated_at")
 
-  family  Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  loans   BookLoan[]
+  family        Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  loans         BookLoan[]
 
   @@index([status])
   @@index([familyId])
@@ -314,114 +302,94 @@ model Book {
 }
 
 model BookLoan {
-  id              Int         @id @default(autoincrement()) @map("id")
-  bookId          Int         @map("book_id")
-  borrowerId      Int         @map("borrower_id")
-  status          LoanStatus  @default(REQUESTED)
-  message         String?     @db.VarChar(500)
-  dueDate         DateTime?   @db.Date
-  requestedAt     DateTime    @default(now()) @map("requested_at")
-  handedOutAt     DateTime?   @map("handed_out_at")
-  returnedAt      DateTime?   @map("returned_at")
-  decidedAt       DateTime?   @map("decided_at")
-  returnCondition String?     @map("return_condition") @db.VarChar(16)
-  returnNote      String?     @map("return_note") @db.VarChar(500)
+  id              Int       @id @default(autoincrement())
+  bookId          Int       @map("book_id")
+  borrowerId      Int       @map("borrower_id")
+  status          String    @default("requested") @db.VarChar(16)
+  message         String?   @db.VarChar(500)
+  dueDate         DateTime? @map("due_date") @db.Date
+  requestedAt     DateTime  @default(now()) @map("requested_at")
+  handedOutAt     DateTime? @map("handed_out_at")
+  returnedAt      DateTime? @map("returned_at")
+  decidedAt       DateTime? @map("decided_at")
+  returnCondition String?   @map("return_condition") @db.VarChar(16)
+  returnNote      String?   @map("return_note") @db.VarChar(500)
 
-  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  borrower Family @relation("BookLoanBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
+  book            Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  borrower        Family    @relation("BookLoanBorrower", fields: [borrowerId], references: [id], onDelete: Cascade)
 
   @@index([bookId, status])
   @@index([borrowerId, status])
   @@map("book_loans")
 }
 
-enum LoanStatus {
-  REQUESTED
-  ON_LOAN
-  RETURNED
-  DECLINED
-  CANCELLED
-}
-
 // ======================== ПОЕЗДКИ ========================
 
 model Trip {
-  id          Int        @id @default(autoincrement()) @map("id")
-  driverId    Int        @map("driver_id")
-  origin      String     @db.VarChar(160)
-  destination String     @db.VarChar(160)
-  tripDate    DateTime   @db.Date
-  tripTime    String?    @db.VarChar(40)
-  seatsTotal  Int        @default(1) @map("seats_total")
-  seatsFree   Int        @default(1) @map("seats_free")
-  note        String?    @db.Text
-  status      TripStatus @default(ACTIVE)
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id          Int           @id @default(autoincrement())
+  driverId    Int           @map("driver_id")
+  origin      String        @db.VarChar(160)
+  destination String        @db.VarChar(160)
+  tripDate    DateTime      @map("trip_date") @db.Date
+  tripTime    String?       @map("trip_time") @db.VarChar(40)
+  seatsTotal  Int           @default(1) @map("seats_total")
+  seatsFree   Int           @default(1) @map("seats_free")
+  note        String?       @db.Text
+  status      String        @default("active") @db.VarChar(16)
+  createdAt   DateTime      @default(now()) @map("created_at")
 
-  driver     Family      @relation("TripDriver", fields: [driverId], references: [id], onDelete: Cascade)
-  bookings   TripBooking[]
-  deliveries Delivery[]
+  driver      Family        @relation("TripDriver", fields: [driverId], references: [id], onDelete: Cascade)
+  bookings    TripBooking[]
+  deliveries  Delivery[]
 
   @@index([status, tripDate])
   @@index([driverId])
   @@map("trips")
 }
 
-enum TripStatus {
-  ACTIVE
-  DONE
-  CANCELLED
-}
-
 model TripBooking {
-  id          Int         @id @default(autoincrement()) @map("id")
-  tripId      Int         @map("trip_id")
-  passengerId Int         @map("passenger_id")
-  seats       Int         @default(1)
-  status      BookingStatus @default(REQUESTED)
-  message     String?     @db.VarChar(500)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  decidedAt   DateTime?   @map("decided_at")
+  id          Int      @id @default(autoincrement())
+  tripId      Int      @map("trip_id")
+  passengerId Int      @map("passenger_id")
+  seats       Int      @default(1)
+  status      String   @default("requested") @db.VarChar(16)
+  message     String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  decidedAt   DateTime? @map("decided_at")
 
-  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  passenger Family @relation("TripBookingPassenger", fields: [passengerId], references: [id], onDelete: Cascade)
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  passenger   Family   @relation("TripBookingPassenger", fields: [passengerId], references: [id], onDelete: Cascade)
 
   @@index([tripId, status])
   @@index([passengerId, status])
   @@map("trip_bookings")
 }
 
-enum BookingStatus {
-  REQUESTED
-  CONFIRMED
-  DECLINED
-  CANCELLED
-}
-
 // ======================== ДОСТАВКА ========================
+// status: open | requested | accepted | delivered | settled | declined | cancelled
 
 model Delivery {
-  id           Int        @id @default(autoincrement()) @map("id")
-  requesterId  Int        @map("requester_id")
-  carrierId    Int?       @map("carrier_id")
-  tripId       Int?       @map("trip_id")
-  kind         String     @db.VarChar(8)
-  what         String     @db.Text
-  place        String     @db.VarChar(160)
-  needBy       DateTime?  @db.Date
-  budget       Decimal?   @db.Decimal(10, 2)
-  pickupCode   String?    @map("pickup_code") @db.VarChar(200)
-  note         String?    @db.VarChar(500)
-  receiptSum   Decimal?   @map("receipt_sum") @db.Decimal(10, 2)
-  status       String     @db.VarChar(16)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  acceptedAt   DateTime?  @map("accepted_at")
-  deliveredAt  DateTime?  @map("delivered_at")
-  settledAt    DateTime?  @map("settled_at")
+  id          Int       @id @default(autoincrement())
+  requesterId Int       @map("requester_id")
+  carrierId   Int?      @map("carrier_id")
+  tripId      Int?      @map("trip_id")
+  kind        String    @db.VarChar(8)
+  what        String    @db.Text
+  place       String    @db.VarChar(160)
+  needBy      DateTime? @map("need_by") @db.Date
+  budget      Decimal?  @db.Decimal(10, 2)
+  pickupCode  String?   @map("pickup_code") @db.VarChar(200)
+  note        String?   @db.VarChar(500)
+  receiptSum  Decimal?  @map("receipt_sum") @db.Decimal(10, 2)
+  status      String    @db.VarChar(16)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  acceptedAt  DateTime? @map("accepted_at")
+  deliveredAt DateTime? @map("delivered_at")
+  settledAt   DateTime? @map("settled_at")
 
-  requester Family @relation("DeliveryRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  carrier   Family? @relation("DeliveryCarrier", fields: [carrierId], references: [id], onDelete: SetNull)
-  trip      Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  requester   Family    @relation("DeliveryRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  carrier     Family?   @relation("DeliveryCarrier", fields: [carrierId], references: [id], onDelete: SetNull)
+  trip        Trip?     @relation(fields: [tripId], references: [id], onDelete: SetNull)
 
   @@index([status, needBy])
   @@index([requesterId])
@@ -431,25 +399,26 @@ model Delivery {
 }
 
 // ======================== ЗАКУПКИ ========================
+// status: collecting | ordered | done | cancelled
 
 model Purchase {
-  id           Int        @id @default(autoincrement()) @map("id")
-  organizerId  Int        @map("organizer_id")
-  title        String     @db.VarChar(200)
-  category     String?    @db.VarChar(80)
-  unit         String     @default("шт") @db.VarChar(20)
-  pricePerUnit Decimal?   @map("price_per_unit") @db.Decimal(10, 2)
-  targetQty    Decimal?   @map("target_qty") @db.Decimal(10, 2)
-  deadline     DateTime?  @db.Date
-  supplier     String?    @db.VarChar(200)
-  pickup       String?    @db.VarChar(200)
-  note         String?    @db.Text
-  status       String     @default("collecting") @db.VarChar(16)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  id           Int       @id @default(autoincrement())
+  organizerId  Int       @map("organizer_id")
+  title        String    @db.VarChar(200)
+  category     String?   @db.VarChar(80)
+  unit         String    @default("шт") @db.VarChar(20)
+  pricePerUnit Decimal?  @map("price_per_unit") @db.Decimal(10, 2)
+  targetQty    Decimal?  @map("target_qty") @db.Decimal(10, 2)
+  deadline     DateTime? @db.Date
+  supplier     String?   @db.VarChar(200)
+  pickup       String?   @db.VarChar(200)
+  note         String?   @db.Text
+  status       String    @default("collecting") @db.VarChar(16)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @map("updated_at")
 
-  organizer Family       @relation("PurchaseOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
-  orders    PurchaseOrder[]
+  organizer    Family    @relation("PurchaseOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  orders       PurchaseOrder[]
 
   @@index([status, deadline])
   @@index([organizerId])
@@ -457,17 +426,17 @@ model Purchase {
 }
 
 model PurchaseOrder {
-  id         Int      @id @default(autoincrement()) @map("id")
-  purchaseId Int      @map("purchase_id")
-  familyId   Int      @map("family_id")
-  qty        Decimal  @db.Decimal(10, 2)
-  note       String?  @db.VarChar(500)
+  id         Int       @id @default(autoincrement())
+  purchaseId Int       @map("purchase_id")
+  familyId   Int       @map("family_id")
+  qty        Decimal   @db.Decimal(10, 2)
+  note       String?   @db.VarChar(500)
   paidAt     DateTime? @map("paid_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @default(now()) @map("updated_at")
 
-  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  family   Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  purchase   Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  family     Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@unique([purchaseId, familyId])
   @@index([familyId])
@@ -477,78 +446,193 @@ model PurchaseOrder {
 // ======================== СОВЕТ ========================
 
 model CouncilMember {
-  id           Int        @id @default(autoincrement()) @map("id")
-  email        String     @unique @db.VarChar(255)
-  passwordHash String     @map("password_hash") @db.VarChar(255)
-  name         String     @db.VarChar(160)
-  status       String     @default("active") @db.VarChar(16)
-  role         String     @default("member") @db.VarChar(16)
-  createdAt    DateTime   @default(now()) @map("created_at")
+  id               Int       @id @default(autoincrement())
+  email            String    @unique @db.VarChar(255)
+  telegramId       BigInt?   @unique @map("telegram_id")
+  maxUserId        BigInt?   @unique @map("max_user_id")
+  passwordHash     String    @map("password_hash") @db.VarChar(255)
+  name             String    @db.VarChar(160)
+  surname          String    @default("") @db.VarChar(120)
+  // status: active | blocked;  role: member | admin
+  status           String    @default("active") @db.VarChar(16)
+  role             String    @default("member") @db.VarChar(16)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  isDutyChair      Boolean   @default(false) @map("is_duty_chair")
+  claimCodeHash    String?   @map("claim_code_hash") @db.Char(64)
+  claimCodeExpires DateTime? @map("claim_code_expires")
 
-  passwordResets CouncilPasswordReset[]
+  passwordResets   CouncilPasswordReset[]
 
+  @@index([surname])
+  @@index([claimCodeHash])
   @@map("council_members")
 }
 
+// status: новая | в работе | выполнена;  priority: низкая | средняя | высокая
+// expense_status: none | pending | approved | rejected | done;  expense_timing: post | pre
 model CouncilTask {
-  id          Int        @id @default(autoincrement()) @map("id")
-  title       String     @db.VarChar(300)
-  description String?    @db.Text
-  author      String     @default("") @db.VarChar(160)
-  assignee    String     @default("") @db.VarChar(160)
-  priority    String     @default("средняя") @db.VarChar(16)
-  status      String     @default("новая") @db.VarChar(16)
-  progress    Int        @default(0)
-  spent       Decimal    @default(0) @db.Decimal(12, 2)
-  contacts    String?    @db.Text
-  links       String?    @db.Text
-  dueDate     DateTime?  @db.Date
-  createdAt   DateTime   @default(now()) @map("created_at")
-  completedAt DateTime?  @map("completed_at")
+  id                Int       @id @default(autoincrement())
+  title             String    @db.VarChar(300)
+  description       String?   @db.Text
+  author            String    @default("") @db.VarChar(160)
+  assignee          String    @default("") @db.VarChar(160)
+  priority          String    @default("средняя") @db.VarChar(16)
+  status            String    @default("новая") @db.VarChar(16)
+  progress          Int       @default(0)
+  spent             Decimal   @default(0) @db.Decimal(12, 2)
+  expenseCategoryId Int?      @map("expense_category_id")
+  expenseTiming     String    @default("post") @map("expense_timing") @db.VarChar(8)
+  expenseStatus     String    @default("none") @map("expense_status") @db.VarChar(16)
+  expenseMsgChatId  String?   @map("expense_msg_chat_id") @db.VarChar(32)
+  expenseMsgId      Int?      @map("expense_msg_id")
+  contacts          String?   @db.Text
+  links             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  completedAt       DateTime? @map("completed_at")
+  dueDate           DateTime? @map("due_date") @db.Date
 
-  subtasks CouncilSubtask[]
+  expenseCategory   CouncilLedgerCategory? @relation("TaskExpense", fields: [expenseCategoryId], references: [id], onDelete: SetNull)
+  ledgerEntry       CouncilLedgerEntry?    @relation("LedgerSourceTask")
+  subtasks          CouncilSubtask[]
 
   @@index([status, createdAt])
+  @@index([expenseCategoryId])
   @@map("council_tasks")
 }
 
 model CouncilSubtask {
-  id       Int      @id @default(autoincrement()) @map("id")
+  id       Int      @id @default(autoincrement())
   taskId   Int      @map("task_id")
   title    String   @db.VarChar(300)
   done     Boolean  @default(false)
   position Int      @default(0)
 
-  task CouncilTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task     CouncilTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@map("council_subtasks")
 }
 
+// kind: income | expense
+model CouncilLedgerCategory {
+  id        Int      @id @default(autoincrement())
+  kind      String   @db.VarChar(16)
+  name      String   @db.VarChar(160)
+  position  Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  entries   CouncilLedgerEntry[]
+  tasks     CouncilTask[]      @relation("TaskExpense")
+
+  @@index([kind, isActive, position])
+  @@map("council_ledger_categories")
+}
+
+model CouncilLedgerEntry {
+  id           Int       @id @default(autoincrement())
+  kind         String    @db.VarChar(16)
+  categoryId   Int       @map("category_id")
+  amount       Decimal   @default(0) @db.Decimal(12, 2)
+  entryDate    DateTime  @map("entry_date") @db.Date
+  note         String    @default("") @db.VarChar(300)
+  author       String    @default("") @db.VarChar(160)
+  sourceTaskId Int?      @unique @map("source_task_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  category     CouncilLedgerCategory @relation(fields: [categoryId], references: [id])
+  sourceTask   CouncilTask?          @relation("LedgerSourceTask", fields: [sourceTaskId], references: [id], onDelete: Cascade)
+
+  @@index([entryDate])
+  @@index([categoryId])
+  @@map("council_ledger_entries")
+}
+
+// Повестка заседания: одна строка (id=1) с ротацией дежурных.
+model CouncilMeeting {
+  id            Int       @id
+  meetingDate   String    @default("") @map("meeting_date") @db.VarChar(160)
+  startsAt      DateTime? @map("starts_at")
+  endsAt        DateTime? @map("ends_at")
+  notifiedFor   DateTime? @map("notified_for") @db.Date
+  rotationIndex Int       @default(0) @map("rotation_index")
+  dutyAckAt     DateTime? @map("duty_ack_at")
+  place         String    @default("") @db.VarChar(200)
+  dutyChair     String    @default("") @map("duty_chair") @db.VarChar(160)
+  dutySecretary String    @default("") @map("duty_secretary") @db.VarChar(160)
+  agenda        String?   @db.Text
+  updatedAt     DateTime  @default(now()) @map("updated_at")
+
+  @@map("council_meeting")
+}
+
+// Пункты повестки (отдельная сущность, не путать с agenda в council_meeting).
+model CouncilAgendaItem {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(500)
+  author      String   @default("") @db.VarChar(160)
+  discussed   Boolean  @default(false)
+  carriedOver Boolean  @default(false) @map("carried_over")
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([sort, id])
+  @@map("council_agenda_items")
+}
+
 model CouncilPasswordReset {
-  token      String   @id @db.Char(64)
-  memberId   Int      @map("member_id")
-  expiresAt  DateTime @map("expires_at")
+  token     String   @id @db.Char(64)
+  memberId  Int      @map("member_id")
+  expiresAt DateTime @map("expires_at")
 
-  member CouncilMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member    CouncilMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@index([memberId])
   @@map("council_password_resets")
+}
+
+// ======================== РАССЫЛКИ ========================
+
+model BroadcastList {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members   BroadcastListMember[]
+
+  @@map("broadcast_lists")
+}
+
+model BroadcastListMember {
+  listId    Int       @map("list_id")
+  familyId  Int       @map("family_id")
+  chatId    BigInt?   @map("chat_id")
+  chatTitle String?   @map("chat_title") @db.VarChar(160)
+  addedAt   DateTime  @default(now()) @map("added_at")
+
+  list      BroadcastList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@id([listId, familyId])
+  @@unique([listId, chatId])
+  @@index([familyId])
+  @@map("broadcast_list_members")
 }
 
 // ======================== ВСПОМОГАТЕЛЬНЫЕ ========================
 
 model PasswordReset {
-  token      String   @id @db.Char(64)
-  familyId   Int      @map("family_id")
-  expiresAt  DateTime @map("expires_at")
+  token     String   @id @db.Char(64)
+  familyId  Int      @map("family_id")
+  expiresAt DateTime @map("expires_at")
 
-  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
+  @@index([familyId])
   @@map("password_resets")
 }
 
 model LoginAttempt {
-  id          Int      @id @default(autoincrement()) @map("id")
+  id          Int      @id @default(autoincrement())
   email       String   @db.VarChar(255)
   ip          String   @db.VarChar(45)
   attemptedAt DateTime @default(now()) @map("attempted_at")
@@ -557,49 +641,74 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
+// Разделы приложения (тумблеры доступности для модератора).
 model AppSection {
-  sectionKey  String   @id @map("section_key") @db.VarChar(50)
-  enabled     Boolean  @default(false)
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  sectionKey String    @id @map("section_key") @db.VarChar(64)
+  enabled    Boolean   @default(true)
+  updatedAt  DateTime? @map("updated_at")
 
   @@map("app_sections")
 }
 
+// Журнал накатанных SQL-миграций прод-версии. Нужен для истории, не для v2.
+model SchemaMigration {
+  name      String   @id @db.VarChar(190)
+  appliedAt DateTime @default(now()) @map("applied_at")
+
+  @@map("schema_migrations")
+}
+
 // ======================== TELEGRAM / VK / ВОДА ========================
 
+// Журнал исходящих/входящих сообщений бота. chat_id в проде — VARCHAR(32),
+// а не BIGINT: туда пишутся и числовые id, и '@username'/'-100...' строки.
 model TelegramMessage {
-  id        Int      @id @default(autoincrement()) @map("id")
-  messageId BigInt   @map("message_id") @db.BigInt
-  chatId    BigInt   @map("chat_id") @db.BigInt
+  id        Int      @id @default(autoincrement())
+  chatId    String   @map("chat_id") @db.VarChar(32)
+  messageId Int      @map("message_id")
   familyId  Int?     @map("family_id")
-  text      String?  @db.Text
-  sentAt    DateTime @default(now()) @map("sent_at")
+  context   String   @db.VarChar(16)
+  kind      String   @default("send") @db.VarChar(8)
+  text      String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@index([chatId])
+  @@index([chatId, messageId])
+  @@index([familyId])
   @@map("telegram_messages")
 }
 
 model VkVecheskState {
-  id          Int      @id @default(autoincrement()) @map("id")
-  lastPostId  BigInt?  @map("last_post_id") @db.BigInt
-  lastUpdated DateTime @default(now()) @map("last_updated")
+  id         Int       @id
+  lastPostId BigInt?   @map("last_post_id")
+  updatedAt  DateTime? @map("updated_at")
 
   @@map("vk_vechesk_state")
 }
 
-model WaterLevelHistory {
-  id         Int      @id @default(autoincrement()) @map("id")
-  value      Float
-  recordedAt DateTime @default(now()) @map("recorded_at")
+model VkGroupMembersCache {
+  id        Int      @id
+  groupId   BigInt   @map("group_id")
+  payload   String   @db.Text
+  fetchedAt DateTime @map("fetched_at")
 
-  @@index([recordedAt])
+  @@map("vk_group_members_cache")
+}
+
+// История уровней воды в р. Шебш: одна строка на измерение, PK — само время.
+model WaterLevelHistory {
+  measuredAt DateTime @id @map("measured_at")
+  levelCm    Decimal  @map("level_cm") @db.Decimal(8, 2)
+  change24h  Decimal  @default(0) @map("change_24h") @db.Decimal(8, 2)
+
   @@map("water_level_history")
 }
 
+// Состояние оповещения: calm | watch | alert (одна строка, id=1).
 model WaterAlertState {
-  id           Int      @id @default(autoincrement()) @map("id")
-  lastValue    Float?
-  lastNotified DateTime? @map("last_notified")
+  id         Int       @id
+  status     String    @db.VarChar(8)
+  levelCm    Decimal   @map("level_cm") @db.Decimal(8, 2)
+  notifiedAt DateTime? @map("notified_at")
 
   @@map("water_alert_state")
 }

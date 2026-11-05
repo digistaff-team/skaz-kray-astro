@@ -7,7 +7,7 @@ const router = Router();
 router.get('/diary', async (_req, res) => {
   try {
     const entries = await db.diaryEntry.findMany({
-      where: { visibility: 'public', status: 'PUBLISHED' },
+      where: { visibility: 'public', status: 'published' },
       include: {
         family: { include: { householdOwners: { include: { household: true } } } },
       },
@@ -25,7 +25,7 @@ router.get('/diary', async (_req, res) => {
 router.get('/products', async (_req, res) => {
   try {
     const products = await db.product.findMany({
-      where: { visibility: 'public', status: 'PUBLISHED' },
+      where: { visibility: 'public', status: 'published' },
       include: {
         family: { include: { householdOwners: { include: { household: true } } } },
       },
@@ -51,7 +51,7 @@ router.get('/directory', async (_req, res) => {
 
     const owners = await db.householdOwner.findMany({
       include: { household: true },
-      where: { family: { status: 'ACTIVE' } },
+      where: { family: { status: 'active' } },
     });
     res.json(owners);
   } catch (err) {

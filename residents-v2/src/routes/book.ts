@@ -8,7 +8,7 @@ const router = Router();
 router.get('/catalog', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const books = await db.book.findMany({
-      where: { status: { not: 'HIDDEN' } },
+      where: { status: { not: 'hidden' } },
       include: { family: { include: { householdOwners: { include: { household: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -94,7 +94,7 @@ router.post('/toggle-hidden/:id', requireAuth, async (req: AuthRequest, res) => 
 
     const updated = await db.book.update({
       where: { id: book.id },
-      data: { status: book.status === 'HIDDEN' ? 'AVAILABLE' : 'HIDDEN' },
+      data: { status: book.status === 'hidden' ? 'available' : 'hidden' },
     });
     res.json(updated);
   } catch (err) {
@@ -112,7 +112,7 @@ router.post('/toggle-maintenance/:id', requireAuth, async (req: AuthRequest, res
 
     const updated = await db.book.update({
       where: { id: book.id },
-      data: { status: book.status === 'MAINTENANCE' ? 'AVAILABLE' : 'MAINTENANCE' },
+      data: { status: book.status === 'maintenance' ? 'available' : 'maintenance' },
     });
     res.json(updated);
   } catch (err) {
@@ -124,7 +124,7 @@ router.post('/toggle-maintenance/:id', requireAuth, async (req: AuthRequest, res
 router.post('/reserve/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
     const book = await db.book.findUnique({ where: { id: Number(req.params.id) } });
-    if (!book || book.status !== 'AVAILABLE') {
+    if (!book || book.status !== 'available') {
       return res.status(400).json({ error: 'Книга недоступна' });
     }
 
@@ -158,9 +158,9 @@ router.post('/reservations/give/:id', requireAuth, async (req: AuthRequest, res)
     await db.$transaction([
       db.bookLoan.update({
         where: { id: loan.id },
-        data: { status: 'ON_LOAN', handedOutAt: new Date(), decidedAt: new Date() },
+        data: { status: 'on_loan', handedOutAt: new Date(), decidedAt: new Date() },
       }),
-      db.book.update({ where: { id: loan.bookId }, data: { status: 'ON_LOAN' } }),
+      db.book.update({ where: { id: loan.bookId }, data: { status: 'on_loan' } }),
     ]);
 
     res.json({ message: 'Выдана' });
@@ -183,7 +183,7 @@ router.post('/reservations/decline/:id', requireAuth, async (req: AuthRequest, r
 
     await db.bookLoan.update({
       where: { id: loan.id },
-      data: { status: 'DECLINED', decidedAt: new Date() },
+      data: { status: 'declined', decidedAt: new Date() },
     });
     res.json({ message: 'Отклонено' });
   } catch (err) {
@@ -207,7 +207,7 @@ router.post('/reservations/return/:id', requireAuth, async (req: AuthRequest, re
       db.bookLoan.update({
         where: { id: loan.id },
         data: {
-          status: 'RETURNED',
+          status: 'returned',
           returnedAt: new Date(),
           returnCondition: req.body.condition || 'ok',
           returnNote: req.body.note || null,
@@ -215,7 +215,7 @@ router.post('/reservations/return/:id', requireAuth, async (req: AuthRequest, re
       }),
       db.book.update({
         where: { id: loan.bookId },
-        data: { status: req.body.condition === 'broken' ? 'MAINTENANCE' : 'AVAILABLE' },
+        data: { status: req.body.condition === 'broken' ? 'maintenance' : 'available' },
       }),
     ]);
 
@@ -233,7 +233,7 @@ router.post('/reservations/cancel/:id', requireAuth, async (req: AuthRequest, re
       return res.status(404).json({ error: 'Не найдено' });
     }
 
-    await db.bookLoan.update({ where: { id: loan.id }, data: { status: 'CANCELLED' } });
+    await db.bookLoan.update({ where: { id: loan.id }, data: { status: 'cancelled' } });
     res.json({ message: 'Отменено' });
   } catch (err) {
     res.status(500).json({ error: 'Ошибка' });

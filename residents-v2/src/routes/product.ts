@@ -8,7 +8,7 @@ const router = Router();
 router.get('/index', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const products = await db.product.findMany({
-      where: { visibility: 'public', status: 'PUBLISHED' },
+      where: { visibility: 'public', status: 'published' },
       include: { family: { include: { householdOwners: { include: { household: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 50,

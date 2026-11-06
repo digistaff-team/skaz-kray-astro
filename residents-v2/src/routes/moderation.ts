@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { requireEditor, requireAdmin, AuthRequest } from '../middleware/auth';
+import { requireAuth, requireEditor, requireAdmin, AuthRequest } from '../middleware/auth';
 import { db } from '../lib/db';
 import { hashPassword } from '../lib/crypto';
 
 const router = Router();
 
+router.use(requireAuth);
 router.use(requireEditor);
 
 // GET /poselenie/moderation

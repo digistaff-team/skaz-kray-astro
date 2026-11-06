@@ -128,7 +128,7 @@ router.get('/', requireAuth, async (_req: AuthRequest, res) => {
 // === Бюджет ===
 
 // GET /sovet/budget
-router.get('/budget', requireAdmin, async (_req: AuthRequest, res) => {
+router.get('/budget', requireAuth, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     // TODO: ledger entries
     res.json({ budget: [] });
@@ -140,7 +140,7 @@ router.get('/budget', requireAdmin, async (_req: AuthRequest, res) => {
 // === Уведомления ===
 
 // POST /sovet/notify
-router.post('/notify', requireAdmin, async (req: AuthRequest, res) => {
+router.post('/notify', requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   try {
     // TODO: отправка уведомления через Telegram Bot API
     res.json({ message: 'Уведомление отправлено' });

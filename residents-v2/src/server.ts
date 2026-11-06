@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
+import { redactSecrets } from './middleware/redact';
+
 import { authRoutes } from './routes/auth';
 import { cabinetRoutes } from './routes/cabinet';
 import { diaryRoutes } from './routes/diary';
@@ -23,6 +25,7 @@ import { maxRoutes } from './routes/max';
 import { councilRoutes } from './routes/council';
 import { publicRoutes } from './routes/public';
 import { healthRoutes } from './routes/health';
+import { residentsRoutes } from './routes/residents';
 
 const app = express();
 
@@ -41,6 +44,10 @@ app.use(cors({ origin: process.env.BASE_URL }));
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 app.use(cookieParser());
+
+// Контроллеры отдают records целиком, поэтому password_hash вырезается здесь —
+// иначе он уходит в JSON вместе с объектами family/councilMember.
+app.use(redactSecrets);
 
 // Статика (только при локальном запуске — на Vercel её нет)
 if (process.env.NODE_ENV !== 'production') {
@@ -62,6 +69,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/tg', tgRoutes);
 app.use('/api/max', maxRoutes);
 app.use('/api/council', councilRoutes);
+app.use('/api/residents', residentsRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/health', healthRoutes);
 

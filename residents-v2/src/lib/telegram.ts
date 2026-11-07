@@ -36,6 +36,19 @@ const MAX_AUTH_AGE = 86400; // 24 часа
 const CLOCK_SKEW = 300; // допуск на рассинхрон часов, 5 мин
 const FETCH_TIMEOUT_MS = 10000;
 
+/**
+ * Диагностика гейта членства. Токен бота живёт в URL запроса, поэтому в лог
+ * уходят только безопасные поля: факт наличия env, HTTP-статус и описание
+ * ошибки Bot API. Пишем на error-уровне — попадает в runtime-логи Vercel.
+ */
+function gateLog(stage: string, fields: Record<string, unknown>): void {
+  try {
+    console.error('[tg-gate]', stage, JSON.stringify(fields));
+  } catch {
+    /* лог не должен ломать проверку членства */
+  }
+}
+
 /** PHP urldecode: «+» — пробел, затем percent-decode (не URLSearchParams). */
 function urlDecode(raw: string): string {
   return decodeURIComponent(raw.replace(/\+/g, '%20'));
@@ -146,7 +159,15 @@ export async function chatMemberStatus(
   botToken: string,
   chatId: string,
 ): Promise<GroupMembershipStatus> {
-  if (!telegramId || !botToken || !chatId) return 'error';
+  const startedAt = Date.now();
+  if (!telegramId || !botToken || !chatId) {
+    gateLog('missing-env', {
+      hasUserId: !!telegramId,
+      hasBotToken: !!botToken,
+      hasChatId: !!chatId,
+    });
+    return 'error';
+  }
   try {
     const url =
       'https://api.telegram.org/bot' +
@@ -156,14 +177,45 @@ export async function chatMemberStatus(
       '&user_id=' +
       encodeURIComponent(telegramId);
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (!res.ok) return 'error';
-    const data = (await res.json()) as { ok?: boolean; result?: { status?: string } };
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      gateLog('telegram-http', {
+        httpStatus: res.status,
+        description: body.slice(0, 200),
+        ms: Date.now() - startedAt,
+      });
+      return 'error';
+    }
+    const data = (await res.json()) as {
+      ok?: boolean;
+      description?: string;
+      result?: { status?: string };
+    };
     if (!data || data.ok !== true || !data.result || typeof data.result.status !== 'string') {
+      gateLog('telegram-bad', {
+        ok: data ? data.ok : null,
+        description: data && data.description ? data.description : null,
+        ms: Date.now() - startedAt,
+      });
       return 'error';
     }
     const subscribed = ['member', 'administrator', 'creator'];
-    return subscribed.includes(data.result.status) ? 'subscribed' : 'not_subscribed';
-  } catch {
+    const status: GroupMembershipStatus = subscribed.includes(data.result.status)
+      ? 'subscribed'
+      : 'not_subscribed';
+    gateLog('telegram-ok', {
+      status: data.result.status,
+      verdict: status,
+      ms: Date.now() - startedAt,
+    });
+    return status;
+  } catch (err) {
+    const e = err as { name?: string; message?: string };
+    gateLog('exception', {
+      name: e && e.name ? e.name : 'unknown',
+      message: e && e.message ? String(e.message).slice(0, 200) : '',
+      ms: Date.now() - startedAt,
+    });
     return 'error';
   }
 }

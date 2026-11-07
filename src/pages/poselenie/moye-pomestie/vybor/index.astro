@@ -1,0 +1,454 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Выбор поместья"
+  description="Привязка вашего поместья к аккаунту жителя."
+  noindex
+>
+  <div class="wrap claim">
+    <h1>Выберите ваше поместье</h1>
+    <p class="lead">
+      Найдите своё поместье в списке и привяжите его к себе по фамилии — после
+      этого откроются разделы приложения. Привязка делается один раз.
+    </p>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="claimStatus" class="meta" role="status">Загружаем список поместий…</p>
+
+    <div id="pending" class="card pending" hidden>
+      <b>Заявка отправлена</b>
+      <p class="meta" id="pendingText"></p>
+      <button type="button" id="pendingCancel" class="btn">Отозвать заявку</button>
+    </div>
+
+    <div id="list" class="glades" hidden></div>
+
+    <!-- Шаг подтверждения — инлайн-панель: сайт статический, отдельный URL
+         /vybor/{id} без getStaticPaths собрать нельзя (отклонение от легаси). -->
+    <section id="confirm" class="confirm" hidden>
+      <h2 id="cTitle"></h2>
+      <p class="meta" id="cMeta"></p>
+      <p class="hint" id="cHint"></p>
+      <label class="surname" id="cSurnameWrap" hidden>
+        Фамилия жителя поместья
+        <input type="text" id="cSurname" placeholder="напр. Иванова" autocomplete="family-name" />
+      </label>
+      <p class="err" id="cError" hidden></p>
+      <div class="actions">
+        <button type="button" id="cSubmit" class="btn btn--solid"></button>
+        <button type="button" id="cBack" class="btn">Назад к списку</button>
+      </div>
+    </section>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <!-- Выбор поместья — порт residents/src/templates/profile/claim.php (+ шаг
+       подтверждения claim-confirm.php): группировка по полянам, занятые и
+       свободные участки, фамилия сверяется на сервере с каждым словом ФИО. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+
+      var statusEl = document.getElementById('claimStatus');
+      var flashEl = document.getElementById('flash');
+      var pendingEl = document.getElementById('pending');
+      var pendingText = document.getElementById('pendingText');
+      var pendingCancel = document.getElementById('pendingCancel');
+      var listEl = document.getElementById('list');
+      var confirmEl = document.getElementById('confirm');
+      var cTitle = document.getElementById('cTitle');
+      var cMeta = document.getElementById('cMeta');
+      var cHint = document.getElementById('cHint');
+      var cSurnameWrap = document.getElementById('cSurnameWrap');
+      var cSurname = document.getElementById('cSurname');
+      var cError = document.getElementById('cError');
+      var cSubmit = document.getElementById('cSubmit');
+      var cBack = document.getElementById('cBack');
+      var current = null;
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      // Хелперы из claim.php: имя/номер поляны, номер участка, склонение.
+      function gladeName(g) {
+        g = String(g || '').trim();
+        var m = /^\((\d+)\)\s*(.+)$/.exec(g);
+        if (m) return m[2].trim();
+        return g !== '' ? g : 'Без поляны';
+      }
+      function gladeNum(g) {
+        var m = /^\((\d+)\)/.exec(String(g || '').trim());
+        return m ? parseInt(m[1], 10) : 999;
+      }
+      function plotNum(p) {
+        var m = /\d+/.exec(String(p || '').trim());
+        return m ? parseInt(m[0], 10) : 9999;
+      }
+      function plural(n, one, few, many) {
+        var n10 = n % 10, n100 = n % 100;
+        if (n10 === 1 && n100 !== 11) return one;
+        if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return few;
+        return many;
+      }
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) {
+            window.location.replace('/poselenie/tg/');
+            return Promise.reject({ auth: true });
+          }
+          return r.json().then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
+        });
+      }
+
+      // Одноразовая всплывашка после заявки/отзыва — через sessionStorage,
+      // чтобы редирект не потерял сообщение.
+      try {
+        var flashMsg = window.sessionStorage.getItem('skazClaimFlash');
+        if (flashMsg) {
+          window.sessionStorage.removeItem('skazClaimFlash');
+          flashEl.textContent = flashMsg;
+          flashEl.hidden = false;
+        }
+      } catch (e) {}
+
+      function load() {
+        api('/api/profile/claim').then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          var d = res.data || {};
+          if (d.hasHousehold) { window.location.replace('/poselenie/'); return; }
+          if (d.pendingJoin) {
+            pendingText.textContent =
+              'Вы попросились в совладельцы поместья' +
+              (d.pendingJoin.estateName ? ' «' + d.pendingJoin.estateName + '»' : '') +
+              '. Как только владелец подтвердит заявку, поместье появится в вашем кабинете.';
+            pendingEl.hidden = false;
+          }
+          renderList(d.households || []);
+        }).catch(function (e) {
+          if (!e || !e.auth) show('Не удалось загрузить список поместий. Попробуйте позже.');
+        });
+      }
+
+      function renderList(households) {
+        if (!households.length) {
+          show('Свободных для привязки поместий нет. Обратитесь к редактору поселения.');
+          return;
+        }
+        var byKey = {};
+        households.forEach(function (h) {
+          var key = String(h.glade || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          if (!byKey[key]) byKey[key] = { name: String(h.glade || '').trim(), hhs: [] };
+          byKey[key].hhs.push(h);
+        });
+        var groups = Object.keys(byKey).map(function (k) { return byKey[k]; });
+        groups.sort(function (a, b) { return gladeNum(a.name) - gladeNum(b.name); });
+
+        var html = '';
+        groups.forEach(function (g) {
+          g.hhs.sort(function (a, b) { return plotNum(a.plot) - plotNum(b.plot); });
+          var count = g.hhs.length;
+          html += '<section class="glade">' +
+            '<button type="button" class="glade-head" aria-expanded="false">' +
+              '<span class="glade-name">Поляна ' + esc(gladeName(g.name)) + ' (' + gladeNum(g.name) + ')</span>' +
+              '<span class="glade-count">' + count + ' ' + plural(count, 'участок', 'участка', 'участков') + '</span>' +
+              '<span class="glade-chevron" aria-hidden="true"></span>' +
+            '</button><div class="glade-body">';
+          g.hhs.forEach(function (h) {
+            var name = h.estateName ? esc(h.estateName) : 'Поместье';
+            var meta = h.plot
+              ? '<div class="meta">участок ' + gladeNum(h.glade) + '-' + esc(h.plot) + '</div>'
+              : '';
+            // Кликабельны только участки с жителями (без жителей нечем
+            // подтвердить принадлежность) — как в claim.php.
+            if (h.memberCount > 0) {
+              html += '<button type="button" class="card ' + (h.occupied ? 'card--taken' : 'card--free') +
+                '" data-id="' + h.id + '"><b class="card-name">' + name + '</b>' + meta + '</button>';
+            } else {
+              html += '<div class="card card--static ' + (h.occupied ? 'card--taken' : 'card--free') +
+                '"><b class="card-name">' + name + '</b>' + meta +
+                '<span class="card-note">нет жителей — привязка недоступна</span></div>';
+            }
+          });
+          html += '</div></section>';
+        });
+        listEl.innerHTML = html;
+        listEl.hidden = false;
+        show('');
+      }
+
+      function openConfirm(id) {
+        api('/api/profile/claim/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Поместье не найдено.');
+            return;
+          }
+          var d = res.data;
+          if (d.alreadyOwned) { window.location.replace('/poselenie/'); return; }
+          current = { id: id };
+          cTitle.textContent = d.household.estateName ? 'Поместье ' + d.household.estateName : 'Поместье';
+          cMeta.textContent =
+            'Поляна ' + gladeName(d.household.glade) + ' (' + gladeNum(d.household.glade) + ')' +
+            (d.household.plot ? ', участок ' + gladeNum(d.household.glade) + '-' + d.household.plot : '');
+          cSurnameWrap.hidden = !d.hasMembers;
+          cSurname.value = '';
+          cError.hidden = true;
+          cHint.textContent = !d.hasMembers
+            ? 'В этом поместье пока нет жителей — привязка недоступна. Обратитесь к редактору поселения.'
+            : d.claimable
+              ? 'Подтвердите принадлежность: введите фамилию кого-то из жителей этого поместья.'
+              : 'Поместье занято — введите фамилию и отправьте заявку владельцу: доступ даст он.';
+          cSubmit.textContent = d.claimable ? 'Привязать поместье' : 'Отправить заявку владельцу';
+          cSubmit.disabled = !d.hasMembers;
+          listEl.hidden = true;
+          confirmEl.hidden = false;
+          window.scrollTo(0, 0);
+        }).catch(function () {
+          show('Не удалось открыть поместье. Попробуйте позже.');
+        });
+      }
+
+      function closeConfirm() {
+        confirmEl.hidden = true;
+        listEl.hidden = false;
+        current = null;
+      }
+
+      listEl.addEventListener('click', function (e) {
+        var head = e.target.closest && e.target.closest('.glade-head');
+        if (head) {
+          var section = head.closest('.glade');
+          var open = section.classList.toggle('glade--open');
+          head.setAttribute('aria-expanded', open ? 'true' : 'false');
+          return;
+        }
+        var card = e.target.closest && e.target.closest('.card[data-id]');
+        if (card) openConfirm(Number(card.getAttribute('data-id')));
+      });
+
+      cBack.addEventListener('click', closeConfirm);
+
+      cSubmit.addEventListener('click', function () {
+        if (!current) return;
+        cError.hidden = true;
+        cSubmit.disabled = true;
+        api('/api/profile/claim/' + current.id, {
+          method: 'POST',
+          body: JSON.stringify({ surname: cSurname.value })
+        }).then(function (res) {
+          cSubmit.disabled = false;
+          var d = res.data || {};
+          if (d.ok && (d.claimed || d.alreadyOwned)) { window.location.replace('/poselenie/'); return; }
+          if (d.ok && d.requested) {
+            try {
+              window.sessionStorage.setItem(
+                'skazClaimFlash',
+                'Заявка отправлена владельцу поместья. Как только он её подтвердит, поместье появится в вашем кабинете.'
+              );
+            } catch (e) {}
+            window.location.replace('/poselenie/moye-pomestie/vybor/');
+            return;
+          }
+          cError.textContent = d.error || 'Не удалось отправить — попробуйте ещё раз.';
+          cError.hidden = false;
+        }).catch(function () {
+          cSubmit.disabled = false;
+          cError.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          cError.hidden = false;
+        });
+      });
+
+      pendingCancel.addEventListener('click', function () {
+        if (!window.confirm('Отозвать заявку?')) return;
+        api('/api/profile/join/cancel', { method: 'POST', body: '{}' }).then(function () {
+          window.location.replace('/poselenie/moye-pomestie/vybor/');
+        }).catch(function () {
+          show('Не удалось отозвать заявку. Попробуйте позже.');
+        });
+      });
+
+      load();
+    })();
+  </script>
+</Base>
+
+<style>
+  .claim {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 62ch;
+  }
+  .claim h1 {
+    font-size: var(--step-2);
+  }
+  .lead {
+    color: var(--muted);
+    margin-top: 0.6rem;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  #claimStatus {
+    margin-top: 1.2rem;
+  }
+  .flash {
+    margin-top: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .pending {
+    margin-top: 1rem;
+  }
+  .glades {
+    margin-top: 1rem;
+  }
+  .glades :global(.glade) {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 0.7rem;
+    overflow: hidden;
+    background: var(--ground-2);
+  }
+  .glades :global(.glade-head) {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .glades :global(.glade-name) {
+    font-weight: 700;
+  }
+  .glades :global(.glade-count) {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .glades :global(.glade-chevron) {
+    margin-left: auto;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+  .glades :global(.glade--open .glade-chevron) {
+    transform: rotate(225deg);
+  }
+  .glades :global(.glade-body) {
+    display: none;
+    padding: 0 0.7rem 0.7rem;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.6rem;
+  }
+  .glades :global(.glade--open .glade-body) {
+    display: grid;
+  }
+  .glades :global(.card) {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+    cursor: pointer;
+  }
+  .glades :global(.card--static) {
+    cursor: default;
+    opacity: 0.75;
+  }
+  .glades :global(.card--taken) {
+    background: color-mix(in srgb, var(--ground-2) 65%, #dfe8d8);
+  }
+  .glades :global(.card-name) {
+    display: block;
+    line-height: 1.25;
+  }
+  .glades :global(.card .meta) {
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+  }
+  .glades :global(.card-note) {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .confirm {
+    margin-top: 1.4rem;
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .confirm h2 {
+    font-size: var(--step-1);
+  }
+  .hint {
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+  }
+  .surname {
+    display: block;
+    margin-top: 0.9rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .surname input {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .err {
+    margin-top: 0.7rem;
+    color: #a33;
+    font-size: 0.95rem;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+  .actions .btn:disabled {
+    opacity: 0.6;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+</style>

@@ -1,27 +1,34 @@
 import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { db } from '../lib/db';
+import { enabledSections } from '../lib/sections';
 
 const router = Router();
 
-// GET /poselenie (главная — кабинет жителя)
+// GET /api/cabinet — данные домашнего экрана приложения (главная /poselenie/):
+// имя семьи для приветствия, факт привязанного поместья (нет → страница выбора
+// поместья, как первый вход в легаси) и включённые разделы для плиток.
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const family = await db.family.findUnique({
-      where: { id: req.user!.familyId },
-      include: {
-        householdOwners: { include: { household: true } },
-        diaryEntries: { take: 5, orderBy: { createdAt: 'desc' } },
-        products: { take: 5, orderBy: { createdAt: 'desc' } },
-        toolLoansAsBorrow: { where: { status: { in: ['on_loan', 'requested'] } }, take: 5 },
-        bookLoansAsBorrow: { where: { status: { in: ['on_loan', 'requested'] } }, take: 5 },
-        joinRequests: true,
-      },
-    });
+    const familyId = req.user!.familyId;
+    const [family, owner, sections] = await Promise.all([
+      db.family.findUnique({
+        where: { id: familyId },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          status: true,
+          telegramUsername: true,
+        },
+      }),
+      db.householdOwner.findUnique({ where: { familyId }, select: { id: true } }),
+      enabledSections(),
+    ]);
 
     if (!family) return res.status(404).json({ error: 'Не найдено' });
 
-    res.json({ family });
+    res.json({ family, hasHousehold: owner !== null, sections });
   } catch (err) {
     console.error('Cabinet error:', err);
     res.status(500).json({ error: 'Ошибка' });
@@ -29,3 +36,4 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
 });
 
 export { router as cabinetRoutes };
+

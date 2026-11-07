@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { db } from '../lib/db';
+import { notifyFamily } from '../lib/notify';
 
 const router = Router();
 
@@ -12,6 +13,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       include: {
         household: {
           include: {
+            residents: { orderBy: [{ sort: 'asc' }, { id: 'asc' }] },
             owners: { include: { family: true } },
             cars: { orderBy: { sort: 'asc' } },
             pets: { orderBy: { sort: 'asc' } },
@@ -32,52 +34,202 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-// GET /poselenie/moye-pomestie/vybor
-router.get('/claim', requireAuth, async (_req: AuthRequest, res) => {
+// ── Выбор своего поместья (привязка аккаунта) ───────────────────────────────
+// Порт ProfileController::showClaim / showClaimConfirm легаси.
+
+// GET /api/profile/claim — ВСЕ участки (занятые — чтобы проситься совладельцем,
+// как listForClaimView), плюс ожидающая заявка текущей семьи.
+router.get('/claim', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const households = await db.household.findMany({
-      where: { familyId: null },
-      orderBy: { estateName: 'asc' },
+    const familyId = req.user!.familyId;
+    const [owner, pending, households] = await Promise.all([
+      db.householdOwner.findUnique({ where: { familyId }, select: { id: true } }),
+      db.householdJoinRequest.findUnique({
+        where: { familyId },
+        include: { household: { select: { estateName: true, glade: true, plot: true } } },
+      }),
+      db.household.findMany({
+        orderBy: [{ sort: 'asc' }, { id: 'asc' }],
+        include: {
+          family: { select: { status: true } },
+          _count: { select: { residents: true } },
+        },
+      }),
+    ]);
+
+    res.json({
+      hasHousehold: owner !== null,
+      pendingJoin: pending
+        ? {
+            id: pending.id,
+            householdId: pending.householdId,
+            surname: pending.surname,
+            estateName: pending.household.estateName,
+            glade: pending.household.glade,
+            plot: pending.household.plot,
+          }
+        : null,
+      households: households.map((h) => ({
+        id: h.id,
+        glade: h.glade,
+        plot: h.plot,
+        estateName: h.estateName,
+        // «Занято» = привязано к активному аккаунту (паритет с listForClaimView).
+        occupied: h.familyId !== null && h.family?.status === 'active',
+        claimable: h.familyId === null || h.family?.status !== 'active',
+        memberCount: h._count.residents,
+      })),
     });
-    res.json(households);
   } catch (err) {
+    console.error('Profile claim list error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });
 
-// POST /poselenie/moye-pomestie/vybor/{id}
-router.post('/claim/:id', requireAuth, async (req: AuthRequest, res) => {
+// GET /api/profile/claim/:id — шаг подтверждения (порт showClaimConfirm).
+router.get('/claim/:id', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { surname } = req.body;
-    const household = await db.household.findUnique({
-      where: { id: Number(req.params.id) },
-    });
-
-    if (!household || household.familyId !== null) {
-      return res.status(400).json({ error: 'Поместье недоступно для привязки' });
-    }
-
-    if (household.claimSurname && household.claimSurname.toLowerCase() !== String(surname).toLowerCase()) {
-      return res.status(403).json({ error: 'Фамилия не совпадает' });
-    }
-
     const familyId = req.user!.familyId;
-
-    await db.$transaction([
-      db.household.update({
-        where: { id: household.id },
-        data: { familyId, claimSurname: String(surname || '') },
-      }),
-      db.householdOwner.create({
-        data: { householdId: household.id, familyId },
-      }),
-      db.family.update({
-        where: { id: familyId },
-        data: { status: 'active', approvedAt: new Date() },
+    const id = Number(req.params.id);
+    const [owner, h] = await Promise.all([
+      db.householdOwner.findUnique({ where: { familyId }, select: { id: true } }),
+      db.household.findUnique({
+        where: { id },
+        include: {
+          family: { select: { status: true } },
+          _count: { select: { residents: true } },
+        },
       }),
     ]);
+    if (!h) return res.status(404).json({ error: 'Поместье не найдено' });
 
-    res.json({ message: 'Поместье привязано' });
+    const claimable = h.familyId === null || h.family?.status !== 'active';
+    res.json({
+      alreadyOwned: owner !== null,
+      household: { id: h.id, glade: h.glade, plot: h.plot, estateName: h.estateName },
+      hasMembers: h._count.residents > 0,
+      claimable,
+      occupied: !claimable,
+    });
+  } catch (err) {
+    console.error('Profile claim confirm error:', err);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
+/**
+ * Введённая фамилия есть ли среди жителей поместья: сверяем с КАЖДЫМ словом
+ * ФИО без учёта регистра (легаси surnameMatchesHousehold: порядок «Фамилия
+ * Имя» / «Имя Фамилия» бывает любым).
+ */
+function surnameMatches(fullNames: string[], surname: string): boolean {
+  const needle = surname.trim().toLowerCase();
+  if (needle === '') return false;
+  return fullNames.some((full) =>
+    full
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .some((tok) => tok === needle),
+  );
+}
+
+// POST /api/profile/claim/:id — привязать свободное поместье или подать заявку
+// в занятое (порт ProfileController::claim: фамилия → claim либо requestJoin).
+router.post('/claim/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const familyId = req.user!.familyId;
+    const id = Number(req.params.id);
+    const surname = String(req.body?.surname ?? '').trim().slice(0, 120);
+
+    const mine = await db.householdOwner.findUnique({
+      where: { familyId },
+      select: { id: true },
+    });
+    if (mine) return res.json({ ok: true, alreadyOwned: true });
+
+    const h = await db.household.findUnique({
+      where: { id },
+      include: {
+        family: { select: { status: true } },
+        residents: { select: { fullName: true } },
+      },
+    });
+    if (!h) {
+      return res.status(404).json({ ok: false, reason: 'missing', error: 'Поместье не найдено' });
+    }
+
+    // Принадлежность подтверждаем фамилией, только если есть жители: без них
+    // нечем подтвердить (легаси такой участок в списке вообще не открывает).
+    if (h.residents.length > 0 && !surnameMatches(h.residents.map((r) => r.fullName), surname)) {
+      return res.status(409).json({
+        ok: false,
+        reason: 'surname',
+        error:
+          'Такой фамилии нет среди жителей этого поместья. Проверьте написание или обратитесь к редактору.',
+      });
+    }
+
+    const claimable = h.familyId === null || h.family?.status !== 'active';
+
+    if (claimable) {
+      // Первичная привязка (порт HouseholdProfileRepository::claim): прежние
+      // привязки аккаунта снимаются, чистятся placeholder-совладельцы импорта,
+      // доступность перепроверяется внутри транзакции.
+      const claimed = await db.$transaction(async (tx) => {
+        const cur = await tx.household.findUnique({
+          where: { id },
+          select: { familyId: true, family: { select: { status: true } } },
+        });
+        if (!cur) return false;
+        if (cur.familyId !== null && cur.family?.status === 'active') return false;
+
+        await tx.household.updateMany({ where: { familyId }, data: { familyId: null } });
+        await tx.householdOwner.deleteMany({ where: { familyId } });
+        await tx.householdJoinRequest.deleteMany({ where: { familyId } });
+        await tx.householdOwner.deleteMany({ where: { householdId: id } });
+        await tx.household.update({
+          where: { id },
+          data: { familyId, claimSurname: surname || null },
+        });
+        await tx.householdOwner.create({ data: { householdId: id, familyId } });
+        return true;
+      });
+
+      if (!claimed) {
+        return res
+          .status(409)
+          .json({ ok: false, reason: 'taken', error: 'Поместье уже занято — выберите другое.' });
+      }
+      return res.json({ ok: true, claimed: true });
+    }
+
+    // Занятое поместье: только заявка владельцу — сама по себе доступа не даёт.
+    await db.$transaction([
+      db.householdJoinRequest.deleteMany({ where: { familyId } }),
+      db.householdJoinRequest.create({ data: { householdId: id, familyId, surname } }),
+    ]);
+
+    const [owners, me] = await Promise.all([
+      db.householdOwner.findMany({ where: { householdId: id }, select: { familyId: true } }),
+      db.family.findUnique({ where: { id: familyId }, select: { name: true } }),
+    ]);
+    await Promise.all(
+      owners.map((o) =>
+        notifyFamily(
+          o.familyId,
+          [
+            `Заявка в совладельцы вашего поместья: «${me?.name ?? ''}»${
+              surname ? ` (фамилия ${surname})` : ''
+            }.`,
+            'Если это не ваш родственник — просто отклоните заявку.',
+          ],
+          '/poselenie/moye-pomestie/',
+        ),
+      ),
+    );
+
+    res.json({ ok: true, requested: true });
   } catch (err) {
     console.error('Profile claim error:', err);
     res.status(500).json({ error: 'Ошибка' });
@@ -126,6 +278,17 @@ router.post('/join/reject', requireAuth, async (req: AuthRequest, res) => {
     await db.householdJoinRequest.delete({ where: { id: request.id } });
     res.json({ message: 'Заявка отклонена' });
   } catch (err) {
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
+// POST /api/profile/join/cancel — отозвать свою заявку (порт cancelJoin).
+router.post('/join/cancel', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await db.householdJoinRequest.deleteMany({ where: { familyId: req.user!.familyId } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Profile join cancel error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });

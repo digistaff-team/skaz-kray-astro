@@ -3,40 +3,189 @@ import Base from '../../layouts/Base.astro';
 ---
 <Base
   title="Кабинет жителя"
-  description="Внутренний кабинет жителей поселения «Сказочный Край»."
+  description="Портал жителей поселения «Сказочный Край»."
   noindex
 >
-  <header class="page-head">
-    <div class="wrap">
-      <p class="eyebrow">Портал жителей</p>
-      <h1>Вы вошли</h1>
-      <p class="page-head-lead">Кабинет в разработке.</p>
-    </div>
-  </header>
+  <div class="wrap app">
+    <header class="app-head">
+      <img class="app-logo" src="/images/Logo_SK_204x204.png" alt="" width="56" height="56" />
+      <div class="app-hello">
+        <b>Сказочный Край</b>
+        <span id="appHello">Загружаем кабинет…</span>
+      </div>
+    </header>
 
-  <div class="wrap stub prose">
-    <p>
-      Личный кабинет жителей появится здесь позже: дневники поместий, объявления,
-      инвентарь и остальные разделы портала.
-    </p>
-    <p><a class="btn btn--solid" href="/">Вернуться на сайт</a></p>
+    <p id="appStatus" class="app-status" role="status">Проверяем доступ…</p>
+
+    <div id="appGrid" class="app-grid" hidden></div>
+
+    <noscript>
+      <p class="app-status">Нужен включённый JavaScript. Откройте портал через бота @SkazKray_bot.</p>
+    </noscript>
+
+    <p class="app-foot"><a href="/">Вернуться на сайт</a></p>
   </div>
+
+  <!-- Домашний экран приложения — порт residents/src/templates/app/home.php:
+       приветствие + сетка плиток разделов. Нет сессии → страница входа; нет
+       поместья → выбор поместья (первый вход). -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+
+      // Порядок плиток — как в app/home.php. href есть только у разделов,
+      // которые уже есть на Astro-сайте; остальные рисуем с бейджем «скоро»,
+      // чтобы не вести в 404. Раздел без строки в app_sections не показывается.
+      var TILES = [
+        { key: 'sosedi', title: 'Наши<br>соседи', sub: 'справочник поселения' },
+        {
+          key: 'moye-pomestie',
+          title: 'Наше<br>поместье',
+          sub: 'личный кабинет семьи',
+          href: '/poselenie/moye-pomestie/',
+          ready: true
+        },
+        { key: 'knigi', title: 'Книги', sub: 'библиотека поселения' },
+        { key: 'instrumenty', title: 'Инструменты', sub: 'арсенал поселения' },
+        { key: 'obshchiy-dom', title: 'Общий дом', sub: 'бронирование и отчёт' },
+        { key: 'yarmarka', title: 'Ярмарка', sub: 'рынок поселения' },
+        { key: 'zakupki', title: 'Закупки', sub: 'оптом вскладчину' },
+        { key: 'poezdki', title: 'Поездки', sub: 'попутчики и доставка' },
+        { key: 'dnevniki', title: 'Дневники<br>поместий', sub: 'записи семей' }
+      ];
+
+      var statusEl = document.getElementById('appStatus');
+      var helloEl = document.getElementById('appHello');
+      var gridEl = document.getElementById('appGrid');
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      function render(sections) {
+        var enabled = {};
+        sections.forEach(function (s) { enabled[s.key] = true; });
+        var html = '';
+        TILES.forEach(function (t) {
+          if (t.key !== 'moye-pomestie' && !enabled[t.key]) return;
+          if (t.ready && t.href) {
+            html += '<a class="tile" href="' + t.href + '"><b>' + t.title + '</b><span>' + t.sub + '</span></a>';
+          } else {
+            html += '<div class="tile tile--soon"><b>' + t.title + '</b><span>' + t.sub + '</span>' +
+                    '<i class="tile-soon">скоро</i></div>';
+          }
+        });
+        gridEl.innerHTML = html;
+        gridEl.hidden = false;
+      }
+
+      fetch('/api/cabinet', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+        })
+        .then(function (res) {
+          if (!res) return;
+          if (!res.ok) throw new Error('cabinet http ' + res.ok);
+          var d = res.data || {};
+          if (!d.hasHousehold) {
+            show('Сначала привяжите ваше поместье…');
+            window.setTimeout(function () {
+              window.location.replace('/poselenie/moye-pomestie/vybor/');
+            }, 600);
+            return;
+          }
+          if (helloEl) helloEl.textContent = (d.family && d.family.name) || 'Житель';
+          render(d.sections || []);
+          show('');
+        })
+        .catch(function () {
+          show('Не удалось загрузить кабинет. Откройте портал через бота @SkazKray_bot.');
+        });
+    })();
+  </script>
 </Base>
 
 <style>
-  .page-head {
-    padding: 3rem 0 1.5rem;
-    border-bottom: 1px solid var(--line);
-    background: var(--ground-2);
-  }
-  .page-head-lead {
-    color: var(--muted);
-    font-size: var(--step-1);
-    max-width: 48ch;
-    margin: 0.6rem 0 0;
-  }
-  .stub {
-    padding-top: 2.5rem;
+  .app {
+    padding-top: 2rem;
     padding-bottom: 3rem;
   }
+  .app-head {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+  .app-logo {
+    border-radius: 14px;
+  }
+  .app-hello b {
+    display: block;
+    font-size: var(--step-1);
+    line-height: 1.2;
+  }
+  .app-hello span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
+  }
+  .app-status {
+    color: var(--muted);
+    font-size: var(--step-0, 1rem);
+    margin-top: 1.1rem;
+    min-height: 1.4em;
+  }
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-top: 1.2rem;
+  }
+  .app-grid[hidden] {
+    display: none;
+  }
+  .app-grid :global(.tile) {
+    position: relative;
+    display: block;
+    padding: 1rem 0.9rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+    color: inherit;
+    text-decoration: none;
+  }
+  .app-grid :global(.tile b) {
+    display: block;
+    line-height: 1.2;
+  }
+  .app-grid :global(.tile span) {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .app-grid :global(.tile--soon) {
+    opacity: 0.75;
+  }
+  .app-grid :global(.tile-soon) {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.55rem;
+    font-style: normal;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.05rem 0.45rem;
+  }
+  .app-foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
 </style>
+

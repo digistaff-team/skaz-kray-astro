@@ -1,0 +1,329 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Наше поместье"
+  description="Личный кабинет семьи: жители, автомобили, питомцы и заявки в совладельцы."
+  noindex
+>
+  <div class="wrap estate">
+    <p id="status" class="meta" role="status">Загружаем поместье…</p>
+
+    <div id="body" hidden>
+      <div class="head">
+        <h1 id="eTitle">Поместье</h1>
+        <button type="button" id="renameBtn" class="btn">Изменить название</button>
+      </div>
+
+      <form id="renameForm" class="rename" hidden>
+        <label>
+          Название поместья
+          <input type="text" id="estateName" placeholder="напр. АгудариЯ" autocomplete="off" />
+        </label>
+        <div class="actions">
+          <button type="submit" class="btn btn--solid">Сохранить</button>
+          <button type="button" id="renameCancel" class="btn">Отмена</button>
+        </div>
+      </form>
+
+      <p class="meta" id="eMeta"></p>
+
+      <section id="joinSec" hidden>
+        <h2>Заявки в совладельцы</h2>
+        <p class="meta">Принимайте только своих: совладелец видит и правит все данные поместья.</p>
+        <div id="joinList" class="list"></div>
+      </section>
+
+      <section>
+        <h2>Жители</h2>
+        <div id="resList" class="list"></div>
+      </section>
+
+      <section>
+        <h2>Автомобили</h2>
+        <div id="carList" class="list"></div>
+        <button type="button" class="btn add" disabled>+ Добавить автомобиль — скоро</button>
+      </section>
+
+      <section>
+        <h2>Питомцы</h2>
+        <div id="petList" class="list"></div>
+        <button type="button" class="btn add" disabled>+ Добавить питомца — скоро</button>
+      </section>
+
+      <p class="foot"><a href="/poselenie/">На главную</a></p>
+    </div>
+  </div>
+
+  <!-- «Наше поместье» — порт residents/src/templates/profile/index.php (сокращённый:
+       просмотр + переименование + решение по заявкам; формы добавления жителей,
+       авто и питомцев — бейдж «скоро», API их ещё не портирован). -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var statusEl = document.getElementById('status');
+      var bodyEl = document.getElementById('body');
+      var data = null;
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function gladeName(g) {
+        g = String(g || '').trim();
+        var m = /^\((\d+)\)\s*(.+)$/.exec(g);
+        if (m) return m[2].trim();
+        return g !== '' ? g : 'Без поляны';
+      }
+      function gladeNum(g) {
+        var m = /^\((\d+)\)/.exec(String(g || '').trim());
+        return m ? parseInt(m[1], 10) : 0;
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) {
+            window.location.replace('/poselenie/tg/');
+            return Promise.reject({ auth: true });
+          }
+          return r.json().then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
+        });
+      }
+
+      function load() {
+        api('/api/profile').then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          var h = res.data && res.data.household;
+          if (!h) { window.location.replace('/poselenie/moye-pomestie/vybor/'); return; }
+          data = h;
+          render(h);
+          show('');
+        }).catch(function (e) {
+          if (!e || !e.auth) show('Не удалось загрузить поместье. Попробуйте позже.');
+        });
+      }
+
+      function card(inner) {
+        return '<div class="card">' + inner + '</div>';
+      }
+      function render(h) {
+        document.getElementById('eTitle').textContent =
+          h.estateName ? 'Поместье ' + h.estateName : 'Поместье';
+        document.getElementById('estateName').value = h.estateName || '';
+        document.getElementById('eMeta').textContent =
+          'Поляна ' + gladeName(h.glade) + ' (' + gladeNum(h.glade) + ')' +
+          (h.plot ? ', участок ' + gladeNum(h.glade) + '-' + h.plot : '');
+
+        // Заявки в совладельцы — только владельцу.
+        var joins = h.joinRequests || [];
+        if (joins.length) {
+          var jh = '';
+          joins.forEach(function (r) {
+            var fam = (r.family && r.family.name) || '';
+            var tg = r.family && r.family.telegramUsername
+              ? '<a href="https://t.me/' + esc(r.family.telegramUsername) +
+                '" target="_blank" rel="noopener">@' + esc(r.family.telegramUsername) + '</a>'
+              : '';
+            jh += card(
+              '<b class="card-name">' + esc(fam) + '</b>' +
+              (r.surname ? '<div class="meta">Назвал фамилию: ' + esc(r.surname) + '</div>' : '') +
+              (tg ? '<div class="meta">Telegram: ' + tg + '</div>' : '') +
+              '<div class="actions">' +
+                '<button type="button" class="btn btn--solid" data-approve="' + r.id + '">Принять</button>' +
+                '<button type="button" class="btn" data-reject="' + r.id + '">Отклонить</button>' +
+              '</div>'
+            );
+          });
+          document.getElementById('joinList').innerHTML = jh;
+          document.getElementById('joinSec').hidden = false;
+        }
+
+        // Жители (только просмотр — формы правки в v2 ещё нет).
+        var residents = h.residents || [];
+        var rh = residents.length ? '' : '<p class="meta">Жители не указаны.</p>';
+        residents.forEach(function (p) {
+          var meta = [];
+          if (p.phone) meta.push(esc(p.phone));
+          if (p.residence) meta.push(esc(p.residence));
+          rh += card(
+            '<b class="card-name">' + esc(p.fullName) + '</b>' +
+            (meta.length ? '<div class="meta">' + meta.join(' · ') + '</div>' : '')
+          );
+        });
+        document.getElementById('resList').innerHTML = rh;
+
+        var cars = h.cars || [];
+        var ch = cars.length ? '' : '<p class="meta">Автомобили не указаны.</p>';
+        cars.forEach(function (c) {
+          ch += card(
+            '<b class="card-name">' + esc(c.title) + (c.plate ? ' · ' + esc(c.plate) : '') + '</b>' +
+            (c.note ? '<div class="meta">' + esc(c.note) + '</div>' : '')
+          );
+        });
+        document.getElementById('carList').innerHTML = ch;
+
+        var pets = h.pets || [];
+        var ph = pets.length ? '' : '<p class="meta">Питомцы не указаны.</p>';
+        pets.forEach(function (p) {
+          ph += card(
+            '<b class="card-name">' + esc(p.name) + (p.kind ? ' · ' + esc(p.kind) : '') + '</b>' +
+            (p.note ? '<div class="meta">' + esc(p.note) + '</div>' : '')
+          );
+        });
+        document.getElementById('petList').innerHTML = ph;
+
+        bodyEl.hidden = false;
+      }
+
+      // Переименование и решение по заявкам (пока без CSRF — как все v2-роуты,
+      // доступ ограничен JWT из requireAuth).
+      var renameBtn = document.getElementById('renameBtn');
+      var renameForm = document.getElementById('renameForm');
+      var renameCancel = document.getElementById('renameCancel');
+      var estateNameInput = document.getElementById('estateName');
+
+      renameBtn.addEventListener('click', function () {
+        renameForm.hidden = false;
+        renameBtn.hidden = true;
+        estateNameInput.focus();
+        estateNameInput.select();
+      });
+      renameCancel.addEventListener('click', function () {
+        renameForm.hidden = true;
+        renameBtn.hidden = false;
+      });
+      renameForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        api('/api/profile/estate', {
+          method: 'POST',
+          body: JSON.stringify({ name: estateNameInput.value.trim() })
+        }).then(function () { window.location.reload(); }).catch(function () {
+          show('Не удалось сохранить название. Попробуйте позже.');
+        });
+      });
+
+      document.addEventListener('click', function (e) {
+        var approve = e.target.closest && e.target.closest('[data-approve]');
+        var reject = e.target.closest && e.target.closest('[data-reject]');
+        if (!approve && !reject) return;
+        var id = Number((approve || reject).getAttribute(approve ? 'data-approve' : 'data-reject'));
+        if (reject && !window.confirm('Отклонить заявку?')) return;
+        api('/api/profile/join/' + (approve ? 'approve' : 'reject'), {
+          method: 'POST',
+          body: JSON.stringify({ requestId: id })
+        }).then(function () { window.location.reload(); }).catch(function () {
+          show('Не удалось обработать заявку. Попробуйте позже.');
+        });
+      });
+
+      load();
+    })();
+  </script>
+</Base>
+
+<style>
+  .estate {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 62ch;
+  }
+  #status {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 1rem;
+  }
+  .head h1 {
+    font-size: var(--step-2);
+    margin: 0;
+  }
+  .rename {
+    margin-top: 0.9rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .rename label {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .rename input {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.8rem;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  #eMeta {
+    margin-top: 0.7rem;
+  }
+  section {
+    margin-top: 1.8rem;
+  }
+  section h2 {
+    font-size: var(--step-1);
+  }
+  .list {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.7rem;
+  }
+  .list :global(.card) {
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .list :global(.card-name) {
+    display: block;
+    line-height: 1.25;
+  }
+  .list :global(.card .meta) {
+    margin-top: 0.2rem;
+    font-size: 0.9rem;
+  }
+  .list :global(.actions) {
+    margin-top: 0.6rem;
+  }
+  .add {
+    margin-top: 0.7rem;
+    opacity: 0.7;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+</style>

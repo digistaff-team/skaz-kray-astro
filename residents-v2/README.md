@@ -4,7 +4,7 @@
 
 ## Архитектура
 
-- `api/[...path].ts` — catch-all точка входа Vercel: ловит все `/api/*` и прокидывает в Express-приложение. Vercel забирает **только default-экспорт**, поэтому `src/server.ts` экспортирует сам app (`export default app`), а не `listen()`.
+- `api/index.ts` — точка входа Vercel: rewrites в `vercel.json` кидают сюда все `/api/*`, `request.path` transform сохраняет оригинальный URL, поэтому Express видит полные маршруты. Vercel забирает **только default-экспорт**, поэтому `src/server.ts` экспортирует сам app (`export default app`), а не `listen()`.
 - `src/server.ts` — middleware (helmet, cors по `BASE_URL`, json 200 МБ, `redactSecrets` — вырезает `password_hash` и секреты из ответов/логов) и монтирование `src/routes/*` под `/api/*`. Маршруты — 1:1 с контроллерами PHP-оригинала.
 - `src/middleware/` — `auth.ts` (`requireAuth` / `requireAdmin` / `requireEditor`), `lib/csrf.ts`.
 - `prisma/schema.prisma` — схема БД, повторяет MySQL-схему легаси.
@@ -41,7 +41,7 @@ npm run build        # prisma generate && tsc → dist/
 Push в `main` выкатывает оба Vercel-проекта (git-деплои включены). Конфиг API — `residents-v2/vercel.json`:
 
 - `buildCommand`: `prisma generate && tsc`, `installCommand`: `npm ci`;
-- функция `api/[...path].ts`: `maxDuration` 30 с, `memory` 1024 МБ;
+- функция `api/index.ts` (rewrite `/api/:path*`): `maxDuration` 30 с, `memory` 1024 МБ;
 - CORS-заголовки: origin `https://skaz-kray.ru` с `Credentials`.
 
 Клиент сайта (страница входа `/poselenie/tg/`) зовёт API **same-origin**
@@ -84,7 +84,7 @@ node scripts/verify-migration.mjs [--sample]     # поимочные хеши �
 ```
 residents-v2/
 ├── api/
-│   └── [...path].ts        # catch-all точка входа Vercel → Express
+│   └── index.ts          # точка входа Vercel → Express (rewrite /api/*)
 ├── prisma/
 │   └── schema.prisma       # Схема БД (Supabase/PostgreSQL)
 ├── scripts/                # миграция данных MySQL → PG и её проверка

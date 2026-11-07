@@ -7,11 +7,24 @@
   "framework": null,
 
   "functions": {
-    "api/[...path].ts": {
+    "api/index.ts": {
       "maxDuration": 30,
       "memory": 1024
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index",
+      "transforms": [
+        {
+          "type": "request.path",
+          "op": "set",
+          "args": "/api/:path*"
+        }
+      ]
+    }
+  ],
 
   "headers": [
     {

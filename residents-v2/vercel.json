@@ -12,6 +12,13 @@
       "memory": 1024
     }
   },
+  "redirects": [
+    {
+      "source": "/api/(.+)/",
+      "destination": "/api/$1",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

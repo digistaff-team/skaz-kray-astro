@@ -5,6 +5,10 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
+      "source": "/api/(.*)/",
+      "destination": "https://residents-v2.vercel.app/api/$1"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://residents-v2.vercel.app/api/$1"
     },

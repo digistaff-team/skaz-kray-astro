@@ -4,5 +4,10 @@
     // Код в основном JS-овый (миграция с WP), строгую типизацию не вводили —
     // check нужен как smoke-тест (реальные ошибки), а не как линтер стилей.
     "noImplicitAny": false
-  }
+  },
+  // residents-v2 — отдельный TS-проект (CommonJS, свой tsconfig, свой
+  // `npm run typecheck`). astro check ловил его файлы общими правилами Astro
+  // (verbatimModuleSyntax) и сыпал ложными ошибками на value-импорты типов —
+  // это не регрессия сайта, а проверка не того проекта. Чужой код здесь не чекаем.
+  "exclude": ["node_modules", "dist", "residents-v2"]
 }

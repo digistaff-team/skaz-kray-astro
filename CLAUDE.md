@@ -2,10 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Два проекта в одном репозитории
+## Три проекта в одном репозитории
 
-1. **Корень** — статический сайт `skaz-kray.ru` на **Astro** (мигрирован с WordPress). Собирается в `dist/`, отдаётся nginx как статика.
-2. **`residents/`** — отдельное **PHP 8.3** приложение (namespace `SkazResidents\`), «раздел для жителей» поселения. Свои зависимости (composer), свои тесты (phpunit), свой деплой. Живёт под путями `/poselenie/…` на том же домене (nginx проксирует их на PHP-FPM, остальное — статика Astro).
+1. **Корень** — статический сайт `skaz-kray.ru` на **Astro** (мигрирован с WordPress). Собирается в `dist/`, выкладывается на **Vercel** (git-push → автодеплой).
+2. **`residents-v2/`** — **Node.js/Express/Prisma + Supabase**, серверлесс-приложение на Vercel. Актуальная версия «раздела для жителей»; активная разработка.
+3. **`residents/`** — **PHP 8.3** приложение (namespace `SkazResidents\`), прежняя версия раздела жителей. **Легаси, заморожено**: прод-сервер `abconsult` уничтожен хостером (ноябрь 2026), код нигде не выкладывается. Код, тесты и CI сохранены; инструкции деплоя — исторические.
 
 У проектов **разные тулчейны и команды** — не путать.
 
@@ -20,12 +21,16 @@ npm run check      # astro check — типизация шаблонов (smoke-
 ```
 Скрипты в `scripts/*.mjs` запускаются вручную через `node scripts/<имя>.mjs` (не через npm).
 
+### Деплой (Vercel)
+- Push в `main` → Vercel собирает и выкатывает (`git.deploymentEnabled`). Конфиг — корневой `vercel.json`: `framework: astro`, `buildCommand` = `npm ci --prefer-offline && npm run build`, `outputDirectory: dist`.
+- Там же URL-политика: rewrites для `/admin/*` и `/editor/*` (Decap SPA), legacy-редиректы с WP-адресов (`/pravila/` → `/o-nas/pravila/` и т.п.), кэш-заголовки для `/fonts/` и `/images/`, `trailingSlash: true`. Редиректы со старых адресов добавлять сюда.
+
 ### Ключевые особенности
 - **Static, `format: 'directory'`, `trailingSlash: 'always'`** (`astro.config.mjs`) — чтобы сохранить WP-style URL (`/pravila/` → `pravila/index.html`). Не менять без причины: старые ссылки уже расшарены.
-- **Astro 7** (Node ≥ 22.12 — и локально, и на сервере, где собирает автодеплой). **Контент** — коллекции `pages` и `posts`: файлы в `src/content/`, схема и `glob`-загрузчики в `src/content.config.ts` (Content Layer; `entry.id` = бывший `entry.slug`, на нём держатся адреса постов, рендер — `render(entry)`). Даты коэрсятся в строку `"YYYY-MM-DD HH:mm:ss"` (обходит особенность datetime-виджета Decap, который пишет дату без кавычек и YAML парсит её как нативный Date).
+- **Astro 7** (Node ≥ 22.12 — и локально, и в CI/Vercel). **Контент** — коллекции `pages` и `posts`: файлы в `src/content/`, схема и `glob`-загрузчики в `src/content.config.ts` (Content Layer; `entry.id` = бывший `entry.slug`, на нём держатся адреса постов, рендер — `render(entry)`). Даты коэрсятся в строку `"YYYY-MM-DD HH:mm:ss"` (обходит особенность datetime-виджета Decap, который пишет дату без кавычек и YAML парсит её как нативный Date).
 - **Роутинг** — почти всё генерирует один `src/pages/[...slug].astro` через `getStaticPaths`:
   - `pages` — по своему `permalink` (может быть вложенным);
-  - `posts` — по транслитерированному в латиницу слагу (`postSlug`); если исходный кириллический слаг отличается — на старом адресе генерится **redirect-заглушка** с OG-тегами (пост мог быть уже расшарен);
+  - `posts` — по транслитерированному в латиницу слагу (`postSlug`); если исходный кириллический слаг отличуется — на старом адресе генерится **redirect-заглушка** с OG-тегами (пост мог быть уже расшарен);
   - листинги рубрик `/category/<nested>/`.
   Плюс `index.astro`, `kontakty.astro`, `feed.xml.ts` (RSS).
 - **Данные** в `src/data/`: `categories.js` (зеркало WP-таксономии — id/slug/parent), `home.js`, `nav.js`. Хелперы — `src/lib/utils.js`.
@@ -38,29 +43,41 @@ npm run check      # astro check — типизация шаблонов (smoke-
 - `scripts/convert-content.mjs` — одноразовый импортёр WP-контента (чистит шорткоды/MSO-мусор, локализует ссылки). `scripts/optimize-images.mjs` — ужимает `public/images/` на месте.
 - `scripts/announce-post.mjs` — анонс статьи в чат жителей от @SkazKray_bot одной командой `node scripts/announce-post.mjs` (свежая статья по date; конкретная — `--slug <слаг>`; проба — `--dry-run`). Дубли отсекаются по журналу `telegram_messages` (`context=post-announce:<slug>`).
 
-## Раздел жителей (`residents/`)
+## Раздел жителей v2 (`residents-v2/`) — активная разработка
+
+Express 4 на TypeScript, БД — Supabase (PostgreSQL) через Prisma. Портирует PHP-оригинал (`residents/`) по маршруту: API живёт под `/api/*`, фронт — тот же Astro-сайт.
+
+- **Точка входа** — `src/server.ts`, Express-приложение **экспортируется как default export** (`export default app`). Vercel-обёртка — catch-all `api/[...path].ts`: ловит все `/api/*` и прокидывает в это приложение; Vercel забирает только default-экспорт, поэтому сам app и является функцией `(req, res)`.
+- **Маршруты** `src/routes/*` — 1:1 с контроллерами PHP-оригинала (`auth`, `cabinet`, `diary`, `council`, `tg`, `max`, …). Middleware: `middleware/auth.ts` (`requireAuth` / `requireAdmin` / `requireEditor`), `lib/csrf.ts`, `middleware/redact.ts` (замаскировать секреты в логах/ошибках).
+- **Схема БД** — `prisma/schema.prisma` (повторяет MySQL-схему легаси со всеми миграциями). Накат — `npx prisma db push` (файловых миграций Prisma нет).
+- **Команды** (запускать внутри `residents-v2/`):
+```bash
+npm run dev         # tsx watch src/server.ts
+npm run build       # prisma generate && tsc → dist/
+npm run typecheck   # tsc --noEmit — проходит, основная проверка
+npm run db:push     # применить схему к Supabase
+```
+`npm run lint` и `npm run db:seed` объявлены, но пока не работают: eslint-конфига в репо нет (eslint не находит файлы в `src/`), `prisma/seed.ts` не написан.
+- **Секреты** — `.env` по образцу `.env.example`: `DATABASE_URL` (Prisma), `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET` (читается **при вызове**, не при импорте — иначе undefined на Vercel), `SMTP_*`, токены ботов, `BASE_URL`.
+- **Тестов нет, в CI не входит** — typecheck/build прогонять вручную перед выкладкой. Дымовой прогон (register → 200, 401, 404, health) — локально на `npm run dev`.
+- `residents-v2/README.md` — актуальный разбор запуска/деплоя/миграции данных. `deploy-v2.sh` и `deploy/nginx-v2.conf.example` — добсерверная эпоха, не использовать; конфиг деплоя — `residents-v2/vercel.json`.
+
+## Раздел жителей, PHP (`residents/`) — легаси, заморожен
+
+Код больше нигде не деплоится (сервер `abconsult` уничтожен). Сохранён как источник истины для миграции в `residents-v2/` и пока жив в CI. **Не выполнять** `deploy/deploy.sh` и ssh-инструкции из `residents/CLAUDE.md` — они описывают уже несуществующий сервер.
 
 Классический MVC без фреймворка: фронт-контроллер `public/index.php` + собственный `Router` (регэксп-маршруты). Слои: `Controller/`, `Repository/`, `Service/`, шаблоны — обычный PHP через `View.php` (`src/templates/`).
 
 - **Подсистема «Совет»** (`Controller/Council/`) — заметно обособлена: заседания, повестка (agenda), бюджет/книга расходов (ledger), задачи, Telegram-бот (webhook), своя авторизация.
 - Прочие разделы: дневники поместий, маркетплейс, прокат инструментов и книг, поездки/попутки, совместные оптовые закупки, справочник жителей, профили хозяйств, PWA/app-режим.
-- **БД**: прод — MySQL (utf8mb4), схемы и миграции в `config/*.sql`, порядок — `config/migrations.txt` (новую — в конец), накат и учёт — `bin/migrate.php` (таблица `schema_migrations`; `deploy.sh` без `MIGRATE=1` не выкладывает код при ждущих миграциях). Тесты — SQLite (`tests/schema.sqlite.sql`) — новые таблицы/колонки дублировать и туда.
+- **БД**: была MySQL (utf8mb4), схемы и миграции в `config/*.sql`, порядок — `config/migrations.txt`, накат — `bin/migrate.php`. Тестовая схема — SQLite (`tests/schema.sqlite.sql`) — новые таблицы/колонки дублировать и туда.
 - **Секреты** — `config/config.php` (вне git, из `config.example.php`) и `.env`. CLI-утилиты в `bin/`.
 
-### Тесты и деплой
-CI (`.github/workflows/ci.yml`) на каждый push/PR: **phpunit** (PHP 8.3, SQLite, без секретов) и smoke-тест Astro-части (`npm run check` + `npm run build`). Это быстрый способ поймать регрессию до выкладки.
-
-**Локально PHP нет** — phpunit гоняется на сервере `abconsult`:
-```bash
-git archive HEAD:residents | ssh abconsult 'tar -x -C /root/ledger-test'
-ssh abconsult 'cd /root/ledger-test && ([ -f vendor/bin/phpunit ] || php8.3 /root/composer.phar install --no-interaction -q) && php8.3 vendor/bin/phpunit'
-```
-Отдельный тест — `php8.3 vendor/bin/phpunit --filter <TestName>`. Тесты используют SQLite in-memory по образцу существующих в `residents/tests/`.
-
-Деплой раздела — `residents/deploy/deploy.sh` (tar-архивом через ssh на `abconsult`, rsync не нужен; `config.php`/`.env`/uploads/vendor/сессии не трогает). Подробности и флаги — `residents/CLAUDE.md`, первичная установка — `residents/deploy/README.md`.
+### Тесты PHP
+CI (`.github/workflows/ci.yml`) на каждый push/PR: **phpunit** (PHP 8.3, SQLite, без секретов) и smoke-тест Astro-части (`npm run check` + `npm run build`). Локально PHP не установлен, ssh-сервер недоступен — **CI единственный способ прогнать phpunit**. Тесты используют SQLite in-memory по образцу существующих в `residents/tests/`; один тест — `vendor/bin/phpunit --filter <TestName>` (в CI или в любом окружении с PHP 8.3).
 
 ## Документация проекта
-`docs/superpowers/` — планы (`plans/`) и дизайн-спеки (`specs/`) по крупным фичам (логин редактора v2, раздел жителей, бюджет совета, mobile PWA/app-режим). Это первоисточник контекста по нетривиальным решениям. `docs/kak-obnovit-prevyu-ssylki.md` — инструкция для редактора про превью ссылок.
+`docs/superpowers/` — планы (`plans/`) и дизайн-спеки (`specs/`) по крупным фичам (логин редактора v2, раздел жителей, бюджет совета, mobile PWA/app-режим). Это первоисточник контекста по нетривиальным решениям; часть планов писалась до переезда на Vercel/Supabase — учитывать дату. `docs/kak-obnovit-prevyu-ssylki.md` — инструкция для редактора про превью ссылок.
 <!-- BEGIN:review-rules -->
 ## Code review
 

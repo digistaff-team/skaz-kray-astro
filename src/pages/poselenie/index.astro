@@ -1,0 +1,42 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base
+  title="Кабинет жителя"
+  description="Внутренний кабинет жителей поселения «Сказочный Край»."
+  noindex
+>
+  <header class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Портал жителей</p>
+      <h1>Вы вошли</h1>
+      <p class="page-head-lead">Кабинет в разработке.</p>
+    </div>
+  </header>
+
+  <div class="wrap stub prose">
+    <p>
+      Личный кабинет жителей появится здесь позже: дневники поместий, объявления,
+      инвентарь и остальные разделы портала.
+    </p>
+    <p><a class="btn btn--solid" href="/">Вернуться на сайт</a></p>
+  </div>
+</Base>
+
+<style>
+  .page-head {
+    padding: 3rem 0 1.5rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--ground-2);
+  }
+  .page-head-lead {
+    color: var(--muted);
+    font-size: var(--step-1);
+    max-width: 48ch;
+    margin: 0.6rem 0 0;
+  }
+  .stub {
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+  }
+</style>

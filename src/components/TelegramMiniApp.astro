@@ -100,7 +100,12 @@
       // запуска (?startapp / ?tgWebAppStartParam), поэтому переход в нужный
       // раздел должен работать, даже если telegram.org недоступен.
       var early = startParamPath(wa);
-      if (early && early !== window.location.pathname) {
+      // Страницы входа /poselenie/tg/ и gate живут вне диплинка: глобальный
+      // редирект увёл бы жителя со страницы входа ДО логина (startapp там —
+      // цель после входа). Guard детерминированный, на тайминги не полагаемся.
+      var p = window.location.pathname.replace(/\/+$/, "");
+      var isEntryPage = p === "/poselenie/tg" || p === "/poselenie/tg/gate";
+      if (early && !isEntryPage && early !== window.location.pathname) {
         window.location.replace(early);
         return;
       }

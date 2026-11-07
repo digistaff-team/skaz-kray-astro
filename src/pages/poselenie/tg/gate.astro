@@ -1,0 +1,134 @@
+---
+import Base from '../../../layouts/Base.astro';
+
+// reason из Astro.url работает в dev/SSR; статическая сборка query не видит,
+// поэтому дополнительно переключаем сообщения скриптом по location.search.
+const reason = Astro.url.searchParams.get('reason') === 'error' ? 'error' : 'not_subscribed';
+
+// Ссылка-инвайт в группу: прячем, если не задана или осталась заглушка (как легаси).
+const rawLink = import.meta.env.PUBLIC_SKAZKRAY_GROUP_LINK || '';
+const groupLink = rawLink && !rawLink.includes('CHANGE_ME') ? rawLink : '';
+---
+<Base
+  title="Доступ жителей"
+  description="Портал жителей поселения «Сказочный Край» доступен только участникам группы в Telegram."
+  noindex
+>
+  <div class="wrap">
+    <div class="gate">
+      <h1>Доступ для жителей поселения</h1>
+
+      <p id="gate-error" class="gate-note gate-note--error" hidden={reason !== 'error'}>
+        Не удалось проверить подписку на группу жителей. Попробуйте позже или
+        обратитесь к администратору поселения.
+      </p>
+      <p id="gate-join" class="gate-note" hidden={reason === 'error'}>
+        Внутренний портал доступен только участникам группы жителей в Telegram.
+        Вступите в группу и вернитесь.
+      </p>
+
+      {groupLink && (
+        <p>
+          <a class="btn" id="tg-group-link" href={groupLink} target="_blank" rel="noopener">
+            Вступить в группу жителей
+          </a>
+        </p>
+      )}
+      <p>
+        <a class="btn btn--solid" href="/poselenie/tg/">Я вступил(а) — проверить снова</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Порт residents/src/templates/tg/gate.php -->
+  <script is:inline>
+    (function () {
+      window.SkazPlatform = 'tg';
+
+      // Статическая сборка не видит query на этапе генерации — сообщение
+      // «не удалось проверить» включаем по location.search (фронтмент выше
+      // уже покрывает dev/SSR, здесь то же самое для прод-сборки).
+      if (/[?&]reason=error/.test(window.location.search)) {
+        var err = document.getElementById('gate-error');
+        var join = document.getElementById('gate-join');
+        if (err) { err.hidden = false; }
+        if (join) { join.hidden = true; }
+      }
+
+      // Внутри Telegram ссылку на группу открываем нативно, а не новой
+      // вкладкой браузера. SDK грузится асинхронно: пока едет — и если
+      // telegram.org недоступен — ссылка остаётся рабочей как обычная
+      // (target="_blank" в разметке). Мини-порт SkazTg.ensure.
+      var SRC = 'https://telegram.org/js/telegram-web-app.js';
+      var TIMEOUT_MS = 8000;
+
+      function currentWa() { return (window.Telegram && window.Telegram.WebApp) || null; }
+      function inTelegram() {
+        if (currentWa()) { return true; }
+        if (window.SkazPlatform === 'tg') { return true; }
+        if (window.SkazPlatform === 'max' || window.SkazPlatform === 'web') { return false; }
+        return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto);
+      }
+      function ensure(cb) {
+        if (typeof cb !== 'function') { return; }
+        var ready = currentWa();
+        if (ready) { cb(ready); return; }
+        if (!inTelegram()) { cb(null); return; }
+        var settled = false;
+        var timer = null;
+        function finish() {
+          if (settled) { return; }
+          settled = true;
+          if (timer) { clearTimeout(timer); }
+          cb(currentWa());
+        }
+        timer = setTimeout(finish, TIMEOUT_MS);
+        var existing = document.querySelector('script[src="' + SRC + '"]');
+        if (existing) {
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener('error', finish, { once: true });
+          return;
+        }
+        var sc = document.createElement('script');
+        sc.src = SRC;
+        sc.async = true;
+        sc.onload = finish;
+        sc.onerror = finish;
+        (document.head || document.body || document.documentElement).appendChild(sc);
+      }
+
+      ensure(function (wa) {
+        var link = document.getElementById('tg-group-link');
+        if (!wa || !link) { return; }
+        link.addEventListener('click', function (e) {
+          var url = link.getAttribute('href');
+          if (wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
+          else if (wa.openLink) { e.preventDefault(); wa.openLink(url); }
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .gate {
+    padding: 3rem 0;
+    max-width: 60ch;
+  }
+  .gate-note {
+    color: var(--muted);
+    font-size: var(--step-0);
+    margin-top: 1rem;
+  }
+  .gate-note--error {
+    color: inherit;
+    padding: 0.9rem 1.1rem;
+    border-left: 4px solid var(--wheat);
+    border-radius: 8px;
+    background: var(--wheat-soft);
+  }
+  /* [hidden] обязан побеждать наши display-правила. */
+  .gate-note[hidden] {
+    display: none !important;
+  }
+</style>

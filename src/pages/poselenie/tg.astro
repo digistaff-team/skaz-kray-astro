@@ -1,0 +1,272 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base
+  title="Вход жителя"
+  description="Вход в портал жителей поселения «Сказочный Край» через Telegram."
+  noindex
+>
+  <div class="wrap">
+    <div class="tg-entry">
+      <h1>Вход жителя</h1>
+      <p id="tg-status" class="tg-status">Проверяем доступ через Telegram…</p>
+      <noscript>
+        <p class="tg-noscript">Нужен включённый JavaScript.</p>
+      </noscript>
+    </div>
+  </div>
+
+  <!-- Порт residents/src/templates/tg/entry.php + helpers из public/assets/tg-webapp.js -->
+  <script is:inline>
+    (function () {
+      // Эти страницы существуют только для потока входа через Telegram:
+      // объявляем платформу явно, иначе ensure не пойдёт за SDK, когда
+      // маркеры запуска в URL уже потерялись (повторный вход по кэшу).
+      window.SkazPlatform = 'tg';
+
+      var STORE_INITDATA = 'skazTgInitData'; // кэш initData (паритет с легаси)
+      var STORE_TOKEN = 'skazV2Token'; // JWT v2 для шортката «уже вошёл»
+      var ASKED_KEY = 'skazWriteAccessAsked'; // «разрешение боту писать уже спрашивали»
+      var SDK_TIMEOUT_MS = 8000;
+
+      var statusEl = document.getElementById('tg-status');
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+
+      // initData из параметров запуска Mini App — без участия SDK.
+      // Декодируем вручную через decodeURIComponent, а НЕ URLSearchParams:
+      // последний трактует «+» как пробел и испортил бы HMAC на сервере.
+      // Параметры есть только на первой странице, поэтому кэшируем строку
+      // в sessionStorage — по ней житель входит заново при истёкшей сессии.
+      function launchInitData() {
+        var pick = function (src) {
+          if (!src) { return ''; }
+          var m = /[#&?]tgWebAppData=([^&]*)/.exec(src);
+          if (!m) { return ''; }
+          try { return decodeURIComponent(m[1]); } catch (e) { return ''; }
+        };
+        var fresh = pick(window.location.hash) || pick(window.location.search);
+        try {
+          if (fresh) { window.sessionStorage.setItem(STORE_INITDATA, fresh); return fresh; }
+          return window.sessionStorage.getItem(STORE_INITDATA) || '';
+        } catch (e) {
+          return fresh;
+        }
+      }
+
+      function initDataOf(wa) {
+        if (wa && wa.initData) { return wa.initData; }
+        return launchInitData();
+      }
+
+      // start_param из всех источников, порядок как в tg-webapp.js:
+      // query ссылки → SDK → hash запуска → поле start_param внутри initData.
+      function startParam(wa) {
+        try {
+          var qs = new URLSearchParams(window.location.search);
+          var fromQuery = qs.get('startapp') || qs.get('tgWebAppStartParam');
+          if (fromQuery) { return fromQuery; }
+        } catch (e) {}
+        if (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) {
+          return wa.initDataUnsafe.start_param;
+        }
+        try {
+          var hs = new URLSearchParams(String(window.location.hash).replace(/^#/, ''));
+          var fromHash = hs.get('tgWebAppStartParam');
+          if (fromHash) { return fromHash; }
+          var raw = launchInitData();
+          if (raw) {
+            var sp = new URLSearchParams(raw).get('start_param');
+            if (sp) { return sp; }
+          }
+        } catch (e) {}
+        return '';
+      }
+
+      // base64url(путь) → безопасный путь портала, иначе fallback
+      // (защита от open-redirect: только внутри /poselenie/).
+      function decodeStartParam(sp, fallback) {
+        if (!sp) { return fallback; }
+        if (!/^[A-Za-z0-9\-_]+={0,2}$/.test(sp)) { return fallback; }
+        try {
+          var b64 = sp.replace(/-/g, '+').replace(/_/g, '/');
+          var pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+          var bin = atob(b64 + pad);
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+          var decoded = new TextDecoder('utf-8').decode(bytes);
+          if (decoded.indexOf('/poselenie/') !== 0) { return fallback; }
+          return decoded;
+        } catch (e) { return fallback; }
+      }
+
+      // ensure: асинхронная загрузка SDK с таймаутом; колбэк вызывается
+      // ВСЕГДА — с WebApp либо с null (порт SkazTg.ensure, ES5).
+      var waiters = null;
+      function currentWa() { return (window.Telegram && window.Telegram.WebApp) || null; }
+      function inTelegram() {
+        if (currentWa()) { return true; }
+        if (window.SkazPlatform === 'tg') { return true; }
+        if (window.SkazPlatform === 'max' || window.SkazPlatform === 'web') { return false; }
+        return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto || launchInitData());
+      }
+      function ensure(cb, timeoutMs) {
+        if (typeof cb !== 'function') { return; }
+        var ready = currentWa();
+        if (ready) { cb(ready); return; }
+        if (!inTelegram()) { cb(null); return; }
+        if (waiters) { waiters.push(cb); return; }
+        waiters = [cb];
+        var settled = false;
+        var timer = null;
+        function finish() {
+          if (settled) { return; }
+          settled = true;
+          if (timer) { clearTimeout(timer); }
+          var list = waiters;
+          waiters = null;
+          if (!list) { return; }
+          for (var i = 0; i < list.length; i++) {
+            try { list[i](currentWa()); } catch (e) {}
+          }
+        }
+        timer = setTimeout(finish, timeoutMs || SDK_TIMEOUT_MS);
+        var src = 'https://telegram.org/js/telegram-web-app.js';
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) {
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener('error', finish, { once: true });
+          return;
+        }
+        var sc = document.createElement('script');
+        sc.src = src;
+        sc.async = true;
+        sc.onload = finish;
+        sc.onerror = finish;
+        (document.head || document.body || document.documentElement).appendChild(sc);
+      }
+
+      // Разовый запрос разрешения боту писать в личку (Bot API 6.9+).
+      // Спрашиваем один раз на устройство; cb вызывается ровно один раз
+      // в любом случае — вход не может из-за диалога застопориться (6с).
+      function askWriteAccess(wa, cb, timeoutMs) {
+        var done = false;
+        var finish = function () { if (!done) { done = true; try { cb(); } catch (e) {} } };
+        var timer = window.setTimeout(finish, timeoutMs || 6000);
+        try {
+          var asked = false;
+          try { asked = window.localStorage.getItem(ASKED_KEY) === '1'; } catch (e) {}
+          var user = wa && wa.initDataUnsafe ? wa.initDataUnsafe.user : null;
+          var supported = wa && typeof wa.requestWriteAccess === 'function' &&
+            (typeof wa.isVersionAtLeast !== 'function' || wa.isVersionAtLeast('6.9'));
+          if (!supported || asked || (user && user.allows_write_to_pm)) {
+            window.clearTimeout(timer);
+            finish();
+            return;
+          }
+          try { window.localStorage.setItem(ASKED_KEY, '1'); } catch (e) {}
+          wa.requestWriteAccess(function () { window.clearTimeout(timer); finish(); });
+        } catch (e) {
+          window.clearTimeout(timer);
+          finish();
+        }
+      }
+
+      // Шорткат: уже вошли (cookie или Bearer из sessionStorage) — уходим
+      // сразу, дожидаться SDK и ходить в login не нужно.
+      function sessionAlive() {
+        var token = '';
+        try { token = window.sessionStorage.getItem(STORE_TOKEN) || ''; } catch (e) {}
+        var headers = {};
+        if (token) { headers['Authorization'] = 'Bearer ' + token; }
+        return fetch('/api/tg/session', {
+          credentials: 'include',
+          headers: headers,
+          cache: 'no-store'
+        }).then(function (r) { return r.ok; }).catch(function () { return false; });
+      }
+
+      function goLogin() {
+        ensure(function (wa) {
+          var sp = startParam(wa);
+          var initData = initDataOf(wa);
+
+          if (!initData) {
+            show('Откройте портал жителей через бота @SkazKray_bot в Telegram.');
+            return;
+          }
+          if (wa) {
+            try { wa.ready(); } catch (e) {}
+            try { wa.expand(); } catch (e) {}
+          }
+
+          fetch('/api/tg/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ initData: initData, startapp: sp })
+          })
+            .then(function (r) {
+              // Статус не читаем заранее: контракт легаси — 401 только у
+              // неверной подписи, остальные причины приходят 200-м JSON.
+              return r.json().catch(function () { return { ok: false, reason: 'error' }; });
+            })
+            .then(function (data) {
+              if (data.ok && data.redirect) {
+                if (data.token) {
+                  try { window.sessionStorage.setItem(STORE_TOKEN, data.token); } catch (e) {}
+                }
+                askWriteAccess(wa, function () { window.location.replace(data.redirect); });
+                return;
+              }
+              if (data.reason === 'not_subscribed') {
+                window.location.replace('/poselenie/tg/gate/');
+                return;
+              }
+              if (data.reason === 'error') {
+                window.location.replace('/poselenie/tg/gate/?reason=error');
+                return;
+              }
+              if (data.reason === 'blocked') {
+                show('Ваш доступ заблокирован. Обратитесь к администратору поселения.');
+                return;
+              }
+              show('Не удалось войти. Проверьте, что вы открыли портал через бота @SkazKray_bot.');
+            })
+            .catch(function () {
+              window.location.replace('/poselenie/tg/gate/?reason=error');
+            });
+        });
+      }
+
+      // Все переходы отсюда — location.replace, а не assign: страница-вход
+      // техническая, в истории вкладки ей делать нечего (иначе «Назад»
+      // возвращал бы сюда, а отсюда startapp мгновенно уводил бы вперёд).
+      sessionAlive().then(function (alive) {
+        if (alive) {
+          window.location.replace(decodeStartParam(startParam(null), '/poselenie/'));
+          return;
+        }
+        goLogin();
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .tg-entry {
+    padding: 3rem 0;
+    max-width: 48ch;
+  }
+  .tg-status {
+    color: var(--muted);
+    font-size: var(--step-1);
+    margin-top: 0.8rem;
+  }
+  .tg-noscript {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+</style>

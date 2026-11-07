@@ -1,0 +1,808 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Закупки поселения"
+  description="Совместные оптовые закупки жителей «Сказочного Края»."
+  noindex
+>
+  <div class="wrap sec">
+    <div class="head">
+      <h1>Закупки поселения</h1>
+      <a class="btn btn--solid" href="/poselenie/zakupki/novaya/">+ Открыть закупку</a>
+    </div>
+    <p class="meta">Оптовая цена начинается с объёма, который одной семье не нужен.
+      Здесь соседи объединяют свои заказы и получают товары по выгодной цене.</p>
+
+    <nav class="tabs">
+      <button type="button" id="tabBoard" class="tab tab--on">Доска</button>
+      <button type="button" id="tabMine" class="tab">Мои закупки</button>
+    </nav>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="secStatus" class="meta" role="status">Загружаем…</p>
+
+    <div id="viewBoard">
+      <form class="filters" id="filters" onsubmit="return false">
+        <input type="search" id="fq" placeholder="Товар, категория или поставщик" aria-label="Поиск по закупкам" autocomplete="off" />
+        <select id="fcat" aria-label="Категория"><option value="">Все категории</option></select>
+        <select id="fst" aria-label="Стадия">
+          <option value="">Любая стадия</option>
+          <option value="collecting">идёт сбор</option>
+          <option value="ordered">заказано</option>
+          <option value="arrived">привезли</option>
+          <option value="done">завершена</option>
+        </select>
+      </form>
+      <div id="list" class="list"></div>
+    </div>
+
+    <div id="viewMine" hidden>
+      <h2 class="sub">Я организую</h2>
+      <div id="myOrg" class="list"></div>
+      <h2 class="sub">Я участвую</h2>
+      <div id="myMem" class="list"></div>
+    </div>
+
+    <!-- Карточка закупки: показ, запись, участники и управление (порт
+         purchase/show.php; отдельный URL /zakupki/{id} на статике не собрать). -->
+    <section id="detail" class="panel" hidden>
+      <div class="panel-head">
+        <h2 id="dTitle"></h2>
+        <span id="dStatus" class="st"></span>
+      </div>
+      <p class="meta" id="dMeta"></p>
+      <div id="dInfo"></div>
+
+      <div id="dJoin"></div>
+
+      <h3 class="sub" id="dOrdersHead" hidden>Участники <span class="meta" id="dOrdersCount"></span></h3>
+      <div id="dOrders" class="list"></div>
+
+      <div id="dOwner" hidden>
+        <h3 class="sub">Управление закупкой</h3>
+        <p class="meta">Стадию переключаете вы — участники получат уведомление о заказе,
+          о привозе и об отмене (уведомления подключим позже).</p>
+        <div class="actions" id="dStages"></div>
+        <div class="actions">
+          <button type="button" class="btn" id="dEdit">Редактировать</button>
+          <button type="button" class="btn btn--danger" id="dDelete">Удалить</button>
+        </div>
+      </div>
+
+      <form id="editForm" class="form" hidden>
+        <label>Что закупаем <input type="text" id="zTitle" maxlength="200" required /></label>
+        <p class="err" id="zTitleErr" hidden></p>
+        <label>Категория <input type="text" id="zCat" maxlength="80" /></label>
+        <div class="two-col">
+          <label>Единица <input type="text" id="zUnit" maxlength="20" required /></label>
+          <label>Цена за единицу, ₽ <input type="text" id="zPrice" inputmode="decimal" /></label>
+        </div>
+        <p class="err" id="zUnitErr" hidden></p>
+        <p class="err" id="zPriceErr" hidden></p>
+        <div class="two-col">
+          <label>Цель <input type="text" id="zTarget" inputmode="decimal" /></label>
+          <label>Собираем до <input type="date" id="zDeadline" /></label>
+        </div>
+        <p class="err" id="zTargetErr" hidden></p>
+        <p class="err" id="zDeadlineErr" hidden></p>
+        <label>Поставщик или ссылка на прайс <input type="text" id="zSupplier" maxlength="200" /></label>
+        <label>Где забирать <input type="text" id="zPickup" maxlength="200" /></label>
+        <label>Описание и условия <textarea id="zNote" rows="4"></textarea></label>
+        <div class="actions">
+          <button type="submit" class="btn btn--solid">Сохранить</button>
+          <button type="button" class="btn" id="editCancel">Отмена</button>
+        </div>
+      </form>
+
+      <div class="actions">
+        <button type="button" class="btn d-close">Закрыть</button>
+      </div>
+    </section>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <!-- Порт board.php + mine.php + show.php на один статический URL: вкладки
+       доска/мои, клиентские фильтры, панель карточки с записью и управлением. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var BASE = '/api/purchases';
+      var statusEl = document.getElementById('secStatus');
+      var flashEl = document.getElementById('flash');
+      var listEl = document.getElementById('list');
+      var myOrgEl = document.getElementById('myOrg');
+      var myMemEl = document.getElementById('myMem');
+      var viewBoard = document.getElementById('viewBoard');
+      var viewMine = document.getElementById('viewMine');
+      var detail = document.getElementById('detail');
+      var fq = document.getElementById('fq');
+      var fcat = document.getElementById('fcat');
+      var fst = document.getElementById('fst');
+      var board = [];
+      var mine = null;
+      var current = null;
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&', '<': '<', '>': '>', '"': '"' }[c];
+        });
+      }
+      // Подписи и классы стадий — порт buy_status_label / buy_status_class.
+      function stLabel(s) {
+        return { collecting: 'идёт сбор', ordered: 'заказано', arrived: 'привезли',
+                 done: 'завершена', cancelled: 'отменена' }[s] || s;
+      }
+      function stCls(s) {
+        return s === 'collecting' ? 'st--free' : s === 'ordered' ? 'st--loan'
+             : s === 'arrived' ? 'st--maint' : 'st--hidden';
+      }
+      // «450.00» → «450», «12500» → «12 500» — порт buy_qty / buy_money.
+      function num(v, sep) {
+        var n = Number(v);
+        if (isNaN(n)) return String(v == null ? '' : v);
+        var s = n.toFixed(2);
+        var parts = s.split('.');
+        if (parts[1] === '00') s = parts[0];
+        else s = parts[0] + '.' + parts[1].replace(/0+$/, '');
+        if (sep) {
+          var neg = s.charAt(0) === '-';
+          if (neg) s = s.slice(1);
+          s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+          if (neg) s = '-' + s;
+        }
+        return s;
+      }
+      function money(v) { return num(v, true); }
+      // ru_date: «2026-07-15» → «15 июля 2026».
+      function ruDate(s) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+        if (!m) return String(s || '');
+        var months = ['января','февраля','марта','апреля','мая','июня','июля',
+                      'августа','сентября','октября','ноября','декабря'];
+        return Number(m[3]) + ' ' + months[Number(m[2]) - 1] + ' ' + m[1];
+      }
+      function plural(n, one, few, many) {
+        n = Math.abs(n) % 100;
+        var n1 = n % 10;
+        if (n > 10 && n < 20) return many;
+        if (n1 > 1 && n1 < 5) return few;
+        if (n1 === 1) return one;
+        return many;
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+          return r.json().then(function (d) {
+            if (r.status === 403 && d && d.reason === 'no_household') {
+              window.location.replace('/poselenie/moye-pomestie/vybor/');
+              return Promise.reject({ noHousehold: true });
+            }
+            return { status: r.status, ok: r.ok, data: d };
+          });
+        });
+      }
+      function flash(msg) {
+        if (!flashEl || !msg) return;
+        flashEl.textContent = msg;
+        flashEl.hidden = false;
+      }
+      try {
+        var f = window.sessionStorage.getItem('skazZakupkiFlash');
+        if (f) {
+          window.sessionStorage.removeItem('skazZakupkiFlash');
+          flash(f);
+        }
+      } catch (e) {}
+      function saveFlash(msg) {
+        try { window.sessionStorage.setItem('skazZakupkiFlash', msg); } catch (e) {}
+      }
+
+      // Прогресс — порт _progress.php: без цели полосы нет, только объём.
+      function progressHtml(p) {
+        var target = p.targetQty !== null ? Number(p.targetQty) : null;
+        var collected = Number(p.collectedQty);
+        if (target !== null && target > 0) {
+          var pct = Math.min(100, Math.round((collected / target) * 100));
+          return '<div class="bar" role="img" aria-label="Собрано ' + pct + '% от цели">' +
+            '<span class="bar-fill" style="width:' + pct + '%"></span></div>' +
+            '<div class="prog-text">собрано ' + num(collected) + ' из ' + num(target) + ' ' +
+            esc(p.unit) + ' <b>' + pct + '%</b></div>';
+        }
+        return '<div class="prog-text">собрано ' + num(collected) + ' ' + esc(p.unit) + '</div>';
+      }
+      // Строка закупки — порт purchase/_card.php.
+      function cardHtml(p) {
+        var price = p.pricePerUnit !== null
+          ? money(p.pricePerUnit) + ' ₽ за ' + esc(p.unit)
+          : 'цена по факту';
+        var meta = price;
+        if (p.category) meta += ' · ' + esc(p.category);
+        if (p.deadline) meta += ' · до ' + esc(ruDate(p.deadline));
+        var foot = p.participants + ' ' + plural(p.participants, 'участник', 'участника', 'участников');
+        if (p.organizerName) foot += ' · ведёт ' + esc(p.organizerName);
+        if (p.myQty !== null && p.myQty !== undefined) {
+          foot += ' · вы берёте ' + num(p.myQty) + ' ' + esc(p.unit);
+        }
+        return '<button type="button" class="card" data-id="' + p.id + '">' +
+          '<span class="card-head"><b>' + esc(p.title) + '</b>' +
+          '<span class="st ' + stCls(p.status) + '">' + stLabel(p.status) + '</span></span>' +
+          '<span class="meta">' + meta + '</span>' +
+          progressHtml(p) +
+          '<span class="meta">' + foot + '</span></button>';
+      }
+
+      function renderBoard() {
+        var q = (fq.value || '').trim().toLowerCase();
+        var cat = fcat.value;
+        var st = fst.value;
+        var shown = board.filter(function (p) {
+          if (cat && (p.category || '') !== cat) return false;
+          if (st && p.status !== st) return false;
+          if (!q) return true;
+          var hay = ((p.title || '') + ' ' + (p.category || '') + ' ' +
+                     (p.supplier || '') + ' ' + (p.organizerName || '')).toLowerCase();
+          return hay.indexOf(q) !== -1;
+        });
+        if (!shown.length) {
+          listEl.innerHTML = board.length
+            ? '<p class="meta">Ничего не нашлось. Попробуйте изменить параметры поиска.</p>'
+            : '<p class="meta">Пока никто ничего не собирает. Будьте первым — ' +
+              '<a href="/poselenie/zakupki/novaya/">откройте закупку</a>.</p>';
+          return;
+        }
+        listEl.innerHTML = shown.map(cardHtml).join('');
+      }
+      fq.addEventListener('input', renderBoard);
+      fcat.addEventListener('change', renderBoard);
+      fst.addEventListener('change', renderBoard);
+
+      function renderMine() {
+        var org = (mine && mine.asOrganizer) || [];
+        var mem = (mine && mine.asMember) || [];
+        myOrgEl.innerHTML = org.length ? org.map(cardHtml).join('')
+          : '<p class="meta">Вы пока не открывали закупок.</p>';
+        if (!mem.length) {
+          myMemEl.innerHTML = '<p class="meta">Вы пока никуда не записались.</p>';
+          return;
+        }
+        myMemEl.innerHTML = mem.map(function (o) {
+          var line = num(o.qty) + ' ' + esc(o.unit || '');
+          if (o.note) line += ' · ' + esc(o.note);
+          if (o.paidAt) line += ' · оплачено';
+          return '<button type="button" class="card" data-id="' + o.purchaseId + '">' +
+            '<span class="card-head"><b>' + esc(o.purchaseTitle) + '</b>' +
+            '<span class="st ' + stCls(o.purchaseStatus) + '">' + stLabel(o.purchaseStatus) + '</span></span>' +
+            '<span class="meta">' + line + '</span></button>';
+        }).join('');
+      }
+
+      function switchTab(which) {
+        var mineOn = which === 'mine';
+        viewMine.hidden = !mineOn;
+        viewBoard.hidden = mineOn;
+        document.getElementById('tabMine').classList.toggle('tab--on', mineOn);
+        document.getElementById('tabBoard').classList.toggle('tab--on', !mineOn);
+        detail.hidden = true;
+      }
+      document.getElementById('tabBoard').addEventListener('click', function () {
+        switchTab('board');
+        history.replaceState(null, '', window.location.pathname);
+      });
+      document.getElementById('tabMine').addEventListener('click', function () {
+        switchTab('mine');
+        history.replaceState(null, '', '#moi');
+      });
+
+      // ── Карточка закупки (порт show.php) ──────────────────────────────────
+      var dTitle = document.getElementById('dTitle');
+      var dStatus = document.getElementById('dStatus');
+      var dMeta = document.getElementById('dMeta');
+      var dInfo = document.getElementById('dInfo');
+      var dJoin = document.getElementById('dJoin');
+      var dOrders = document.getElementById('dOrders');
+      var dOrdersHead = document.getElementById('dOrdersHead');
+      var dOrdersCount = document.getElementById('dOrdersCount');
+      var dOwner = document.getElementById('dOwner');
+      var dStages = document.getElementById('dStages');
+      var editForm = document.getElementById('editForm');
+
+      // Переходы стадий — как в show.php: только осмысленные из текущей.
+      var STAGE_FLOW = {
+        collecting: [['ordered', 'Заказано у поставщика'], ['cancelled', 'Отменить закупку']],
+        ordered: [['arrived', 'Привезли'], ['collecting', 'Вернуть в сбор'], ['cancelled', 'Отменить закупку']],
+        arrived: [['done', 'Все забрали']],
+        done: [['collecting', 'Открыть сбор снова']],
+        cancelled: [['collecting', 'Открыть сбор снова']]
+      };
+      var STAGE_MSG = {
+        collecting: 'Сбор снова открыт.',
+        ordered: 'Закупка отмечена заказанной.',
+        arrived: 'Отмечено: товар приехал.',
+        done: 'Закупка завершена.',
+        cancelled: 'Закупка отменена.'
+      };
+
+      function renderDetail(d) {
+        current = d;
+        var p = d.purchase;
+        dTitle.textContent = p.title;
+        dStatus.textContent = stLabel(p.status);
+        dStatus.className = 'st ' + stCls(p.status);
+
+        var meta = 'Ведёт ' + (p.organizerName || '—');
+        if (p.category) meta += ' · ' + p.category;
+        if (p.deadline) meta += ' · сбор до ' + ruDate(p.deadline);
+        dMeta.textContent = meta;
+
+        var info = '';
+        info += p.pricePerUnit !== null
+          ? '<p class="price"><b>' + money(p.pricePerUnit) + ' ₽</b> за ' + esc(p.unit) + '</p>'
+          : '<p class="meta">Цена за ' + esc(p.unit) + ' уточняется.</p>';
+        info += progressHtml(p);
+        if (p.pricePerUnit !== null) {
+          var total = Number(p.collectedQty) * Number(p.pricePerUnit);
+          var paid = Number(p.paidQty) * Number(p.pricePerUnit);
+          info += '<p class="meta">Сумма заказа: ' + money(total) + ' ₽, оплачено ' + money(paid) + ' ₽</p>';
+        }
+        if (p.supplier) info += '<p class="meta">Поставщик: ' + esc(p.supplier) + '</p>';
+        if (p.pickup) info += '<p class="meta">Где забирать: ' + esc(p.pickup) + '</p>';
+        if (p.note) info += '<p>' + esc(p.note).replace(/\n/g, '<br>') + '</p>';
+        dInfo.innerHTML = info;
+
+        // Форма записи / своя заявка (для не-организатора).
+        var open = p.status === 'collecting';
+        if (d.isOwner) {
+          dJoin.innerHTML = '';
+        } else if (open) {
+          var my = d.myOrder;
+          dJoin.innerHTML =
+            '<h3 class="sub">' + (my ? 'Ваша заявка' : 'Участвовать') + '</h3>' +
+            '<form id="joinForm" class="form">' +
+              '<label>Сколько берёте, ' + esc(p.unit) +
+                '<input type="text" id="jQty" inputmode="decimal" value="' + (my ? num(my.qty) : '') + '" required />' +
+              '</label>' +
+              '<p class="err" id="jQtyErr" hidden></p>' +
+              '<label>Комментарий (необязательно)' +
+                '<input type="text" id="jNote" maxlength="500" value="' + esc(my && my.note ? my.note : '') + '" />' +
+              '</label>' +
+              '<div class="actions">' +
+                '<button type="submit" class="btn btn--solid">' + (my ? 'Изменить заявку' : 'Записаться') + '</button>' +
+                (my ? '<button type="button" class="btn" id="jLeave">Выйти из закупки</button>' : '') +
+              '</div>' +
+            '</form>';
+        } else if (d.myOrder) {
+          var sum = p.pricePerUnit !== null
+            ? ' на ' + money(Number(d.myOrder.qty) * Number(p.pricePerUnit)) + ' ₽'
+            : '';
+          dJoin.innerHTML = '<p class="meta">Вы берёте ' + num(d.myOrder.qty) + ' ' + esc(p.unit) +
+            sum + '. Сбор закрыт, состав передан поставщику.</p>';
+        } else {
+          dJoin.innerHTML = '<p class="meta">Сбор закрыт — записаться в эту закупку уже нельзя.</p>';
+        }
+
+        // Участники — порт show.php секции «Участники».
+        var orders = d.orders || [];
+        dOrdersCount.textContent = '(' + orders.length + ')';
+        if (!orders.length) {
+          dOrders.innerHTML = '<p class="meta">Пока никто не записался.</p>';
+        } else {
+          dOrders.innerHTML = orders.map(function (o) {
+            var line = '<b>' + esc(o.familyName) + '</b> <span class="meta">' +
+              num(o.qty) + ' ' + esc(p.unit);
+            if (p.pricePerUnit !== null) {
+              line += ' · ' + money(Number(o.qty) * Number(p.pricePerUnit)) + ' ₽';
+            }
+            if (o.note) line += ' · ' + esc(o.note);
+            line += '</span>';
+            var actions = '';
+            if (o.paidAt) actions += '<span class="st st--free">оплачено</span>';
+            else if (d.isOwner) actions += '<span class="meta">не оплачено</span>';
+            if (d.isOwner) {
+              actions += '<button type="button" class="linkbtn" data-pay="' + o.id + '">' +
+                (o.paidAt ? 'Снять отметку' : 'Отметить оплату') + '</button>';
+            }
+            return '<div class="row"><div class="row-main">' + line + '</div>' +
+              (actions ? '<div class="row-actions">' + actions + '</div>' : '') + '</div>';
+          }).join('');
+        }
+
+        // Управление организатора. editForm скрываем всегда: организатор мог
+        // открыть правку у своей закупки и увидеть её в чужой (не своей).
+        dOwner.hidden = !d.isOwner;
+        editForm.hidden = true;
+        document.getElementById('dEdit').hidden = !d.isOwner;
+        if (d.isOwner) {
+          dStages.innerHTML = (STAGE_FLOW[p.status] || []).map(function (t) {
+            return '<button type="button" class="btn' + (t[0] === 'cancelled' ? '' : ' btn--solid') +
+              '" data-stage="' + t[0] + '">' + t[1] + '</button>';
+          }).join('');
+        }
+
+        // Заголовок «Участники» — всегда, как в show.php (и с пустым списком).
+        dOrdersHead.hidden = false;
+
+        detail.hidden = false;
+        window.scrollTo(0, detail.offsetTop - 60);
+      }
+
+      function openDetail(id) {
+        api(BASE + '/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Закупка не найдена.');
+            return;
+          }
+          renderDetail(res.data);
+          show('');
+        }).catch(function (e) {
+          if (!e || (!e.auth && !e.noHousehold)) show('Не удалось открыть закупку. Попробуйте позже.');
+        });
+      }
+      function reloadDetail() {
+        if (current && current.purchase) openDetail(current.purchase.id);
+      }
+
+      listEl.addEventListener('click', function (e) {
+        var card = e.target.closest && e.target.closest('.card[data-id]');
+        if (card) openDetail(Number(card.getAttribute('data-id')));
+      });
+      viewMine.addEventListener('click', function (e) {
+        var card = e.target.closest && e.target.closest('.card[data-id]');
+        if (card) openDetail(Number(card.getAttribute('data-id')));
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.d-close'), function (b) {
+        b.addEventListener('click', function () { detail.hidden = true; current = null; });
+      });
+
+      // Запись в закупку (порт PurchaseOrderController::place).
+      detail.addEventListener('submit', function (ev) {
+        if (ev.target.id !== 'joinForm') return;
+        ev.preventDefault();
+        var errEl = document.getElementById('jQtyErr');
+        errEl.hidden = true;
+        api(BASE + '/order/' + current.purchase.id, {
+          method: 'POST',
+          body: JSON.stringify({
+            qty: document.getElementById('jQty').value,
+            note: document.getElementById('jNote').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            flash(d.existed ? 'Ваша заявка обновлена.' : 'Вы записаны в закупку.');
+            reloadDetail();
+            refreshAll();
+            return;
+          }
+          if (d.errors && d.errors.qty) {
+            errEl.textContent = d.errors.qty;
+            errEl.hidden = false;
+            return;
+          }
+          flash(d.error || 'Не удалось записаться. Попробуйте позже.');
+        }).catch(function () {
+          flash('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+
+      detail.addEventListener('click', function (ev) {
+        // Выход из закупки (порт withdraw).
+        var leave = ev.target.closest && ev.target.closest('#jLeave');
+        if (leave) {
+          if (!window.confirm('Выйти из закупки?')) return;
+          api(BASE + '/withdraw/' + current.purchase.id, { method: 'POST', body: '{}' })
+            .then(function (res) {
+              if (res.ok && res.data && res.data.ok) {
+                flash('Вы вышли из закупки.');
+                reloadDetail();
+                refreshAll();
+              } else {
+                flash((res.data && res.data.error) || 'Не удалось выйти. Попробуйте позже.');
+              }
+            })
+            .catch(function () { flash('Сеть недоступна — попробуйте ещё раз.'); });
+          return;
+        }
+        // Отметка оплаты участника (порт togglePaid, только организатор).
+        var pay = ev.target.closest && ev.target.closest('[data-pay]');
+        if (pay) {
+          api(BASE + '/pay/' + current.purchase.id + '/' + pay.getAttribute('data-pay'),
+              { method: 'POST', body: '{}' })
+            .then(function (res) {
+              if (res.ok && res.data && res.data.ok) {
+                flash(res.data.paid ? 'Оплата отмечена.' : 'Отметка об оплате снята.');
+                reloadDetail();
+                refreshAll();
+              } else {
+                flash((res.data && res.data.error) || 'Не удалось отметить оплату.');
+              }
+            })
+            .catch(function () { flash('Сеть недоступна — попробуйте ещё раз.'); });
+          return;
+        }
+        // Смена стадии (порт setStatus, только организатор).
+        var stage = ev.target.closest && ev.target.closest('[data-stage]');
+        if (stage) {
+          var code = stage.getAttribute('data-stage');
+          if (code === 'cancelled' && !window.confirm('Отменить закупку?')) return;
+          api(BASE + '/status/' + current.purchase.id, {
+            method: 'POST',
+            body: JSON.stringify({ status: code })
+          }).then(function (res) {
+            var d = res.data || {};
+            if (res.ok && d.ok) {
+              flash(STAGE_MSG[code] || 'Стадия обновлена.');
+              reloadDetail();
+              refreshAll();
+            } else {
+              flash(d.error || 'Не удалось сменить стадию.');
+            }
+          }).catch(function () {
+            flash('Сеть недоступна — попробуйте ещё раз.');
+          });
+        }
+      });
+
+      // ── Правка и удаление организатором (порт update/delete) ──────────────
+      var zErrs = {
+        title: document.getElementById('zTitleErr'),
+        unit: document.getElementById('zUnitErr'),
+        price_per_unit: document.getElementById('zPriceErr'),
+        target_qty: document.getElementById('zTargetErr'),
+        deadline: document.getElementById('zDeadlineErr')
+      };
+      function showZErrors(errors) {
+        var any = false;
+        Object.keys(zErrs).forEach(function (k) {
+          var el = zErrs[k];
+          if (errors && errors[k]) { el.textContent = errors[k]; el.hidden = false; any = true; }
+          else el.hidden = true;
+        });
+        if (!any) flash('Не удалось сохранить. Попробуйте позже.');
+      }
+      document.getElementById('dEdit').addEventListener('click', function () {
+        var p = current.purchase;
+        document.getElementById('zTitle').value = p.title;
+        document.getElementById('zCat').value = p.category || '';
+        document.getElementById('zUnit').value = p.unit;
+        document.getElementById('zPrice').value = p.pricePerUnit !== null ? num(p.pricePerUnit) : '';
+        document.getElementById('zTarget').value = p.targetQty !== null ? num(p.targetQty) : '';
+        document.getElementById('zDeadline').value = p.deadline || '';
+        document.getElementById('zSupplier').value = p.supplier || '';
+        document.getElementById('zPickup').value = p.pickup || '';
+        document.getElementById('zNote').value = p.note || '';
+        Object.keys(zErrs).forEach(function (k) { zErrs[k].hidden = true; });
+        editForm.hidden = false;
+        document.getElementById('dEdit').hidden = true;
+      });
+      document.getElementById('editCancel').addEventListener('click', function () {
+        editForm.hidden = true;
+        document.getElementById('dEdit').hidden = false;
+      });
+      editForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        Object.keys(zErrs).forEach(function (k) { zErrs[k].hidden = true; });
+        api(BASE + '/update/' + current.purchase.id, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('zTitle').value,
+            category: document.getElementById('zCat').value,
+            unit: document.getElementById('zUnit').value,
+            pricePerUnit: document.getElementById('zPrice').value,
+            targetQty: document.getElementById('zTarget').value,
+            deadline: document.getElementById('zDeadline').value,
+            supplier: document.getElementById('zSupplier').value,
+            pickup: document.getElementById('zPickup').value,
+            note: document.getElementById('zNote').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            flash('Изменения сохранены.');
+            reloadDetail();
+            refreshAll();
+            return;
+          }
+          if (d.errors) { showZErrors(d.errors); return; }
+          flash(d.error || 'Не удалось сохранить. Попробуйте позже.');
+        }).catch(function () {
+          flash('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+      document.getElementById('dDelete').addEventListener('click', function () {
+        if (!window.confirm('Удалить закупку вместе с заявками участников?')) return;
+        api(BASE + '/delete/' + current.purchase.id, { method: 'POST', body: '{}' })
+          .then(function (res) {
+            if (res.ok) {
+              saveFlash('Закупка удалена.');
+              window.location.replace('/poselenie/zakupki/#moi');
+              return;
+            }
+            flash((res.data && res.data.error) || 'Не удалось удалить. Попробуйте позже.');
+          })
+          .catch(function () { flash('Сеть недоступна — попробуйте ещё раз.'); });
+      });
+
+      // ── Загрузка данных ───────────────────────────────────────────────────
+      function refreshBoard() {
+        api(BASE + '/board').then(function (res) {
+          if (!res.ok) return;
+          board = res.data || [];
+          renderBoard();
+          fillCategories();
+        }).catch(function () {});
+      }
+      // После записи/выхода/смены стадии перерисовываем и «Мои закупки»:
+      // иначе вкладка показывала бы устаревший состав до полной перезагрузки.
+      function refreshMine() {
+        api(BASE + '/mine').then(function (res) {
+          if (!res.ok) return;
+          mine = res.data;
+          renderMine();
+        }).catch(function () {});
+      }
+      function refreshAll() {
+        refreshBoard();
+        refreshMine();
+      }
+      function fillCategories() {
+        var seen = {};
+        var html = '';
+        board.forEach(function (p) {
+          var c = p.category || '';
+          if (!c || seen[c]) return;
+          seen[c] = true;
+          html += '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+        });
+        if (html) {
+          var cur = fcat.value;
+          fcat.innerHTML = '<option value="">Все категории</option>' + html;
+          fcat.value = cur;
+        }
+      }
+
+      Promise.all([api(BASE + '/board'), api(BASE + '/mine')]).then(function (res) {
+        var boardRes = res[0];
+        var mineRes = res[1];
+        if (boardRes.ok) {
+          board = boardRes.data || [];
+          renderBoard();
+          fillCategories();
+        } else if (boardRes.data && boardRes.data.error) {
+          show(boardRes.data.error);
+        }
+        if (mineRes.ok) {
+          mine = mineRes.data;
+          renderMine();
+          show('');
+        } else if (mineRes.data && mineRes.data.error) {
+          show(mineRes.data.error);
+        }
+        if (window.location.hash === '#moi') switchTab('mine');
+      }).catch(function (e) {
+        if (!e || (!e.auth && !e.noHousehold)) {
+          show('Не удалось загрузить раздел. Проверьте связь и попробуйте позже.');
+        }
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .sec { padding-top: 2rem; padding-bottom: 3rem; }
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.7rem;
+  }
+  .head h1 { font-size: var(--step-2); margin: 0; }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .sub { font-size: var(--step-1); margin: 1.4rem 0 0.5rem; }
+  .tabs { display: flex; gap: 0.5rem; margin-top: 1.1rem; }
+  .tab {
+    padding: 0.45rem 0.9rem; font: inherit; font-size: 0.95rem; color: var(--muted);
+    background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer;
+  }
+  .tab--on { color: inherit; font-weight: 700; background: var(--ground-2); }
+  .flash {
+    margin-top: 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  #secStatus { margin-top: 1rem; min-height: 1.4em; }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem; }
+  .filters input,
+  .filters select {
+    padding: 0.5rem 0.65rem; font: inherit; color: inherit;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--ground-2);
+  }
+  .filters input { flex: 1 1 14rem; }
+  .list { display: grid; gap: 0.6rem; margin-top: 1rem; }
+  .list :global(.card) {
+    display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+    padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--ground-2); cursor: pointer;
+  }
+  .list :global(.card-head) {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: space-between;
+  }
+  /* Scoped-селекторы не матчат динамический HTML (innerHTML без data-astro-cid):
+     бейджи стадий и прогресс живут в карточках (.list) и в #dInfo. */
+  .st,
+  .list :global(.st) {
+    font-size: 0.72rem; line-height: 1.5; padding: 0 0.45rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .st--free, .list :global(.st--free) { border-color: #7aa87a; color: #2f6b2f; }
+  .st--loan, .list :global(.st--loan) { border-color: #c9a227; color: #8a6d00; }
+  .st--maint, .list :global(.st--maint) { border-color: #d09090; color: #a33; }
+  .st--hidden, .list :global(.st--hidden) { opacity: 0.75; }
+  .list :global(.meta) { display: block; margin-top: 0.3rem; font-size: 0.88rem; color: var(--muted); }
+  .list :global(.bar),
+  #dInfo :global(.bar) {
+    margin-top: 0.45rem; height: 8px; border: 1px solid var(--line);
+    border-radius: 999px; background: var(--ground); overflow: hidden;
+  }
+  .list :global(.bar-fill),
+  #dInfo :global(.bar-fill) { display: block; height: 100%; background: #7aa87a; }
+  .list :global(.prog-text),
+  #dInfo :global(.prog-text) { margin-top: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+  .panel {
+    margin-top: 1.4rem; padding: 1rem 1rem 1.1rem; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .panel-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .panel h2 { font-size: var(--step-1); margin: 0; }
+  #dInfo { margin-top: 0.5rem; }
+  #dInfo :global(p) { margin: 0.4rem 0; }
+  #dInfo :global(.price) { font-size: var(--step-1); }
+  .list :global(.row) {
+    padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .list :global(.row-main) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+  .list :global(.row-actions) {
+    display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; margin-top: 0.5rem;
+  }
+  .list :global(.linkbtn) {
+    background: none; border: 0; padding: 0; font: inherit; font-size: 0.9rem;
+    color: var(--muted); text-decoration: underline; cursor: pointer;
+  }
+  /* #dJoin и его содержимое создаётся через innerHTML — нужен :global. */
+  #dJoin :global(.sub) { font-size: var(--step-1); margin: 1.4rem 0 0.5rem; }
+  #dJoin :global(.meta) { color: var(--muted); font-size: 0.95rem; }
+  #dJoin :global(.form label) { display: block; margin-top: 0.85rem; font-size: 0.95rem; color: var(--muted); }
+  #dJoin :global(.form input) {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground);
+  }
+  #dJoin :global(.actions) { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem; }
+  #dJoin :global(.err) { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  #dInfo :global(.meta) { color: var(--muted); font-size: 0.95rem; }
+  #dInfo :global(.err) { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .form label { display: block; margin-top: 0.85rem; font-size: 0.95rem; color: var(--muted); }
+  .form input,
+  .form textarea {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground);
+  }
+  .form textarea { resize: vertical; }
+  .two-col { display: flex; gap: 0.7rem; }
+  .two-col label { flex: 1 1 0; min-width: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

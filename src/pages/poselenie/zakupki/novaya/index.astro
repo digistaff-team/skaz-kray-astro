@@ -1,0 +1,199 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Новая закупка"
+  description="Открыть совместную закупку в «Сказочном Крае»."
+  noindex
+>
+  <div class="wrap form-page">
+    <h1>Новая закупка</h1>
+    <p class="meta">Одна закупка — один товар. Если берёте цемент и доски, откройте две:
+      так соседям понятно, к чему они присоединяются.</p>
+
+    <form id="form" class="form">
+      <label>Что закупаем <input type="text" id="title" maxlength="200" required /></label>
+      <p class="err" id="titleErr" hidden></p>
+
+      <label>Категория
+        <select id="cat">
+          <option value="">— выберите —</option>
+        </select>
+      </label>
+
+      <div class="two-col">
+        <label>Единица
+          <select id="unit">
+            <option>кг</option><option>шт</option><option>л</option>
+            <option>мешок</option><option>упаковка</option><option>м</option>
+            <option>м²</option><option>м³</option>
+          </select>
+        </label>
+        <label>Цена за единицу, ₽
+          <input type="text" id="price" inputmode="decimal" placeholder="например 450" />
+        </label>
+      </div>
+      <p class="err" id="unitErr" hidden></p>
+      <p class="err" id="priceErr" hidden></p>
+
+      <label>Сколько нужно набрать (цель)
+        <input type="text" id="target" inputmode="decimal" placeholder="например 100" />
+      </label>
+      <p class="err" id="targetErr" hidden></p>
+
+      <label>Собираем до <input type="date" id="deadline" /></label>
+      <p class="err" id="deadlineErr" hidden></p>
+
+      <label>Поставщик или ссылка на прайс <input type="text" id="supplier" maxlength="200" /></label>
+
+      <label>Где забирать <input type="text" id="pickup" maxlength="200" /></label>
+
+      <label>Описание и условия <textarea id="note" rows="4"></textarea></label>
+
+      <p class="meta hint">Фото добавим позже. Уведомления участникам о заказе и привозе
+        подключим вместе с ботом.</p>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--solid" id="submitBtn">Открыть закупку</button>
+        <a class="btn" href="/poselenie/zakupki/">Отменить</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/zakupki/">К доске закупок</a></p>
+  </div>
+
+  <!-- Порт purchase/form.php (без фото): категории — POPULAR_CATEGORIES
+       легаси + уже заведённые на доске; числа и дату валидирует сервер. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var POPULAR = ['Продукты', 'Стройматериалы', 'Одежда и обувь', 'Семена и саженцы', 'Корма', 'Хозтовары'];
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      // Категории для подсказки: ходовые + уникальные из уже открытых закупок.
+      fetch('/api/purchases/board', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.ok ? r.json() : null;
+        })
+        .then(function (list) {
+          var seen = {};
+          var html = '';
+          POPULAR.concat(Array.isArray(list) ? list.map(function (p) { return p.category || ''; }) : [])
+            .forEach(function (c) {
+              c = String(c || '').trim();
+              if (!c || seen[c]) return;
+              seen[c] = true;
+              html += '<option value="' + c.replace(/[&<>\"]/g, '') + '"></option>';
+            });
+          var sel = document.getElementById('cat');
+          if (sel && html) sel.insertAdjacentHTML('beforeend', html);
+        })
+        .catch(function () {});
+
+      // Цена и цель — только цифры с одним разделителем (как в легаси validate).
+      ['price', 'target'].forEach(function (id) {
+        var el = document.getElementById(id);
+        el.addEventListener('input', function () {
+          var v = el.value.replace(/[^\d.,]/g, '').replace(/,/g, '.');
+          var i = v.indexOf('.');
+          if (i !== -1) { v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, ''); }
+          if (v !== el.value) el.value = v;
+        });
+      });
+
+      var fieldErrs = {
+        title: document.getElementById('titleErr'),
+        unit: document.getElementById('unitErr'),
+        price_per_unit: document.getElementById('priceErr'),
+        target_qty: document.getElementById('targetErr'),
+        deadline: document.getElementById('deadlineErr')
+      };
+      function showErrors(errors) {
+        var any = false;
+        Object.keys(fieldErrs).forEach(function (k) {
+          var el = fieldErrs[k];
+          if (errors && errors[k]) { el.textContent = errors[k]; el.hidden = false; any = true; }
+          else el.hidden = true;
+        });
+        if (!any) {
+          fieldErrs.title.textContent = 'Не удалось открыть закупку. Попробуйте позже.';
+          fieldErrs.title.hidden = false;
+        }
+      }
+
+      document.getElementById('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        Object.keys(fieldErrs).forEach(function (k) { fieldErrs[k].hidden = true; });
+
+        fetch('/api/purchases/create', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({
+            title: document.getElementById('title').value,
+            category: document.getElementById('cat').value,
+            unit: document.getElementById('unit').value,
+            pricePerUnit: document.getElementById('price').value,
+            targetQty: document.getElementById('target').value,
+            deadline: document.getElementById('deadline').value,
+            supplier: document.getElementById('supplier').value,
+            pickup: document.getElementById('pickup').value,
+            note: document.getElementById('note').value
+          })
+        }).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+        }).then(function (res) {
+          if (!res) return;
+          var d = res.data || {};
+          if (res.status === 403 && d.reason === 'no_household') {
+            window.location.replace('/poselenie/moye-pomestie/vybor/');
+            return;
+          }
+          if (res.ok && d.ok) {
+            try {
+              window.sessionStorage.setItem('skazZakupkiFlash', 'Закупка открыта — соседи могут записываться.');
+            } catch (e) {}
+            window.location.replace('/poselenie/zakupki/#moi');
+            return;
+          }
+          btn.disabled = false;
+          showErrors(d.errors);
+        }).catch(function () {
+          btn.disabled = false;
+          fieldErrs.title.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          fieldErrs.title.hidden = false;
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .form-page { padding-top: 2rem; padding-bottom: 3rem; max-width: 60ch; }
+  .form-page h1 { font-size: var(--step-2); }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .form label { display: block; margin-top: 0.9rem; font-size: 0.95rem; color: var(--muted); }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .form textarea { resize: vertical; }
+  .two-col { display: flex; gap: 0.7rem; }
+  .two-col label { flex: 1 1 0; min-width: 0; }
+  .hint { margin-top: 0.4rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

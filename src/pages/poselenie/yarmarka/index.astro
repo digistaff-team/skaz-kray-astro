@@ -1,0 +1,438 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Товары и услуги соседей"
+  description="Внутрипоселенческий рынок «Сказочного Края»."
+  noindex
+>
+  <div class="wrap sec">
+    <div class="head">
+      <h1>Ярмарка поселения</h1>
+      <a class="btn btn--solid" href="/poselenie/yarmarka/novyy/">+ Моё объявление</a>
+    </div>
+    <p class="meta">
+      Товары и услуги соседей: домашнее, лишнее, услуги рук. Договаривайтесь
+      напрямую — контакты в карточке.
+    </p>
+
+    <nav class="tabs">
+      <button type="button" id="tabCatalog" class="tab tab--on">Витрина</button>
+      <button type="button" id="tabMine" class="tab">Моя витрина</button>
+    </nav>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="secStatus" class="meta" role="status">Загружаем…</p>
+
+    <div id="viewCatalog">
+      <form class="filters" id="filters" onsubmit="return false">
+        <input type="search" id="fq" placeholder="Что ищем: название, описание, сосед" aria-label="Поиск по витрине" autocomplete="off" />
+      </form>
+      <div id="grid" class="grid"></div>
+    </div>
+
+    <div id="viewMine" hidden>
+      <div id="myList" class="list"></div>
+    </div>
+
+    <!-- Карточка товара: показ + правка (порт product/show.php; отдельный URL
+         /yarmarka/{id} на статическом хостинге не собрать). -->
+    <section id="detail" class="panel" hidden>
+      <div class="panel-head">
+        <h2 id="dTitle"></h2>
+        <span id="dStatus" class="st"></span>
+      </div>
+      <div id="dInfo"></div>
+
+      <div class="actions">
+        <button type="button" id="dEdit" class="btn" hidden>Редактировать</button>
+        <button type="button" class="btn d-close">Закрыть</button>
+      </div>
+
+      <form id="editForm" class="form" hidden>
+        <label>Название <input type="text" id="eTitle" maxlength="200" required /></label>
+        <p class="err" id="eTitleErr" hidden></p>
+        <label>Описание <textarea id="eDesc" rows="5" required></textarea></label>
+        <p class="err" id="eDescErr" hidden></p>
+        <label>Цена, ₽ <input type="text" id="ePrice" inputmode="decimal" placeholder="например 500 или 500.50" /></label>
+        <p class="err" id="ePriceErr" hidden></p>
+        <label>Единица измерения
+          <select id="eUnit">
+            <option value="">— не нужна —</option>
+            <option>шт.</option><option>час</option><option>кг.</option><option>г.</option>
+            <option>л.</option><option>м.</option><option>м²</option><option>м³</option>
+            <option>день</option><option>комплект</option><option>упаковка</option>
+            <option>банка</option><option>пучок</option><option>услуга</option>
+          </select>
+        </label>
+        <label>Как с вами связаться <input type="text" id="eContact" maxlength="200" required /></label>
+        <p class="err" id="eContactErr" hidden></p>
+        <label>Кто видит
+          <select id="eVis">
+            <option value="residents">Только соседи (на витрине сразу)</option>
+            <option value="public">На сайте (после проверки редактором)</option>
+          </select>
+        </label>
+        <p class="meta">Фото добавим позже.</p>
+        <div class="actions">
+          <button type="submit" class="btn btn--solid">Сохранить</button>
+          <button type="button" class="btn d-close">Отмена</button>
+        </div>
+      </form>
+    </section>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var BASE = '/api/products';
+      var statusEl = document.getElementById('secStatus');
+      var flashEl = document.getElementById('flash');
+      var gridEl = document.getElementById('grid');
+      var fq = document.getElementById('fq');
+      var myList = document.getElementById('myList');
+      var detail = document.getElementById('detail');
+      var viewCatalog = document.getElementById('viewCatalog');
+      var viewMine = document.getElementById('viewMine');
+      var items = [];
+      var mine = [];
+      var current = null;
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&', '<': '<', '>': '>', '"': '"' }[c];
+        });
+      }
+      // Статус объявления: pending — на проверке, rejected — отклонено (с причиной).
+      function statusLabel(s) {
+        return s === 'pending' ? 'на проверке' : s === 'rejected' ? 'отклонено' : 'на витрине';
+      }
+      function statusCls(s) {
+        return s === 'published' ? 'st--free' : s === 'pending' ? 'st--loan' : 'st--maint';
+      }
+      function priceLine(p) {
+        if (!p.price) return '';
+        return p.price + ' ₽' + (p.unit ? ' / ' + p.unit : '');
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+          return r.json().then(function (d) {
+            if (r.status === 403 && d && d.reason === 'no_household') {
+              window.location.replace('/poselenie/moye-pomestie/vybor/');
+              return Promise.reject({ noHousehold: true });
+            }
+            return { status: r.status, ok: r.ok, data: d };
+          });
+        });
+      }
+
+      try {
+        var f = window.sessionStorage.getItem('skazYarmarkaFlash');
+        if (f) {
+          window.sessionStorage.removeItem('skazYarmarkaFlash');
+          flashEl.textContent = f;
+          flashEl.hidden = false;
+        }
+      } catch (e) {}
+
+      function switchTab(which) {
+        var mineOn = which === 'mine';
+        viewMine.hidden = !mineOn;
+        viewCatalog.hidden = mineOn;
+        document.getElementById('tabMine').classList.toggle('tab--on', mineOn);
+        document.getElementById('tabCatalog').classList.toggle('tab--on', !mineOn);
+        detail.hidden = true;
+      }
+      document.getElementById('tabCatalog').addEventListener('click', function () { switchTab('catalog'); });
+      document.getElementById('tabMine').addEventListener('click', function () {
+        switchTab('mine');
+        history.replaceState(null, '', '#moi');
+      });
+      if (window.location.hash === '#moi') switchTab('mine');
+
+      function renderCatalog() {
+        var q = (fq.value || '').trim().toLowerCase();
+        var shown = items.filter(function (p) {
+          if (!q) return true;
+          var hay = ((p.title || '') + ' ' + (p.description || '') + ' ' + (p.ownerName || '')).toLowerCase();
+          return hay.indexOf(q) !== -1;
+        });
+        if (!shown.length) {
+          gridEl.innerHTML = items.length
+            ? '<p class="meta">Ничего не нашлось. Попробуйте другой запрос.</p>'
+            : '<p class="meta">Витрина пуста. Будьте первым — <a href="/poselenie/yarmarka/novyy/">разместите объявление</a>.</p>';
+          return;
+        }
+        var html = '';
+        shown.forEach(function (p) {
+          html += '<button type="button" class="card" data-id="' + p.id + '">' +
+            '<div class="card-body"><strong>' + esc(p.title) + '</strong>' +
+            (priceLine(p) ? '<span class="price">' + esc(priceLine(p)) + '</span>' : '') +
+            '<span class="meta">' + esc(p.ownerName || '') + '</span></div></button>';
+        });
+        gridEl.innerHTML = html;
+      }
+      fq.addEventListener('input', renderCatalog);
+      gridEl.addEventListener('click', function (e) {
+        var card = e.target.closest && e.target.closest('.card[data-id]');
+        if (card) openDetail(Number(card.getAttribute('data-id')), false);
+      });
+      function openDetail(id, startEdit) {
+        api(BASE + '/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Товар не найден.');
+            return;
+          }
+          var d = res.data;
+          current = d;
+          document.getElementById('dTitle').textContent = d.product.title;
+          var st = document.getElementById('dStatus');
+          st.textContent = statusLabel(d.product.status);
+          st.className = 'st ' + statusCls(d.product.status);
+
+          var info = '';
+          if (priceLine(d.product)) info += '<p><strong>Цена:</strong> ' + esc(priceLine(d.product)) + '</p>';
+          info += '<p><strong>Продавец:</strong> ' + esc(d.ownerName) + '</p>';
+          info += '<p>' + esc(d.product.description).replace(/\n/g, '<br>') + '</p>';
+          info += '<p><strong>Контакты:</strong> ' + esc(d.product.contact) + '</p>';
+          if (d.isOwner && d.product.status === 'pending') {
+            info += '<p class="meta">Объявление на проверке — после неё появится на сайте (видно соседям сразу).</p>';
+          }
+          if (d.isOwner && d.product.status === 'rejected' && d.product.rejectReason) {
+            info += '<p class="err">Причина отказа: ' + esc(d.product.rejectReason) + '</p>';
+          }
+          document.getElementById('dInfo').innerHTML = info;
+          document.getElementById('dEdit').hidden = !d.isOwner;
+          document.getElementById('editForm').hidden = true;
+
+          if (startEdit && d.isOwner) showEditForm(d);
+          detail.hidden = false;
+          window.scrollTo(0, detail.offsetTop - 60);
+        }).catch(function (e) {
+          if (!e || (!e.auth && !e.noHousehold)) show('Не удалось открыть объявление. Попробуйте позже.');
+        });
+      }
+
+      function showEditForm(d) {
+        document.getElementById('eTitle').value = d.product.title;
+        document.getElementById('eDesc').value = d.product.description || '';
+        document.getElementById('ePrice').value = d.product.price || '';
+        document.getElementById('eUnit').value = d.product.unit || '';
+        document.getElementById('eContact').value = d.product.contact || '';
+        document.getElementById('eVis').value = d.product.visibility || 'residents';
+        ['eTitleErr', 'eDescErr', 'ePriceErr', 'eContactErr'].forEach(function (k) {
+          document.getElementById(k).hidden = true;
+        });
+        document.getElementById('editForm').hidden = false;
+        document.getElementById('dEdit').hidden = true;
+      }
+
+      function closeDetail() { detail.hidden = true; current = null; }
+      Array.prototype.forEach.call(document.querySelectorAll('.d-close'), function (b) {
+        b.addEventListener('click', closeDetail);
+      });
+      document.getElementById('dEdit').addEventListener('click', function () {
+        if (current) showEditForm(current);
+      });
+
+      function showErrors(errors) {
+        var map = { title: 'eTitleErr', description: 'eDescErr', price: 'ePriceErr', contact: 'eContactErr' };
+        var any = false;
+        Object.keys(map).forEach(function (k) {
+          var el = document.getElementById(map[k]);
+          if (errors && errors[k]) { el.textContent = errors[k]; el.hidden = false; any = true; }
+          else el.hidden = true;
+        });
+        if (!any) show('Не удалось сохранить. Попробуйте позже.');
+      }
+
+      document.getElementById('editForm').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!current) return;
+        api(BASE + '/update/' + current.product.id, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('eTitle').value,
+            description: document.getElementById('eDesc').value,
+            price: document.getElementById('ePrice').value,
+            unit: document.getElementById('eUnit').value,
+            contact: document.getElementById('eContact').value,
+            visibility: document.getElementById('eVis').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            try { window.sessionStorage.setItem('skazYarmarkaFlash', 'Изменения сохранены.'); } catch (e) {}
+            window.location.reload();
+            return;
+          }
+          showErrors(d.errors);
+        }).catch(function () {
+          show('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+      function renderMine() {
+        if (!mine.length) {
+          myList.innerHTML = '<p class="meta">Вы пока не размещали объявлений. ' +
+            '<a href="/poselenie/yarmarka/novyy/">Разместить первое</a></p>';
+          return;
+        }
+        var html = '';
+        mine.forEach(function (p) {
+          html += '<div class="row"><div class="row-main">' +
+            '<strong>' + esc(p.title) + '</strong>' +
+            (priceLine(p) ? ' <span class="price">' + esc(priceLine(p)) + '</span>' : '') +
+            ' <span class="st ' + statusCls(p.status) + '">' + statusLabel(p.status) + '</span>' +
+            (p.status === 'rejected' && p.rejectReason
+              ? '<p class="err">Причина отказа: ' + esc(p.rejectReason) + '</p>' : '') +
+            (p.status === 'pending'
+              ? '<p class="meta">Проверяется редактором — соседям уже видно, на сайте появится после одобрения.</p>'
+              : '') +
+            '</div><div class="row-actions">' +
+            '<button type="button" class="linkbtn" data-open-edit="' + p.id + '">Изменить</button>' +
+            '<button type="button" class="linkbtn danger" data-del="' + p.id + '">Удалить</button>' +
+            '</div></div>';
+        });
+        myList.innerHTML = html;
+      }
+
+      myList.addEventListener('click', function (e) {
+        var del = e.target.closest && e.target.closest('[data-del]');
+        if (del) {
+          if (!window.confirm('Удалить объявление?')) return;
+          api(BASE + '/delete/' + del.getAttribute('data-del'), { method: 'POST', body: '{}' })
+            .then(function () { window.location.reload(); })
+            .catch(function () { show('Не удалось удалить. Попробуйте позже.'); });
+          return;
+        }
+        var open = e.target.closest && e.target.closest('[data-open-edit]');
+        if (open) openDetail(Number(open.getAttribute('data-open-edit')), true);
+      });
+      Promise.all([api(BASE + '/index'), api(BASE + '/mine')]).then(function (res) {
+        var catalogRes = res[0];
+        var mineRes = res[1];
+        if (catalogRes.ok) {
+          items = catalogRes.data || [];
+          renderCatalog();
+        } else if (catalogRes.data && catalogRes.data.error) {
+          show(catalogRes.data.error);
+        }
+        if (mineRes.ok) {
+          mine = mineRes.data || [];
+          renderMine();
+          show('');
+        } else if (mineRes.data && mineRes.data.error) {
+          show(mineRes.data.error);
+        }
+      }).catch(function (e) {
+        if (!e || (!e.auth && !e.noHousehold)) {
+          show('Не удалось загрузить раздел. Проверьте связь и попробуйте позже.');
+        }
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .sec { padding-top: 2rem; padding-bottom: 3rem; }
+  .head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.7rem;
+  }
+  .head h1 { font-size: var(--step-2); margin: 0; }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .tabs { display: flex; gap: 0.5rem; margin-top: 1.1rem; }
+  .tab {
+    padding: 0.45rem 0.9rem; font: inherit; font-size: 0.95rem; color: var(--muted);
+    background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer;
+  }
+  .tab--on { color: inherit; font-weight: 700; background: var(--ground-2); }
+  .flash {
+    margin-top: 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  #secStatus { margin-top: 1rem; }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem; }
+  .filters input {
+    flex: 1 1 14rem; padding: 0.5rem 0.65rem; font: inherit; color: inherit;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--ground-2);
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.7rem; margin-top: 1rem;
+  }
+  .grid :global(.card) {
+    display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+    padding: 0; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--ground-2); cursor: pointer;
+  }
+  .grid :global(.card-body) { display: grid; gap: 0.2rem; padding: 0.7rem 0.75rem 0.8rem; }
+  .grid :global(.card-body strong) { line-height: 1.25; }
+  .grid :global(.price) { color: inherit; font-weight: 600; font-size: 0.92rem; }
+  .grid :global(.card-body .meta) { font-size: 0.85rem; color: var(--muted); }
+  /* Scoped-селекторы не матчат динамический HTML (innerHTML без data-astro-cid):
+     бейджи/цена/meta в «Моя витрина» и карточке создаются скриптом. */
+  .st,
+  .list :global(.st) {
+    font-size: 0.72rem; line-height: 1.5; padding: 0 0.45rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .st--free, .list :global(.st--free) { border-color: #7aa87a; color: #2f6b2f; }
+  .st--loan, .list :global(.st--loan) { border-color: #c9a227; color: #8a6d00; }
+  .st--maint, .list :global(.st--maint) { border-color: #d09090; color: #a33; }
+  .list { display: grid; gap: 0.6rem; margin-top: 1rem; }
+  .list :global(.row) {
+    padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .list :global(.row-main) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .list :global(.row-actions) {
+    display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 0.5rem;
+  }
+  .list :global(.linkbtn) {
+    background: none; border: 0; padding: 0; font: inherit; font-size: 0.9rem;
+    color: var(--muted); text-decoration: underline; cursor: pointer;
+  }
+  .list :global(.linkbtn.danger) { color: #a33; }
+  .list :global(.err) { color: #a33; font-size: 0.9rem; margin: 0.35rem 0 0; }
+  .list :global(.meta) { color: var(--muted); font-size: 0.88rem; }
+  .list :global(.price) { font-weight: 600; font-size: 0.92rem; }
+  #dInfo :global(.meta) { color: var(--muted); font-size: 0.95rem; }
+  #dInfo :global(.err) { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .panel {
+    margin-top: 1.4rem; padding: 1rem 1rem 1.1rem; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .panel-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .panel h2 { font-size: var(--step-1); margin: 0; }
+  .panel .st {
+    position: static; border: 1px solid var(--line); background: var(--ground);
+  }
+  #dInfo { margin-top: 0.7rem; }
+  #dInfo :global(p) { margin: 0.4rem 0; }
+  .form label { display: block; margin-top: 0.85rem; font-size: 0.95rem; color: var(--muted); }
+  .form input, .form textarea, .form select {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground);
+  }
+  .form textarea { resize: vertical; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

@@ -1,0 +1,221 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Новый товар или услуга"
+  description="Разместить объявление на ярмарке «Сказочного Края»."
+  noindex
+>
+  <div class="wrap form-page">
+    <h1>Новый товар или услуга</h1>
+
+    <form id="form" class="form">
+      <label>Название <input type="text" id="title" maxlength="200" required /></label>
+      <p class="err" id="titleErr" hidden></p>
+
+      <label>Описание <textarea id="desc" rows="5" required></textarea></label>
+      <p class="err" id="descErr" hidden></p>
+
+      <!-- Единица измерения имеет смысл только вместе с ценой: пока цена пуста,
+           селект скрыт (порт form.php: prodPriceRow/prodUnitBox). -->
+      <div class="price-row" id="priceRow">
+        <label class="price-value">Цена, ₽
+          <input type="text" id="price" inputmode="decimal" placeholder="например 500 или 500.50" />
+        </label>
+        <label class="price-unit" id="unitBox" hidden>Единица измерения
+          <select id="unit">
+            <option value="">— не нужна —</option>
+            <option>шт.</option><option>час</option><option>кг.</option><option>г.</option>
+            <option>л.</option><option>м.</option><option>м²</option><option>м³</option>
+            <option>день</option><option>комплект</option><option>упаковка</option>
+            <option>банка</option><option>пучок</option><option>услуга</option>
+          </select>
+        </label>
+      </div>
+      <p class="err" id="priceErr" hidden></p>
+
+      <label>Как связаться (телефон, мессенджер и т.п.)
+        <input type="text" id="contact" maxlength="200" required />
+      </label>
+      <p class="err" id="contactErr" hidden></p>
+
+      <label>Где разместить
+        <select id="vis">
+          <option value="residents">Только для соседей (на витрине сразу)</option>
+          <option value="public">На сайте (после проверки редактором)</option>
+        </select>
+      </label>
+
+      <p class="meta hint">Фото добавим позже. Товар «только для соседей» появится на витрине сразу,
+        «на сайте» — после проверки редактором.</p>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--solid" id="submitBtn">Разместить</button>
+        <a class="btn" href="/poselenie/yarmarka/">Отменить</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/yarmarka/">К витрине</a></p>
+  </div>
+
+  <!-- Порт product/form.php (без фото): подстановка контакта из карточки семьи
+       (телефон поместья + @username), фильтр цифр в цене, единица только при
+       цене; валидация — на сервере (title 2–200, contact 3–200, price-число). -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      // Контакт по умолчанию — порт defaultContact: телефон из карточки
+      // поместья + @username; поле остаётся редактируемым (это заготовка).
+      var contactEl = document.getElementById('contact');
+      var parts = [];
+      var pending = 2;
+      function done() {
+        if (--pending > 0) return;
+        if (!contactEl.value && parts.length) contactEl.value = parts.join(', ');
+      }
+      fetch('/api/profile', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.ok ? r.json() : null;
+        })
+        .then(function (d) {
+          var residents = (d && d.household && d.household.residents) || [];
+          for (var i = 0; i < residents.length; i++) {
+            var ph = String(residents[i].phone || '').trim();
+            if (ph) { parts.unshift(ph); break; }
+          }
+          done();
+        })
+        .catch(done);
+      fetch('/api/cabinet', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.ok ? r.json() : null;
+        })
+        .then(function (d) {
+          var u = d && d.family && d.family.telegramUsername;
+          if (u) parts.push('@' + String(u).replace(/^@+/, ''));
+          done();
+        })
+        .catch(done);
+
+      // Цена: буквы и знаки валюты выбрасываем при вводе, один разделитель
+      // копеек (как в form.php); единица изм. видна только при заполненной цене.
+      var price = document.getElementById('price');
+      var unitBox = document.getElementById('unitBox');
+      var priceRow = document.getElementById('priceRow');
+      function syncUnit() {
+        var on = price.value.trim() !== '';
+        unitBox.hidden = !on;
+        priceRow.classList.toggle('has-unit', on);
+      }
+      function digitsOnly() {
+        var v = price.value.replace(/[^\d.,]/g, '').replace(/,/g, '.');
+        var i = v.indexOf('.');
+        if (i !== -1) { v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, ''); }
+        if (v !== price.value) {
+          var pos = price.selectionStart, cut = price.value.length - v.length;
+          price.value = v;
+          if (pos !== null) { try { price.setSelectionRange(pos - cut, pos - cut); } catch (e) {} }
+        }
+      }
+      price.addEventListener('input', function () { digitsOnly(); syncUnit(); });
+      syncUnit();
+
+      var fieldErrs = {
+        title: document.getElementById('titleErr'),
+        description: document.getElementById('descErr'),
+        price: document.getElementById('priceErr'),
+        contact: document.getElementById('contactErr')
+      };
+      function showErrors(errors) {
+        var any = false;
+        Object.keys(fieldErrs).forEach(function (k) {
+          var el = fieldErrs[k];
+          if (errors && errors[k]) { el.textContent = errors[k]; el.hidden = false; any = true; }
+          else el.hidden = true;
+        });
+        if (!any) {
+          fieldErrs.contact.textContent = 'Не удалось разместить. Попробуйте позже.';
+          fieldErrs.contact.hidden = false;
+        }
+      }
+
+      document.getElementById('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        Object.keys(fieldErrs).forEach(function (k) { fieldErrs[k].hidden = true; });
+
+        fetch('/api/products/create', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({
+            title: document.getElementById('title').value,
+            description: document.getElementById('desc').value,
+            price: document.getElementById('price').value,
+            unit: document.getElementById('unit').value,
+            contact: document.getElementById('contact').value,
+            visibility: document.getElementById('vis').value
+          })
+        }).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+        }).then(function (res) {
+          if (!res) return;
+          var d = res.data || {};
+          if (res.status === 403 && d.reason === 'no_household') {
+            window.location.replace('/poselenie/moye-pomestie/vybor/');
+            return;
+          }
+          if (res.ok && d.ok) {
+            // Сообщение как в легаси create: public — на проверку, residents — сразу.
+            var msg = d.status === 'pending'
+              ? 'Товар отправлен на проверку — после неё появится в разделе Ярмарка на сайте.'
+              : 'Товар опубликован на внутрипоселенческом рынке (виден соседям).';
+            try { window.sessionStorage.setItem('skazYarmarkaFlash', msg); } catch (e) {}
+            window.location.replace('/poselenie/yarmarka/#moi');
+            return;
+          }
+          btn.disabled = false;
+          showErrors(d.errors);
+        }).catch(function () {
+          btn.disabled = false;
+          fieldErrs.contact.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          fieldErrs.contact.hidden = false;
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .form-page { padding-top: 2rem; padding-bottom: 3rem; max-width: 60ch; }
+  .form-page h1 { font-size: var(--step-2); }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .form label { display: block; margin-top: 0.9rem; font-size: 0.95rem; color: var(--muted); }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .form textarea { resize: vertical; }
+  .price-row { display: flex; gap: 0.7rem; align-items: flex-end; }
+  .price-row .price-value { flex: 1 1 auto; }
+  .price-row .price-unit { flex: 0 1 11rem; }
+  .price-row .price-unit[hidden] { display: none; }
+  .hint { margin-top: 0.4rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

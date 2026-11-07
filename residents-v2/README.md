@@ -41,7 +41,7 @@ npm run build        # prisma generate && tsc → dist/
 Push в `main` выкатывает оба Vercel-проекта (git-деплои включены). Конфиг API — `residents-v2/vercel.json`:
 
 - `buildCommand`: `prisma generate && tsc`, `installCommand`: `npm ci`;
-- функция `api/index.ts` (rewrite `/api/:path*`): `maxDuration` 30 с, `memory` 1024 МБ;
+- функция `api/index.ts` (rewrite `/api/:path*`): `maxDuration` 30 с;
 - CORS-заголовки: origin `https://skaz-kray.ru` с `Credentials`.
 
 Клиент сайта (страница входа `/poselenie/tg/`) зовёт API **same-origin**

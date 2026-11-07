@@ -83,10 +83,23 @@ app.use((_req: any, res: any) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Error handler
-app.use((err: Error, _req: any, res: any, _next: any) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+// Error handler: body-parser/http-errors кладут statusCode (400 у битого JSON),
+// пробрасываем его; 5xx остаются общими, чтобы не светить детали внутренностей.
+app.use((err: Error & { statusCode?: number; status?: number; expose?: boolean }, _req: any, res: any, _next: any) => {
+  const status = err.statusCode ?? err.status ?? 500;
+  if (status >= 500) {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+  // 4xx: отдаём сообщение только если оно помечено безопасным (expose) или своё
+  const message =
+    err.expose === true && typeof err.message === 'string'
+      ? err.message
+      : status === 400
+        ? 'Bad request'
+        : 'Request error';
+  res.status(status).json({ error: message });
 });
 
 // Локальный запуск (для dev-тестов на abconsult)

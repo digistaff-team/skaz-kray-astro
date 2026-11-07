@@ -1,73 +1,258 @@
 import { Router } from 'express';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { requireHousehold } from '../middleware/household';
+import { requireSection } from '../middleware/sections';
 import { db } from '../lib/db';
 
 const router = Router();
 
-// GET /poselenie/instrumenty
+// Гарды легаси (ToolController: requireHousehold('instrumenty') + RequiresSection).
+router.use(requireAuth, requireHousehold, requireSection('instrumenty'));
+
+// GET /api/tools/catalog — каталог (без скрытых), лёгкий ответ для клиента.
 router.get('/catalog', requireAuth, async (_req: AuthRequest, res) => {
   try {
     const tools = await db.tool.findMany({
       where: { status: { not: 'hidden' } },
-      include: { family: { include: { householdOwners: { include: { household: true } } } } },
+      include: { family: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(tools);
+    res.json(
+      tools.map((t) => ({
+        id: t.id,
+        name: t.name,
+        category: t.category,
+        description: t.description,
+        conditionNote: t.conditionNote,
+        terms: t.terms,
+        status: t.status,
+        familyId: t.familyId,
+        ownerName: t.family?.name ?? '',
+      })),
+    );
   } catch (err) {
     console.error('Tool catalog error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });
 
-// GET /poselenie/instrumenty/moi
-router.get('/mine', requireAuth, async (req: AuthRequest, res) => {
+// GET /api/tool/mine — порт ToolController::mine: мои инструменты (+ кто
+// держит), входящие займы на мои и мои займы.
+router.get('/mine', async (req: AuthRequest, res) => {
   try {
-    const tools = await db.tool.findMany({
-      where: { familyId: req.user!.familyId },
-      include: { loans: true },
-      orderBy: { createdAt: 'desc' },
+    const familyId = req.user!.familyId;
+    const [myTools, incoming, borrowings] = await Promise.all([
+      db.tool.findMany({
+        where: { familyId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          loans: {
+            where: { status: 'on_loan' },
+            include: { borrower: { select: { name: true } } },
+            take: 1,
+          },
+        },
+      }),
+      db.toolLoan.findMany({
+        where: { tool: { familyId }, status: { in: ['requested', 'on_loan'] } },
+        orderBy: { requestedAt: 'asc' },
+        include: {
+          tool: { select: { id: true, name: true } },
+          borrower: { select: { name: true } },
+        },
+      }),
+      db.toolLoan.findMany({
+        where: { borrowerId: familyId },
+        orderBy: { requestedAt: 'desc' },
+        include: {
+          tool: {
+            select: { id: true, name: true, family: { select: { name: true } } },
+          },
+        },
+      }),
+    ]);
+    res.json({
+      tools: myTools.map((t) => ({
+        id: t.id,
+        name: t.name,
+        category: t.category,
+        status: t.status,
+        holder: t.loans[0]?.borrower.name ?? null,
+      })),
+      incoming: incoming.map((l) => ({
+        id: l.id,
+        status: l.status,
+        toolId: l.toolId,
+        toolName: l.tool.name,
+        borrowerName: l.borrower.name,
+        dueDate: l.dueDate ? l.dueDate.toISOString().slice(0, 10) : null,
+        message: l.message,
+        requestedAt: l.requestedAt.toISOString(),
+      })),
+      borrowings: borrowings.map((l) => ({
+        id: l.id,
+        status: l.status,
+        toolId: l.toolId,
+        toolName: l.tool.name,
+        ownerName: l.tool.family?.name ?? null,
+        dueDate: l.dueDate ? l.dueDate.toISOString().slice(0, 10) : null,
+      })),
     });
-    res.json(tools);
   } catch (err) {
+    console.error('Tool mine error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });
 
-// POST /poselenie/instrumenty/novyy
-router.post('/create', requireAuth, async (req: AuthRequest, res) => {
+// GET /api/tool/:id — порт ToolController::show.
+router.get('/:id', async (req: AuthRequest, res) => {
   try {
-    const { name, category, description, conditionNote, terms } = req.body;
+    const id = Number(req.params.id);
+    const familyId = req.user!.familyId;
+    const tool = await db.tool.findUnique({
+      where: { id },
+      include: { family: { select: { id: true, name: true } } },
+    });
+    if (!tool) return res.status(404).json({ error: 'Инструмент не найден' });
+
+    const [active, historyRows] = await Promise.all([
+      db.toolLoan.findFirst({
+        where: { toolId: id, status: 'on_loan' },
+        include: { borrower: { select: { name: true } } },
+      }),
+      db.toolLoan.findMany({
+        where: { toolId: id },
+        orderBy: { requestedAt: 'desc' },
+        include: { borrower: { select: { name: true } } },
+      }),
+    ]);
+
+    const isOwner = tool.familyId === familyId;
+    const canRequest = !isOwner && tool.status === 'available' && !active;
+    res.json({
+      tool: {
+        id: tool.id,
+        name: tool.name,
+        category: tool.category,
+        description: tool.description,
+        conditionNote: tool.conditionNote,
+        terms: tool.terms,
+        status: tool.status,
+        familyId: tool.familyId,
+      },
+      ownerName: tool.family?.name ?? '',
+      active: active
+        ? {
+            borrowerName: active.borrower.name,
+            dueDate: active.dueDate ? active.dueDate.toISOString().slice(0, 10) : null,
+          }
+        : null,
+      isOwner,
+      canRequest,
+      history: isOwner
+        ? historyRows.map((l) => ({
+            id: l.id,
+            status: l.status,
+            borrowerName: l.borrower.name,
+            requestedAt: l.requestedAt.toISOString(),
+            returnCondition: l.returnCondition,
+          }))
+        : [],
+    });
+  } catch (err) {
+    console.error('Tool show error:', err);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
+/** Поля инструмента — порт ToolController::validate: name 2–200, category ≤80. */
+function toolFields(req: AuthRequest): {
+  data: {
+    name: string;
+    category: string;
+    description: string | null;
+    conditionNote: string | null;
+    terms: string | null;
+    status: 'available' | 'on_loan';
+  } | null;
+  errors: Record<string, string>;
+} {
+  const name = String(req.body?.name ?? '').trim().slice(0, 200);
+  const category = String(req.body?.category ?? '').trim().slice(0, 80);
+  const desc = String(req.body?.description ?? '').trim();
+  const cond = String(req.body?.conditionNote ?? req.body?.condition_note ?? '')
+    .trim()
+    .slice(0, 200);
+  const terms = String(req.body?.terms ?? '').trim().slice(0, 200);
+  const status = (req.body?.status ?? '') === 'on_loan' ? ('on_loan' as const) : ('available' as const);
+  const errors: Record<string, string> = {};
+  if (name.length < 2 || name.length > 200) errors.name = 'Название: 2–200 символов.';
+  if (category.length > 80) errors.category = 'Категория до 80 символов.';
+  if (Object.keys(errors).length > 0) return { data: null, errors };
+  return {
+    data: {
+      name,
+      category,
+      description: desc !== '' ? desc : null,
+      conditionNote: cond !== '' ? cond : null,
+      terms: terms !== '' ? terms : null,
+      status,
+    },
+    errors,
+  };
+}
+
+// POST /api/tool/create — порт ToolController::create (без фото).
+router.post('/create', async (req: AuthRequest, res) => {
+  try {
+    const { data, errors } = toolFields(req);
+    if (!data) return res.status(400).json({ ok: false, errors });
+
     const tool = await db.tool.create({
       data: {
         familyId: req.user!.familyId,
-        name,
-        category: category || '',
-        description: description || null,
-        conditionNote: conditionNote || null,
-        terms: terms || null,
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        conditionNote: data.conditionNote,
+        terms: data.terms,
+        status: data.status,
       },
     });
-    res.json({ id: tool.id, message: 'Инструмент добавлен' });
+    res.json({ ok: true, id: tool.id, status: tool.status });
   } catch (err) {
     console.error('Tool create error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });
 
-// POST /poselenie/instrumenty/{id}/redaktirovat
-router.post('/update/:id', requireAuth, async (req: AuthRequest, res) => {
+// POST /api/tool/update/:id — правка своего инструмента (белый список полей:
+// раньше req.body уходил в update целиком — можно было подменить familyId/status).
+router.post('/update/:id', async (req: AuthRequest, res) => {
   try {
-    const tool = await db.tool.findUnique({ where: { id: Number(req.params.id) } });
+    const id = Number(req.params.id);
+    const tool = await db.tool.findUnique({ where: { id } });
     if (!tool || tool.familyId !== req.user!.familyId) {
       return res.status(404).json({ error: 'Не найдено' });
     }
+    const { data, errors } = toolFields(req);
+    if (!data) return res.status(400).json({ ok: false, errors });
 
     const updated = await db.tool.update({
-      where: { id: tool.id },
-      data: req.body,
+      where: { id },
+      data: {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        conditionNote: data.conditionNote,
+        terms: data.terms,
+        status: data.status,
+        updatedAt: new Date(),
+      },
     });
-    res.json(updated);
+    res.json({ ok: true, id: updated.id, status: updated.status });
   } catch (err) {
+    console.error('Tool update error:', err);
     res.status(500).json({ error: 'Ошибка' });
   }
 });

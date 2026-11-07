@@ -1,0 +1,163 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Поделиться книгой"
+  description="Добавить книгу в общую полку поселения «Сказочный Край»."
+  noindex
+>
+  <div class="wrap form-page">
+    <h1>Поделиться книгой</h1>
+
+    <form id="form" class="form">
+      <label>Название <input type="text" id="title" maxlength="250" required /></label>
+      <p class="err" id="titleErr" hidden></p>
+
+      <label>Автор <input type="text" id="author" maxlength="200" /></label>
+
+      <label>Жанр <input type="text" id="genre" maxlength="80" list="genreList" /></label>
+      <p class="err" id="genreErr" hidden></p>
+      <datalist id="genreList"></datalist>
+
+      <label>Состояние книги
+        <select id="cond">
+          <option value="">— выберите —</option>
+          <option>Новая</option>
+          <option>Хорошее</option>
+          <option>Потрёпанная</option>
+        </select>
+      </label>
+
+      <label>Статус книги
+        <select id="status">
+          <option value="available">Книга свободна</option>
+          <option value="on_loan">Книга на руках</option>
+        </select>
+      </label>
+
+      <label>Аннотация / о чём книга <textarea id="desc" rows="5"></textarea></label>
+      <p class="meta hint">Фото обложки добавим позже. Книга появится в каталоге сразу, без модерации.</p>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--solid">Добавить книгу в каталог</button>
+        <a class="btn" href="/poselenie/knigi/">Отменить</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/knigi/">К каталогу</a></p>
+  </div>
+
+  <!-- Порт book/form.php (без фото): жанры для datalist подтягиваем из
+       каталога; валидацию делает сервер (title 2–250, genre ≤80). -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      fetch('/api/books/catalog', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .then(function (list) {
+          if (!Array.isArray(list)) return;
+          var seen = {};
+          var html = '';
+          list.forEach(function (b) {
+            var g = (b.genre || '').trim();
+            if (!g || seen[g]) return;
+            seen[g] = true;
+            html += '<option value="' + g.replace(/[&<>"]/g, '') + '"></option>';
+          });
+          document.getElementById('genreList').innerHTML = html;
+        })
+        .catch(function () {});
+
+      document.getElementById('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var titleErr = document.getElementById('titleErr');
+        var genreErr = document.getElementById('genreErr');
+        titleErr.hidden = true;
+        genreErr.hidden = true;
+
+        fetch('/api/books/create', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({
+            title: document.getElementById('title').value,
+            author: document.getElementById('author').value,
+            genre: document.getElementById('genre').value,
+            conditionNote: document.getElementById('cond').value,
+            status: document.getElementById('status').value,
+            description: document.getElementById('desc').value
+          })
+        }).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+        }).then(function (res) {
+          if (!res) return;
+          var d = res.data || {};
+          if (res.status === 403 && d.reason === 'no_household') {
+            window.location.replace('/poselenie/moye-pomestie/vybor/');
+            return;
+          }
+          if (res.ok && d.ok) {
+            try { window.sessionStorage.setItem('skazBookFlash', 'Книга добавлена в каталог.'); } catch (e) {}
+            window.location.replace('/poselenie/knigi/');
+            return;
+          }
+          if (d.errors && d.errors.title) { titleErr.textContent = d.errors.title; titleErr.hidden = false; }
+          if (d.errors && d.errors.genre) { genreErr.textContent = d.errors.genre; genreErr.hidden = false; }
+          if (!d.errors) {
+            genreErr.textContent = d.error || 'Не удалось добавить книгу. Попробуйте позже.';
+            genreErr.hidden = false;
+          }
+        }).catch(function () {
+          genreErr.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          genreErr.hidden = false;
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .form-page {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 60ch;
+  }
+  .form-page h1 { font-size: var(--step-2); }
+  .form label {
+    display: block;
+    margin-top: 0.9rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block;
+    width: 100%;
+    margin-top: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .form textarea { resize: vertical; }
+  .hint { margin-top: 0.4rem; font-size: 0.88rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

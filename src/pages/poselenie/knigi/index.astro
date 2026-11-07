@@ -1,0 +1,867 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Книги поселения"
+  description="Общая книжная полка жителей «Сказочного Края»."
+  noindex
+>
+  <div class="wrap sec">
+    <div class="head">
+      <h1>Книги поселения</h1>
+      <a class="btn btn--solid" href="/poselenie/knigi/novaya/">+ Добавить</a>
+    </div>
+    <p class="meta">
+      Общая книжная полка жителей: возьмите книгу почитать у соседа или
+      поделитесь своей. Бронь подтверждает владелец, после прочтения книга
+      возвращается ему.
+    </p>
+
+    <nav class="tabs">
+      <button type="button" id="tabCatalog" class="tab tab--on">Каталог</button>
+      <button type="button" id="tabMine" class="tab">Мои книги</button>
+    </nav>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="secStatus" class="meta" role="status">Загружаем…</p>
+
+    <div id="viewCatalog">
+      <form class="filters" id="filters" onsubmit="return false">
+        <input type="search" id="fq" placeholder="Название, автор или герой" aria-label="Поиск по книгам" autocomplete="off" />
+        <select id="fg" aria-label="Жанр"><option value="">Все жанры</option></select>
+        <select id="fs" aria-label="Статус">
+          <option value="">Любой статус</option>
+          <option value="available">свободна</option>
+          <option value="on_loan">на руках</option>
+          <option value="maintenance">недоступна</option>
+        </select>
+      </form>
+      <div id="grid" class="grid"></div>
+    </div>
+
+    <div id="viewMine" hidden>
+      <section>
+        <h2>Я делюсь</h2>
+        <div id="myList" class="list"></div>
+      </section>
+      <section>
+        <h2>Брони на мои книги</h2>
+        <div id="inList" class="list"></div>
+      </section>
+      <section>
+        <h2>Я взял(а) почитать</h2>
+        <div id="outList" class="list"></div>
+      </section>
+    </div>
+
+    <!-- Карточка книги: показ + бронь + правка (порт book/show.php; отдельный
+         URL /knigi/{id} на статическом хостинге не собрать). -->
+    <section id="detail" class="panel" hidden>
+      <div class="panel-head">
+        <h2 id="dTitle"></h2>
+        <span id="dStatus" class="st"></span>
+      </div>
+      <div id="dInfo"></div>
+
+      <div id="dOwner" hidden>
+        <p class="meta">Это ваша книга — управление и заявки в разделе «Мои книги».</p>
+        <div class="actions">
+          <button type="button" id="dEdit" class="btn">Редактировать</button>
+          <button type="button" class="btn d-close">Закрыть</button>
+        </div>
+        <div id="dHistory" hidden>
+          <h3>История броней</h3>
+          <ul id="dHistoryList" class="history"></ul>
+        </div>
+        <form id="editForm" class="form" hidden>
+          <label>Название <input type="text" id="eTitle" maxlength="250" required /></label>
+          <p class="err" id="eTitleErr" hidden></p>
+          <label>Автор <input type="text" id="eAuthor" maxlength="200" /></label>
+          <label>Жанр <input type="text" id="eGenre" maxlength="80" list="genreList" /></label>
+          <label>Состояние книги
+            <select id="eCond">
+              <option value="">— выберите —</option>
+              <option>Новая</option>
+              <option>Хорошее</option>
+              <option>Потрёпанная</option>
+            </select>
+          </label>
+          <label>Статус книги
+            <select id="eStatus">
+              <option value="available">Книга свободна</option>
+              <option value="on_loan">Книга на руках</option>
+            </select>
+          </label>
+          <label>Аннотация / о чём книга <textarea id="eDesc" rows="5"></textarea></label>
+          <p class="meta">Фото обложки добавим позже.</p>
+          <div class="actions">
+            <button type="submit" class="btn btn--solid">Сохранить</button>
+            <button type="button" class="btn d-close">Отмена</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="dRequest" hidden>
+        <h3>Забронировать книгу</h3>
+        <form id="resForm" class="form">
+          <label>На какой срок нужна (до какого числа), необязательно
+            <input type="date" id="rDue" />
+          </label>
+          <label>Сообщение владельцу (необязательно)
+            <textarea id="rMsg" rows="3" placeholder="Когда удобно забрать, на сколько…"></textarea>
+          </label>
+          <div class="actions">
+            <button type="submit" class="btn btn--solid">Забронировать</button>
+            <button type="button" class="btn d-close">Закрыть</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="dUnavailable" hidden>
+        <p class="meta" id="dUnavailText"></p>
+        <div class="actions"><button type="button" class="btn d-close">Закрыть</button></div>
+      </div>
+    </section>
+
+    <datalist id="genreList"></datalist>
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var BASE = '/api/books';
+      var statusEl = document.getElementById('secStatus');
+      var flashEl = document.getElementById('flash');
+      var gridEl = document.getElementById('grid');
+      var fq = document.getElementById('fq');
+      var fg = document.getElementById('fg');
+      var fsEl = document.getElementById('fs');
+      var myList = document.getElementById('myList');
+      var inList = document.getElementById('inList');
+      var outList = document.getElementById('outList');
+      var detail = document.getElementById('detail');
+      var viewCatalog = document.getElementById('viewCatalog');
+      var viewMine = document.getElementById('viewMine');
+      var books = [];
+      var mine = { books: [], incoming: [], borrowings: [] };
+      var current = null;
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function ruDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d)) return String(iso).slice(0, 10);
+        return d.toLocaleDateString('ru-RU');
+      }
+      function statusLabel(s) {
+        return s === 'on_loan' ? 'на руках' : s === 'maintenance' ? 'недоступна'
+          : s === 'hidden' ? 'скрыта' : 'свободна';
+      }
+      function statusCls(s) {
+        return s === 'available' ? 'st--free' : s === 'on_loan' ? 'st--loan'
+          : s === 'maintenance' ? 'st--maint' : 'st--hidden';
+      }
+      function loanLabel(s) {
+        return s === 'requested' ? 'ожидает решения' : s === 'on_loan' ? 'на руках'
+          : s === 'returned' ? 'возвращена' : s === 'declined' ? 'отклонена' : 'отменена';
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+          return r.json().then(function (d) {
+            // Нет привязанного поместья — разделы «Книги/Инструменты» закрыты
+            // (в легаси это был редирект на выбор поместья).
+            if (r.status === 403 && d && d.reason === 'no_household') {
+              window.location.replace('/poselenie/moye-pomestie/vybor/');
+              return Promise.reject({ noHousehold: true });
+            }
+            return { status: r.status, ok: r.ok, data: d };
+          });
+        });
+      }
+
+      try {
+        var f = window.sessionStorage.getItem('skazBookFlash');
+        if (f) {
+          window.sessionStorage.removeItem('skazBookFlash');
+          flashEl.textContent = f;
+          flashEl.hidden = false;
+        }
+      } catch (e) {}
+
+      function switchTab(which) {
+        var mineOn = which === 'mine';
+        viewMine.hidden = !mineOn;
+        viewCatalog.hidden = mineOn;
+        document.getElementById('tabMine').classList.toggle('tab--on', mineOn);
+        document.getElementById('tabCatalog').classList.toggle('tab--on', !mineOn);
+        detail.hidden = true;
+      }
+      document.getElementById('tabCatalog').addEventListener('click', function () { switchTab('catalog'); });
+      document.getElementById('tabMine').addEventListener('click', function () {
+        switchTab('mine');
+        history.replaceState(null, '', '#moi');
+      });
+      if (window.location.hash === '#moi') switchTab('mine');
+
+      function renderGenres() {
+        var seen = {};
+        var html = '<option value="">Все жанры</option>';
+        var list = '';
+        books.forEach(function (b) {
+          var g = (b.genre || '').trim();
+          if (!g || seen[g]) return;
+          seen[g] = true;
+          html += '<option value="' + esc(g) + '">' + esc(g) + '</option>';
+          list += '<option value="' + esc(g) + '"></option>';
+        });
+        fg.innerHTML = html;
+        document.getElementById('genreList').innerHTML = list;
+      }
+
+      function renderCatalog() {
+        var q = (fq.value || '').trim().toLowerCase();
+        var g = fg.value;
+        var st = fsEl.value;
+        var shown = books.filter(function (b) {
+          if (g && (b.genre || '') !== g) return false;
+          if (st && b.status !== st) return false;
+          if (q) {
+            var hay = ((b.title || '') + ' ' + (b.author || '') + ' ' + (b.genre || '')).toLowerCase();
+            if (hay.indexOf(q) === -1) return false;
+          }
+          return true;
+        });
+        if (!shown.length) {
+          gridEl.innerHTML = books.length
+            ? '<p class="meta">Ничего не нашлось. Попробуйте изменить параметры поиска.</p>'
+            : '<p class="meta">Каталог пуст. Будьте первым — <a href="/poselenie/knigi/novaya/">поделитесь книгой</a>.</p>';
+          return;
+        }
+        var html = '';
+        shown.forEach(function (b) {
+          html += '<button type="button" class="card" data-id="' + b.id + '">' +
+            '<div class="thumb"><span class="thumb-empty">📖</span>' +
+            '<span class="st ' + statusCls(b.status) + '">' + statusLabel(b.status) + '</span></div>' +
+            '<div class="card-body"><strong>' + esc(b.title) + '</strong>' +
+            (b.author ? '<span class="meta">' + esc(b.author) + '</span>' : '') +
+            (b.genre ? '<span class="cat">' + esc(b.genre) + '</span>' : '') +
+            '<span class="meta">Владелец: ' + esc(b.ownerName || '') + '</span></div></button>';
+        });
+        gridEl.innerHTML = html;
+      }
+      fq.addEventListener('input', renderCatalog);
+      fg.addEventListener('change', renderCatalog);
+      fsEl.addEventListener('change', renderCatalog);
+      gridEl.addEventListener('click', function (e) {
+        var card = e.target.closest && e.target.closest('.card[data-id]');
+        if (card) openDetail(Number(card.getAttribute('data-id')), false);
+      });
+
+      function hideDetailPanels() {
+        document.getElementById('dOwner').hidden = true;
+        document.getElementById('dRequest').hidden = true;
+        document.getElementById('dUnavailable').hidden = true;
+        document.getElementById('editForm').hidden = true;
+        document.getElementById('dHistory').hidden = true;
+      }
+
+      function openDetail(id, startEdit) {
+        api(BASE + '/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Книга не найдена.');
+            return;
+          }
+          var d = res.data;
+          current = d;
+          hideDetailPanels();
+          document.getElementById('dTitle').textContent = d.book.title;
+          var st = document.getElementById('dStatus');
+          st.textContent = statusLabel(d.book.status);
+          st.className = 'st ' + statusCls(d.book.status);
+
+          var info = '';
+          if (d.book.author) info += '<p><strong>Автор:</strong> ' + esc(d.book.author) + '</p>';
+          if (d.book.genre) info += '<p><strong>Жанр:</strong> ' + esc(d.book.genre) + '</p>';
+          info += '<p><strong>Владелец:</strong> ' + esc(d.ownerName) + '</p>';
+          if (d.book.conditionNote) info += '<p><strong>Состояние:</strong> ' + esc(d.book.conditionNote) + '</p>';
+          if (d.book.description) {
+            info += '<p>' + esc(d.book.description).replace(/\n/g, '<br>') + '</p>';
+          }
+          if (d.active) {
+            info += '<p class="meta">Сейчас у: ' + esc(d.active.borrowerName) +
+              (d.active.dueDate ? ' · до ' + esc(d.active.dueDate) : '') + '</p>';
+          }
+          document.getElementById('dInfo').innerHTML = info;
+
+          if (d.isOwner) {
+            document.getElementById('dOwner').hidden = false;
+            if (d.history && d.history.length) {
+              document.getElementById('dHistoryList').innerHTML = d.history.map(function (h) {
+                return '<li><span class="loan-st">' + loanLabel(h.status) + '</span> ' +
+                  esc(h.borrowerName) + ' <span class="meta">' + ruDate(h.requestedAt) +
+                  (h.returnCondition
+                    ? ' · возврат: ' + (h.returnCondition === 'broken' ? 'повреждена' : 'в порядке')
+                    : '') +
+                  '</span></li>';
+              }).join('');
+              document.getElementById('dHistory').hidden = false;
+            }
+            if (startEdit) showEditForm(d);
+          } else if (d.canRequest) {
+            document.getElementById('dRequest').hidden = false;
+          } else {
+            document.getElementById('dUnavailText').textContent =
+              d.book.status === 'available'
+                ? 'Книга уже забронирована.'
+                : 'Книга сейчас недоступна для брони (' + statusLabel(d.book.status) + ').';
+            document.getElementById('dUnavailable').hidden = false;
+          }
+          detail.hidden = false;
+          window.scrollTo(0, detail.offsetTop - 60);
+        }).catch(function (e) {
+          if (!e || (!e.auth && !e.noHousehold)) show('Не удалось открыть книгу. Попробуйте позже.');
+        });
+      }
+
+      function showEditForm(d) {
+        document.getElementById('eTitle').value = d.book.title;
+        document.getElementById('eAuthor').value = d.book.author || '';
+        document.getElementById('eGenre').value = d.book.genre || '';
+        document.getElementById('eCond').value = d.book.conditionNote || '';
+        document.getElementById('eStatus').value = d.book.status === 'on_loan' ? 'on_loan' : 'available';
+        document.getElementById('eDesc').value = d.book.description || '';
+        document.getElementById('eTitleErr').hidden = true;
+        document.getElementById('editForm').hidden = false;
+        document.getElementById('dHistory').hidden = true;
+      }
+
+      function closeDetail() { detail.hidden = true; current = null; }
+      Array.prototype.forEach.call(document.querySelectorAll('.d-close'), function (b) {
+        b.addEventListener('click', closeDetail);
+      });
+      document.getElementById('dEdit').addEventListener('click', function () {
+        if (current) showEditForm(current);
+      });
+
+      document.getElementById('editForm').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!current) return;
+        var errEl = document.getElementById('eTitleErr');
+        errEl.hidden = true;
+        api(BASE + '/update/' + current.book.id, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('eTitle').value,
+            author: document.getElementById('eAuthor').value,
+            genre: document.getElementById('eGenre').value,
+            conditionNote: document.getElementById('eCond').value,
+            status: document.getElementById('eStatus').value,
+            description: document.getElementById('eDesc').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            try { window.sessionStorage.setItem('skazBookFlash', 'Изменения сохранены.'); } catch (e) {}
+            window.location.reload();
+            return;
+          }
+          if (d.errors && d.errors.title) { errEl.textContent = d.errors.title; errEl.hidden = false; return; }
+          show(d.error || 'Не удалось сохранить. Попробуйте позже.');
+        }).catch(function () {
+          show('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+
+      document.getElementById('resForm').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!current) return;
+        api(BASE + '/reserve/' + current.book.id, {
+          method: 'POST',
+          body: JSON.stringify({
+            dueDate: document.getElementById('rDue').value || null,
+            message: document.getElementById('rMsg').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && (d.ok || d.id)) {
+            try {
+              window.sessionStorage.setItem(
+                'skazBookFlash',
+                'Бронь отправлена владельцу — решение он увидит в разделе «Мои книги».'
+              );
+            } catch (e) {}
+            window.location.reload();
+            return;
+          }
+          show(d.error || 'Не удалось отправить бронь. Попробуйте позже.');
+        }).catch(function () {
+          show('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+
+      function renderMine() {
+        var m = mine;
+
+        if (!m.books.length) {
+          myList.innerHTML = '<p class="meta">Вы пока не добавили книг. ' +
+            '<a href="/poselenie/knigi/novaya/">Поделиться книгой</a></p>';
+        } else {
+          myList.innerHTML = m.books.map(function (b) {
+            return '<div class="row"><div class="row-main">' +
+              '<button type="button" class="linklike" data-open="' + b.id + '"><strong>' +
+                esc(b.title) + '</strong></button>' +
+              (b.author ? ' <span class="meta">' + esc(b.author) + '</span>' : '') +
+              ' <span class="st ' + statusCls(b.status) + '">' + statusLabel(b.status) + '</span>' +
+              (b.status === 'on_loan' && b.holder
+                ? ' <span class="meta">у: ' + esc(b.holder) + '</span>' : '') +
+              '</div><div class="row-actions">' +
+              '<button type="button" class="linkbtn" data-open-edit="' + b.id + '">Редактировать</button>' +
+              (b.status !== 'on_loan'
+                ? '<button type="button" class="linkbtn" data-maint="' + b.id + '">' +
+                    (b.status === 'maintenance' ? 'Готова к выдаче' : 'Недоступна') + '</button>' +
+                  '<button type="button" class="linkbtn" data-hide="' + b.id + '">' +
+                    (b.status === 'hidden' ? 'Показать' : 'Скрыть') + '</button>'
+                : '') +
+              '<button type="button" class="linkbtn danger" data-del="' + b.id + '">Удалить</button>' +
+              '</div></div>';
+          }).join('');
+        }
+
+        var pending = m.incoming.filter(function (l) { return l.status === 'requested'; });
+        var onloan = m.incoming.filter(function (l) { return l.status === 'on_loan'; });
+        var ih = '';
+        if (!pending.length && !onloan.length) {
+          ih = '<p class="meta">Активных броней нет.</p>';
+        }
+        pending.forEach(function (l) {
+          ih += '<div class="row"><strong>' + esc(l.bookTitle) + '</strong> — бронь от ' +
+            esc(l.borrowerName) +
+            (l.dueDate ? ' <span class="meta">до ' + esc(l.dueDate) + '</span>' : '') +
+            (l.message ? '<p>' + esc(l.message).replace(/\n/g, '<br>') + '</p>' : '') +
+            '<div class="row-actions">' +
+            '<button type="button" class="btn" data-give="' + l.id + '">Выдать</button>' +
+            '<button type="button" class="linkbtn danger" data-decline="' + l.id + '">Отклонить</button>' +
+            '</div></div>';
+        });
+        onloan.forEach(function (l) {
+          ih += '<div class="row" data-loan="' + l.id + '"><strong>' + esc(l.bookTitle) +
+            '</strong> — на руках у ' + esc(l.borrowerName) +
+            (l.dueDate ? ' <span class="meta">до ' + esc(l.dueDate) + '</span>' : '') +
+            '<details class="return-box"><summary class="btn">Принять возврат</summary>' +
+            '<label>Состояние при возврате<select class="ret-cond">' +
+            '<option value="ok">в порядке</option>' +
+            '<option value="broken">повреждена → недоступна</option>' +
+            '</select></label>' +
+            '<label>Заметка (необязательно)<input type="text" class="ret-note" maxlength="500"></label>' +
+            '<button type="button" class="btn btn--solid" data-return="' + l.id +
+            '">Подтвердить возврат</button>' +
+            '</details></div>';
+        });
+        inList.innerHTML = ih;
+
+        if (!m.borrowings.length) {
+          outList.innerHTML = '<p class="meta">Вы пока ничего не брали.</p>';
+        } else {
+          outList.innerHTML = m.borrowings.map(function (l) {
+            return '<div class="row">' +
+              '<button type="button" class="linklike" data-open="' + l.bookId + '"><strong>' +
+                esc(l.bookTitle) + '</strong></button> ' +
+              '<span class="loan-st">' + loanLabel(l.status) + '</span> ' +
+              '<span class="meta">владелец: ' + esc(l.ownerName || '') +
+              (l.dueDate ? ' · до ' + esc(l.dueDate) : '') + '</span>' +
+              (l.status === 'requested'
+                ? '<div class="row-actions"><button type="button" class="linkbtn" data-cancel="' + l.id +
+                  '">Отменить бронь</button></div>'
+                : '') +
+              '</div>';
+          }).join('');
+        }
+      }
+
+      // Действия вкладки «Мои книги» — делегирование (карточки перерисовываются).
+      document.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        function idOf(attr) {
+          var el = t.closest('[' + attr + ']');
+          return Number(el.getAttribute(attr));
+        }
+        function post(path, body) {
+          return api(BASE + path, { method: 'POST', body: JSON.stringify(body || {}) });
+        }
+        function reload() { window.location.reload(); }
+        function fail(msg) { return function () { show(msg); }; }
+
+        var open = t.closest('[data-open]');
+        if (open) { switchTab('catalog'); openDetail(idOf('data-open'), false); return; }
+        var openEdit = t.closest('[data-open-edit]');
+        if (openEdit) { switchTab('catalog'); openDetail(idOf('data-open-edit'), true); return; }
+
+        var maint = t.closest('[data-maint]');
+        if (maint) {
+          post('/toggle-maintenance/' + idOf('data-maint')).then(reload)
+            .catch(fail('Не удалось изменить статус. Попробуйте позже.'));
+          return;
+        }
+        var hide = t.closest('[data-hide]');
+        if (hide) {
+          post('/toggle-hidden/' + idOf('data-hide')).then(reload)
+            .catch(fail('Не удалось изменить видимость. Попробуйте позже.'));
+          return;
+        }
+        var del = t.closest('[data-del]');
+        if (del) {
+          if (!window.confirm('Удалить книгу?')) return;
+          post('/delete/' + idOf('data-del')).then(reload)
+            .catch(fail('Не удалось удалить. Попробуйте позже.'));
+          return;
+        }
+        var give = t.closest('[data-give]');
+        if (give) {
+          post('/reservations/give/' + idOf('data-give')).then(reload)
+            .catch(fail('Не удалось выдать. Попробуйте позже.'));
+          return;
+        }
+        var decl = t.closest('[data-decline]');
+        if (decl) {
+          if (!window.confirm('Отклонить бронь?')) return;
+          post('/reservations/decline/' + idOf('data-decline')).then(reload)
+            .catch(fail('Не удалось отклонить. Попробуйте позже.'));
+          return;
+        }
+        var ret = t.closest('[data-return]');
+        if (ret) {
+          var row = ret.closest('[data-loan]');
+          post('/reservations/return/' + idOf('data-return'), {
+            condition: row.querySelector('.ret-cond').value,
+            note: row.querySelector('.ret-note').value
+          }).then(reload).catch(fail('Не удалось оформить возврат. Попробуйте позже.'));
+          return;
+        }
+        var cancel = t.closest('[data-cancel]');
+        if (cancel) {
+          if (!window.confirm('Отменить бронь?')) return;
+          post('/reservations/cancel/' + idOf('data-cancel')).then(reload)
+            .catch(fail('Не удалось отменить. Попробуйте позже.'));
+        }
+      });
+
+      api(BASE + '/catalog')
+        .then(function (c) {
+          if (c.ok) {
+            books = c.data || [];
+            renderGenres();
+            renderCatalog();
+          } else if (c && c.data && c.data.error) {
+            show(c.data.error);
+          }
+          return api(BASE + '/mine');
+        })
+        .then(function (m) {
+          if (!m) return;
+          if (m.ok) {
+            mine = m.data || { books: [], incoming: [], borrowings: [] };
+            renderMine();
+            show('');
+          } else if (m.data && m.data.error) {
+            show(m.data.error);
+          }
+        })
+        .catch(function (e) {
+          if (!e || (!e.auth && !e.noHousehold)) {
+            show('Не удалось загрузить раздел. Проверьте связь и попробуйте позже.');
+          }
+        });
+    })();
+  </script>
+</Base>
+
+<style>
+  .sec {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  .head h1 {
+    font-size: var(--step-2);
+    margin: 0;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+  }
+  .tab {
+    padding: 0.45rem 0.9rem;
+    font: inherit;
+    font-size: 0.95rem;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .tab--on {
+    color: inherit;
+    font-weight: 700;
+    background: var(--ground-2);
+  }
+  .flash {
+    margin-top: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  #secStatus {
+    margin-top: 1rem;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1rem;
+  }
+  .filters input {
+    flex: 1 1 12rem;
+    padding: 0.5rem 0.65rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .filters select {
+    padding: 0.5rem 0.5rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.7rem;
+    margin-top: 1rem;
+  }
+  .grid :global(.card) {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .grid :global(.thumb) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 5.5rem;
+    background: var(--ground);
+    border-bottom: 1px solid var(--line);
+  }
+  .grid :global(.thumb-empty) {
+    font-size: 2rem;
+    opacity: 0.6;
+  }
+  .grid :global(.st) {
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--ground-2);
+  }
+  .st--free { border-color: #7aa87a; color: #2f6b2f; }
+  .st--loan { border-color: #c9a227; color: #8a6d00; }
+  .st--maint { border-color: #d09090; color: #a33; }
+  .st--hidden { opacity: 0.7; }
+  .grid :global(.card-body) {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.55rem 0.6rem 0.65rem;
+  }
+  .grid :global(.card-body .cat) {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .grid :global(.card-body .meta) {
+    font-size: 0.85rem;
+  }
+  section {
+    margin-top: 1.6rem;
+  }
+  section h2 {
+    font-size: var(--step-1);
+  }
+  .list {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.7rem;
+  }
+  .list :global(.row) {
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+    font-size: 0.95rem;
+  }
+  .list :global(.row-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 0.5rem;
+  }
+  .list :global(.linklike) {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .list :global(.linkbtn) {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .list :global(.linkbtn.danger) { color: #a33; }
+  .list :global(.loan-st) {
+    font-size: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0 0.45rem;
+    color: var(--muted);
+  }
+  .list :global(.return-box) {
+    margin-top: 0.5rem;
+  }
+  .list :global(.return-box label) {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .list :global(.return-box select),
+  .list :global(.return-box input) {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.45rem 0.55rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .list :global(.return-box .btn) { margin-top: 0.6rem; }
+  .panel {
+    margin-top: 1.4rem;
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .panel h2 {
+    font-size: var(--step-1);
+    margin: 0;
+  }
+  .panel h3 {
+    font-size: 1rem;
+    margin: 1rem 0 0.4rem;
+  }
+  .panel .st {
+    position: static;
+    font-size: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0 0.5rem;
+    background: var(--ground);
+  }
+  #dInfo { margin-top: 0.7rem; }
+  #dInfo :global(p) { margin: 0.4rem 0; }
+  .history {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    font-size: 0.92rem;
+  }
+  .history :global(li) { padding: 0.3rem 0; border-top: 1px solid var(--line); }
+  .form label {
+    display: block;
+    margin-top: 0.8rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block;
+    width: 100%;
+    margin-top: 0.3rem;
+    padding: 0.5rem 0.6rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+  }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

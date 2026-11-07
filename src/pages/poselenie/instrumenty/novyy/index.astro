@@ -1,0 +1,150 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Добавить инструмент"
+  description="Добавить инструмент в общий арсенал «Сказочного Края»."
+  noindex
+>
+  <div class="wrap form-page">
+    <h1>Добавить инструмент</h1>
+
+    <form id="form" class="form">
+      <label>Название <input type="text" id="name" maxlength="200" required /></label>
+      <p class="err" id="nameErr" hidden></p>
+
+      <label>Категория <input type="text" id="category" maxlength="80" list="catList" /></label>
+      <p class="err" id="catErr" hidden></p>
+      <datalist id="catList"></datalist>
+
+      <label>Состояние
+        <select id="cond">
+          <option value="">— выберите —</option>
+          <option>Новое</option>
+          <option>Хорошее</option>
+          <option>Потрёпанное</option>
+        </select>
+      </label>
+
+      <label>Статус
+        <select id="status">
+          <option value="available">Инструмент свободен</option>
+          <option value="on_loan">Инструмент на руках</option>
+        </select>
+      </label>
+
+      <label>Условия использования <input type="text" id="terms" maxlength="200" placeholder="напр. вернуть до субботы" /></label>
+
+      <label>Описание <textarea id="desc" rows="4"></textarea></label>
+      <p class="meta hint">Фото добавим позже. Инструмент появится в каталоге сразу, без модерации.</p>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--solid">Добавить в каталог</button>
+        <a class="btn" href="/poselenie/instrumenty/">Отменить</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/instrumenty/">К каталогу</a></p>
+  </div>
+
+  <!-- Порт tool/form.php (без фото): категории для datalist — из каталога,
+       валидация name 2–200 / category ≤80 — на сервере. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      fetch('/api/tools/catalog', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .then(function (list) {
+          if (!Array.isArray(list)) return;
+          var seen = {};
+          var html = '';
+          list.forEach(function (t) {
+            var c = (t.category || '').trim();
+            if (!c || seen[c]) return;
+            seen[c] = true;
+            html += '<option value="' + c.replace(/[&<>"]/g, '') + '"></option>';
+          });
+          document.getElementById('catList').innerHTML = html;
+        })
+        .catch(function () {});
+
+      document.getElementById('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var nameErr = document.getElementById('nameErr');
+        var catErr = document.getElementById('catErr');
+        nameErr.hidden = true;
+        catErr.hidden = true;
+
+        fetch('/api/tools/create', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({
+            name: document.getElementById('name').value,
+            category: document.getElementById('category').value,
+            conditionNote: document.getElementById('cond').value,
+            status: document.getElementById('status').value,
+            terms: document.getElementById('terms').value,
+            description: document.getElementById('desc').value
+          })
+        }).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+        }).then(function (res) {
+          if (!res) return;
+          var d = res.data || {};
+          if (res.status === 403 && d.reason === 'no_household') {
+            window.location.replace('/poselenie/moye-pomestie/vybor/');
+            return;
+          }
+          if (res.ok && d.ok) {
+            try {
+              window.sessionStorage.setItem('skazToolFlash', 'Инструмент добавлен в каталог.');
+            } catch (e) {}
+            window.location.replace('/poselenie/instrumenty/');
+            return;
+          }
+          if (d.errors && d.errors.name) { nameErr.textContent = d.errors.name; nameErr.hidden = false; }
+          if (d.errors && d.errors.category) { catErr.textContent = d.errors.category; catErr.hidden = false; }
+          if (!d.errors) {
+            catErr.textContent = d.error || 'Не удалось добавить инструмент. Попробуйте позже.';
+            catErr.hidden = false;
+          }
+        }).catch(function () {
+          catErr.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          catErr.hidden = false;
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .form-page { padding-top: 2rem; padding-bottom: 3rem; max-width: 60ch; }
+  .form-page h1 { font-size: var(--step-2); }
+  .form label { display: block; margin-top: 0.9rem; font-size: 0.95rem; color: var(--muted); }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block; width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem;
+    font: inherit; color: inherit; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--ground-2);
+  }
+  .form textarea { resize: vertical; }
+  .hint { margin-top: 0.4rem; font-size: 0.88rem; }
+  .err { color: #a33; font-size: 0.92rem; margin: 0.3rem 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.2rem; }
+  .meta { color: var(--muted); font-size: 0.95rem; }
+  .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+</style>

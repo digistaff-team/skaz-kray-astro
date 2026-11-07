@@ -1,0 +1,166 @@
+---
+import Base from '../../../../layouts/Base.astro';
+---
+<Base
+  title="Новая запись в дневнике"
+  description="Запись в дневник поместья поселения «Сказочный Край»."
+  noindex
+>
+  <div class="wrap diary-form">
+    <h1>Новая запись в дневнике</h1>
+
+    <form id="form" class="form">
+      <label>
+        Заголовок
+        <input type="text" id="title" name="title" required maxlength="200" />
+      </label>
+      <p class="err" id="titleErr" hidden></p>
+
+      <label>
+        Текст записи
+        <textarea id="body" name="body" rows="12" required></textarea>
+      </label>
+      <p class="err" id="bodyErr" hidden></p>
+
+      <label>
+        Кто видит эту запись
+        <select id="visibility" name="visibility">
+          <option value="private">Только я</option>
+          <option value="residents" selected>Только соседи</option>
+          <option value="public">Все на сайте</option>
+        </select>
+      </label>
+      <p class="meta hint">
+        «Только я» — видна только вам; «Только соседи» — сразу в ленте дневников
+        поселения; «Все на сайте» — после проверки редактором попадёт и на
+        внешний сайт. Фото добавим позже.
+      </p>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--solid" id="submit">Отправить</button>
+        <a class="btn" href="/poselenie/dnevniki/">Отменить</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/dnevniki/">К списку записей</a></p>
+  </div>
+
+  <!-- Новая запись — порт residents/templates/diary/form.php (без фото):
+       title 2–200 и непустой текст проверяет сервер; private/residents
+       публикуются сразу, public уходит редактору (pending). -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      document.getElementById('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var titleErr = document.getElementById('titleErr');
+        var bodyErr = document.getElementById('bodyErr');
+        titleErr.hidden = true;
+        bodyErr.hidden = true;
+
+        fetch('/api/diary/create', {
+          method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify({
+            title: document.getElementById('title').value,
+            body: document.getElementById('body').value,
+            visibility: document.getElementById('visibility').value
+          })
+        }).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+          return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+        }).then(function (res) {
+          if (!res) return;
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            try {
+              window.sessionStorage.setItem(
+                'skazDiaryFlash',
+                d.status === 'pending'
+                  ? 'Запись отправлена на проверку редактору.'
+                  : 'Запись опубликована в ленте дневников поселения.'
+              );
+            } catch (e) {}
+            window.location.replace('/poselenie/dnevniki/');
+            return;
+          }
+          var errs = d.errors || {};
+          if (errs.title) { titleErr.textContent = errs.title; titleErr.hidden = false; }
+          if (errs.body) { bodyErr.textContent = errs.body; bodyErr.hidden = false; }
+          if (!errs.title && !errs.body) {
+            bodyErr.textContent = d.error || 'Не удалось сохранить запись. Попробуйте позже.';
+            bodyErr.hidden = false;
+          }
+        }).catch(function () {
+          bodyErr.textContent = 'Сеть недоступна — попробуйте ещё раз.';
+          bodyErr.hidden = false;
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .diary-form {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 64ch;
+  }
+  .diary-form h1 {
+    font-size: var(--step-2);
+  }
+  .form label {
+    display: block;
+    margin-top: 0.9rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .form textarea {
+    resize: vertical;
+  }
+  .hint {
+    margin-top: 0.4rem;
+    font-size: 0.88rem;
+  }
+  .err {
+    color: #a33;
+    font-size: 0.92rem;
+    margin: 0.3rem 0;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+</style>

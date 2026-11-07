@@ -1,0 +1,385 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Наши соседи"
+  description="Справочник жителей поселения «Сказочный Край»."
+  noindex
+>
+  <div class="wrap dir">
+    <h1>Наши соседи</h1>
+    <p class="meta" id="dirStats"></p>
+
+    <form class="filters" id="dirSearch" role="search" onsubmit="return false">
+      <input
+        type="search"
+        id="q"
+        placeholder="Имя, фамилия, навык, поляна или город"
+        aria-label="Поиск по соседям"
+        enterkeyhint="search"
+        autocomplete="off"
+      />
+    </form>
+
+    <p class="meta" id="dirStatus" role="status">Загружаем справочник…</p>
+    <div id="dirList" class="glades" hidden></div>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <!-- Справочник «Наши соседи» — порт residents/directory.php + _glade_body.php:
+       поляны → поместья → жители; жители только у привязанных поместий (ПДн
+       отдаёт API), поиск по поляне/названию/имени/навыку/городу. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var statusEl = document.getElementById('dirStatus');
+      var statsEl = document.getElementById('dirStats');
+      var listEl = document.getElementById('dirList');
+      var qEl = document.getElementById('q');
+      var allGlades = [];
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function plural(n, one, few, many) {
+        var n10 = n % 10, n100 = n % 100;
+        if (n10 === 1 && n100 !== 11) return one;
+        if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return few;
+        return many;
+      }
+      // Имя поляны без номера: «(1) Обережная» -> «Обережная» (как в claim.php).
+      function gladeName(g) {
+        g = String(g || '').trim();
+        var m = /^\((\d+)\)\s*(.+)$/.exec(g);
+        if (m) return m[2].trim();
+        return g !== '' ? g : 'Без поляны';
+      }
+      // Ссылка на VK: в таблице «vk.com/xxx» или «id123» — приводим к URL.
+      function vkUrl(v) {
+        v = String(v || '').trim();
+        if (!v) return '';
+        if (/^https?:\/\//i.test(v)) return v;
+        return 'https://' + v.replace(/^\/+/, '');
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        opts.headers = authHeaders();
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) {
+            window.location.replace('/poselenie/tg/');
+            return Promise.reject({ auth: true });
+          }
+          return r.json().then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
+        });
+      }
+
+      // Поиск — порт matches(): поместье остаётся, если совпадение есть у него
+      // самого (поляна/название/заголовок) или любого из его жителей.
+      function matches(r, needle) {
+        var hay = [r.glade, r.estateName, r.title];
+        r.people.forEach(function (p) {
+          hay.push(p.fullName, p.skills, p.communityRole, p.hometown);
+        });
+        return hay.some(function (f) { return f && f.toLowerCase().indexOf(needle) !== -1; });
+      }
+
+      function render(glades, searching) {
+        if (!glades.length) {
+          listEl.innerHTML = '';
+          listEl.hidden = true;
+          show(searching ? 'Ничего не найдено. Попробуйте другой запрос.' : 'Справочник пока пуст.');
+          return;
+        }
+        var html = '';
+        glades.forEach(function (g) {
+          var open = searching;
+          html += '<section class="glade' + (open ? ' glade--open' : '') + '">' +
+            '<button type="button" class="glade-head" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+              '<span class="glade-name">Поляна ' + esc(gladeName(g.name)) + ' (' + g.num + ')</span>' +
+              '<span class="glade-count">' + g.households.length + ' ' +
+                plural(g.households.length, 'участок', 'участка', 'участков') + '</span>' +
+              '<span class="glade-chevron" aria-hidden="true"></span>' +
+            '</button><div class="glade-body">';
+          g.households.forEach(function (h) {
+            var plotMeta = h.plot ? 'участок ' + g.num + '-' + esc(h.plot) : '';
+            // Без жителей — статичная плашка (ПДн непривязанных не раскрываем).
+            if (!h.people.length) {
+              html += '<div class="card card--static"><b class="card-name">' + esc(h.title) + '</b>' +
+                (plotMeta ? '<div class="meta">' + plotMeta + '</div>' : '') + '</div>';
+              return;
+            }
+            html += '<section class="hh"><button type="button" class="hh-head" aria-expanded="false">' +
+              '<span class="hh-title"><b class="card-name">' + esc(h.title) + '</b>' +
+              (plotMeta ? '<span class="meta">' + plotMeta + '</span>' : '') + '</span>' +
+              '<span class="hh-count">' + h.people.length + ' ' +
+                plural(h.people.length, 'житель', 'жителя', 'жителей') + '</span>' +
+              '<span class="glade-chevron" aria-hidden="true"></span>' +
+              '</button><ul class="people">';
+            h.people.forEach(function (p) {
+              html += '<li class="person"><b>' + esc(p.fullName) + '</b>';
+              if (p.tgUsername) {
+                html += ' <a class="tg-badge" href="https://t.me/' + esc(p.tgUsername) + '">Tg</a>';
+              }
+              var meta = [];
+              if (p.phone) {
+                meta.push('<a href="tel:' + esc(String(p.phone).replace(/[^\d+]/g, '')) + '">' + esc(p.phone) + '</a>');
+              }
+              if (p.vk) {
+                meta.push('<a href="' + esc(vkUrl(p.vk)) + '" target="_blank" rel="noopener">VK</a>');
+              }
+              if (p.skills) meta.push(esc(p.skills));
+              if (p.communityRole) meta.push(esc(p.communityRole));
+              if (p.hometown) meta.push('г. ' + esc(p.hometown));
+              if (p.residence) meta.push(esc(p.residence));
+              if (meta.length) html += '<div class="meta">' + meta.join(' · ') + '</div>';
+              html += '</li>';
+            });
+            if (h.cars.length) {
+              html += '<li class="asset"><div class="meta"><b>Автомобили поместья:</b></div>' +
+                h.cars.map(function (c) {
+                  return '<div class="asset-row"><span>' + esc(c.title) +
+                    (c.plate ? ' (' + esc(c.plate) + ')' : '') + '</span>' +
+                    (c.note ? '<span class="meta">' + esc(c.note) + '</span>' : '') + '</div>';
+                }).join('') + '</li>';
+            }
+            if (h.pets.length) {
+              html += '<li class="asset"><div class="meta"><b>Питомцы поместья:</b></div>' +
+                h.pets.map(function (p) {
+                  return '<div class="asset-row"><span>' + esc(p.name) +
+                    (p.kind ? ' (' + esc(p.kind) + ')' : '') + '</span>' +
+                    (p.note ? '<span class="meta">' + esc(p.note) + '</span>' : '') + '</div>';
+                }).join('') + '</li>';
+            }
+            html += '</ul></section>';
+          });
+          html += '</div></section>';
+        });
+        listEl.innerHTML = html;
+        listEl.hidden = false;
+        show('');
+      }
+
+      function applyFilter() {
+        var needle = (qEl.value || '').trim().toLowerCase();
+        var filtered = needle
+          ? allGlades.map(function (g) {
+              return {
+                key: g.key, name: g.name, num: g.num,
+                households: g.households.filter(function (h) { return matches(h, needle); })
+              };
+            }).filter(function (g) { return g.households.length > 0; })
+          : allGlades;
+        if (needle) {
+          var found = filtered.reduce(function (s, g) { return s + g.households.length; }, 0);
+          show('Найдено: ' + found + ' ' + plural(found, 'поместье', 'поместья', 'поместий'));
+        }
+        render(filtered, needle !== '');
+      }
+
+      listEl.addEventListener('click', function (e) {
+        var gh = e.target.closest && e.target.closest('.glade-head');
+        if (gh) {
+          var open = gh.closest('.glade').classList.toggle('glade--open');
+          gh.setAttribute('aria-expanded', open ? 'true' : 'false');
+          return;
+        }
+        var hh = e.target.closest && e.target.closest('.hh-head');
+        if (hh) {
+          var openH = hh.closest('.hh').classList.toggle('hh--open');
+          hh.setAttribute('aria-expanded', openH ? 'true' : 'false');
+        }
+      });
+      qEl.addEventListener('input', applyFilter);
+
+      api('/api/residents/directory').then(function (res) {
+        if (!res.ok) {
+          show((res.data && res.data.error) || 'Не удалось загрузить справочник. Попробуйте позже.');
+          return;
+        }
+        var d = res.data || {};
+        allGlades = d.glades || [];
+        if (d.stats) {
+          statsEl.textContent =
+            d.stats.households + ' ' + plural(d.stats.households, 'поместье', 'поместья', 'поместий') +
+            ' · ' + d.stats.people + ' ' + plural(d.stats.people, 'житель', 'жителя', 'жителей');
+        }
+        render(allGlades, false);
+      }).catch(function (e) {
+        if (!e || !e.auth) show('Не удалось загрузить справочник. Проверьте связь и попробуйте позже.');
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .dir {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+  }
+  .dir h1 {
+    font-size: var(--step-2);
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  #dirStats {
+    margin-top: 0.5rem;
+  }
+  .filters {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+  .filters input {
+    flex: 1;
+    padding: 0.55rem 0.7rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  #dirStatus {
+    margin-top: 1.1rem;
+  }
+  .glades {
+    margin-top: 1rem;
+  }
+  .glades :global(.glade) {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 0.7rem;
+    overflow: hidden;
+    background: var(--ground-2);
+  }
+  .glades :global(.glade-head),
+  .glades :global(.hh-head) {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    background: none;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .glades :global(.glade-name),
+  .glades :global(.hh-title b) {
+    font-weight: 700;
+  }
+  .glades :global(.glade-count),
+  .glades :global(.hh-count) {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .glades :global(.hh-count) {
+    margin-left: auto;
+  }
+  .glades :global(.glade-chevron) {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    flex: none;
+  }
+  .glades :global(.glade--open > .glade-head .glade-chevron),
+  .glades :global(.hh--open > .hh-head .glade-chevron) {
+    transform: rotate(225deg);
+  }
+  .glades :global(.glade-body) {
+    display: none;
+    padding: 0 0.7rem 0.7rem;
+    gap: 0.6rem;
+  }
+  .glades :global(.glade--open .glade-body) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  .glades :global(.card),
+  .glades :global(.hh) {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .glades :global(.card) {
+    padding: 0.7rem 0.75rem;
+  }
+  .glades :global(.card--static) {
+    opacity: 0.75;
+  }
+  .glades :global(.card-name) {
+    display: block;
+    line-height: 1.25;
+  }
+  .glades :global(.hh-head) {
+    padding: 0.7rem 0.75rem;
+  }
+  .glades :global(.hh-title) {
+    display: block;
+  }
+  .glades :global(.hh-title .meta) {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+  }
+  .glades :global(.people) {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 0 0.75rem 0.75rem;
+  }
+  .glades :global(.hh--open .people) {
+    display: block;
+  }
+  .glades :global(.person) {
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .glades :global(.person .meta),
+  .glades :global(.asset .meta) {
+    font-size: 0.88rem;
+  }
+  .glades :global(.tg-badge) {
+    display: inline-block;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    padding: 0 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    text-decoration: none;
+    vertical-align: middle;
+  }
+  .glades :global(.asset) {
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .glades :global(.asset-row) {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 0.92rem;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+</style>

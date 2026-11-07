@@ -37,7 +37,7 @@ import Base from '../../layouts/Base.astro';
       // которые уже есть на Astro-сайте; остальные рисуем с бейджем «скоро»,
       // чтобы не вести в 404. Раздел без строки в app_sections не показывается.
       var TILES = [
-        { key: 'sosedi', title: 'Наши<br>соседи', sub: 'справочник поселения' },
+        { key: 'sosedi', title: 'Наши<br>соседи', sub: 'справочник поселения', href: '/poselenie/sosedi/', ready: true },
         {
           key: 'moye-pomestie',
           title: 'Наше<br>поместье',
@@ -51,7 +51,7 @@ import Base from '../../layouts/Base.astro';
         { key: 'yarmarka', title: 'Ярмарка', sub: 'рынок поселения' },
         { key: 'zakupki', title: 'Закупки', sub: 'оптом вскладчину' },
         { key: 'poezdki', title: 'Поездки', sub: 'попутчики и доставка' },
-        { key: 'dnevniki', title: 'Дневники<br>поместий', sub: 'записи семей' }
+        { key: 'dnevniki', title: 'Дневники<br>поместий', sub: 'записи семей', href: '/poselenie/dnevniki/', ready: true }
       ];
 
       var statusEl = document.getElementById('appStatus');

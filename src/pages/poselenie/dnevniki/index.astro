@@ -1,0 +1,491 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Дневник"
+  description="Дневники поместий поселения «Сказочный Край»."
+  noindex
+>
+  <div class="wrap feed">
+    <div class="head">
+      <h1>Дневник</h1>
+      <a class="btn btn--solid" href="/poselenie/dnevnik/novaya/">Новая запись</a>
+    </div>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="feedStatus" class="meta" role="status">Загружаем записи…</p>
+
+    <div id="mineBlock" hidden>
+      <h2 class="sec-label">Мои записи</h2>
+      <div id="mineList" class="list"></div>
+    </div>
+
+    <h2 class="sec-label">Дневники поместий</h2>
+    <p class="meta">
+      Как живут семьи поселения «Сказочный Край» — записи всех жителей. Часть из
+      них видна и на внешнем сайте (отмечены значком 🌐).
+    </p>
+    <div id="feedList" class="list"></div>
+    <nav id="pager" class="pager meta" hidden></nav>
+
+    <!-- Инлайн-чтение: сайт статический, отдельный URL /dnevniki/{id} без
+         getStaticPaths собрать нельзя (отклонение от легаси). -->
+    <section id="reader" class="panel" hidden>
+      <h2 id="rTitle"></h2>
+      <p class="meta" id="rMeta"></p>
+      <div id="rBody" class="entry-body"></div>
+      <div class="actions">
+        <button type="button" id="rClose" class="btn">Закрыть</button>
+      </div>
+    </section>
+
+    <section id="editor" class="panel" hidden>
+      <h2>Редактирование записи</h2>
+      <form id="editForm" class="form">
+        <label>
+          Заголовок
+          <input type="text" id="eTitle" required maxlength="200" />
+        </label>
+        <p class="err" id="eTitleErr" hidden></p>
+        <label>
+          Текст записи
+          <textarea id="eBody" rows="10" required></textarea>
+        </label>
+        <p class="err" id="eBodyErr" hidden></p>
+        <label>
+          Кто видит эту запись
+          <select id="eVis">
+            <option value="private">Только я</option>
+            <option value="residents">Только соседи</option>
+            <option value="public">Все на сайте</option>
+          </select>
+        </label>
+        <p class="meta">Фото добавим позже.</p>
+        <div class="actions">
+          <button type="submit" class="btn btn--solid">Сохранить</button>
+          <button type="button" id="eCancel" class="btn">Отмена</button>
+        </div>
+      </form>
+    </section>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <!-- Лента дневников — порт residents/templates/diary/feed_list.php: мои
+       записи (любой статус) + опубликованные с пагинацией; чтение и правка —
+       инлайн-панели. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var statusEl = document.getElementById('feedStatus');
+      var flashEl = document.getElementById('flash');
+      var mineBlock = document.getElementById('mineBlock');
+      var mineList = document.getElementById('mineList');
+      var feedList = document.getElementById('feedList');
+      var pager = document.getElementById('pager');
+      var reader = document.getElementById('reader');
+      var editor = document.getElementById('editor');
+      var editForm = document.getElementById('editForm');
+      var currentId = null;
+      var mineById = {};
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function ruDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d)) return String(iso).slice(0, 10);
+        return d.toLocaleDateString('ru-RU');
+      }
+      function statusLabel(s) {
+        return s === 'pending' ? 'на проверке' : s === 'rejected' ? 'отклонена' : 'опубликована';
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url, opts) {
+        opts = opts || {};
+        opts.credentials = 'include';
+        opts.cache = 'no-store';
+        var headers = authHeaders();
+        if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+        opts.headers = headers;
+        return fetch(url, opts).then(function (r) {
+          if (r.status === 401) {
+            window.location.replace('/poselenie/tg/');
+            return Promise.reject({ auth: true });
+          }
+          return r.json().then(function (d) { return { status: r.status, ok: r.ok, data: d }; });
+        });
+      }
+
+      try {
+        var flashMsg = window.sessionStorage.getItem('skazDiaryFlash');
+        if (flashMsg) {
+          window.sessionStorage.removeItem('skazDiaryFlash');
+          flashEl.textContent = flashMsg;
+          flashEl.hidden = false;
+        }
+      } catch (e) {}
+
+      function renderMine(list) {
+        if (!list.length) {
+          mineBlock.hidden = true;
+          return;
+        }
+        mineById = {};
+        var html = '';
+        list.forEach(function (m) {
+          mineById[m.id] = m;
+          html += '<div class="card">' +
+            '<div class="card-head"><b class="card-name">' + esc(m.title) + '</b>' +
+            '<span class="status status--' + esc(m.status) + '">' + statusLabel(m.status) + '</span></div>' +
+            (m.status === 'rejected' && m.rejectReason
+              ? '<p class="err">Причина: ' + esc(m.rejectReason) + '</p>' : '') +
+            '<p class="meta">' + ruDate(m.createdAt) + '</p>' +
+            '<div class="actions">' +
+              '<button type="button" class="btn" data-read="' + m.id + '">Читать</button>' +
+              '<button type="button" class="btn" data-edit="' + m.id + '">Изменить</button>' +
+              '<button type="button" class="btn btn--danger" data-del="' + m.id + '">Удалить</button>' +
+            '</div></div>';
+        });
+        mineList.innerHTML = html;
+        mineBlock.hidden = false;
+      }
+
+      function renderFeed(entries) {
+        if (!entries.length) {
+          feedList.innerHTML = '<p class="meta">Пока нет опубликованных записей. ' +
+            '<a href="/poselenie/dnevnik/novaya/">Написать первую?</a></p>';
+          return;
+        }
+        var html = '';
+        entries.forEach(function (e) {
+          var own = mineById[e.id] !== undefined;
+          html += '<article class="card"><h2>' +
+            '<button type="button" class="linklike" data-read="' + e.id + '">' + esc(e.title) + '</button>' +
+            (e.isPublic ? '<span class="status status--published" title="Видна на внешнем сайте">🌐 на сайте</span>' : '') +
+            '</h2>' +
+            '<p class="meta">' + esc(e.familyName || '') + ' · ' + ruDate(e.publishedAt) + '</p>' +
+            '<p>' + esc(e.excerpt) + '</p>' +
+            '<div class="actions">' +
+              '<button type="button" class="btn" data-read="' + e.id + '">Читать целиком →</button>' +
+              (own ? '<button type="button" class="btn" data-edit="' + e.id + '">Изменить</button>' : '') +
+            '</div></article>';
+        });
+        feedList.innerHTML = html;
+      }
+
+      function renderPager(page, total, perPage) {
+        var pages = Math.ceil(total / perPage);
+        if (pages <= 1) {
+          pager.hidden = true;
+          return;
+        }
+        var html = '';
+        for (var i = 1; i <= pages; i++) {
+          if (i === page) html += '<strong>' + i + '</strong> ';
+          else html += '<a href="?page=' + i + '">' + i + '</a> ';
+        }
+        pager.innerHTML = html;
+        pager.hidden = false;
+      }
+
+      function openReader(id) {
+        editor.hidden = true;
+        api('/api/diary/entry/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Запись не найдена.');
+            return;
+          }
+          var e = res.data;
+          document.getElementById('rTitle').textContent = e.title;
+          document.getElementById('rMeta').textContent =
+            (e.familyName || '') + ' · ' + ruDate(e.publishedAt || e.createdAt);
+          // Абзацы — как в легаси: пустая строка разделяет, переносы строк сохраняем.
+          var body = String(e.body || '').split(/\n{2,}/);
+          document.getElementById('rBody').innerHTML = body
+            .map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; })
+            .join('');
+          reader.hidden = false;
+          window.scrollTo(0, reader.offsetTop - 60);
+        }).catch(function () {
+          show('Не удалось открыть запись. Попробуйте позже.');
+        });
+      }
+
+      function closeReader() { reader.hidden = true; }
+
+      function openEditor(id) {
+        reader.hidden = true;
+        api('/api/diary/entry/' + id).then(function (res) {
+          if (!res.ok) {
+            show((res.data && res.data.error) || 'Запись не найдена.');
+            return;
+          }
+          var e = res.data;
+          currentId = e.id;
+          document.getElementById('eTitle').value = e.title;
+          document.getElementById('eBody').value = e.body;
+          document.getElementById('eVis').value = e.visibility;
+          document.getElementById('eTitleErr').hidden = true;
+          document.getElementById('eBodyErr').hidden = true;
+          editor.hidden = false;
+          window.scrollTo(0, editor.offsetTop - 60);
+        }).catch(function () {
+          show('Не удалось открыть запись. Попробуйте позже.');
+        });
+      }
+
+      function closeEditor() {
+        editor.hidden = true;
+        currentId = null;
+      }
+
+      document.addEventListener('click', function (e) {
+        var read = e.target.closest && e.target.closest('[data-read]');
+        if (read) { openReader(Number(read.getAttribute('data-read'))); return; }
+        var edit = e.target.closest && e.target.closest('[data-edit]');
+        if (edit) { openEditor(Number(edit.getAttribute('data-edit'))); return; }
+        var del = e.target.closest && e.target.closest('[data-del]');
+        if (del) {
+          var id = Number(del.getAttribute('data-del'));
+          if (!window.confirm('Удалить запись?')) return;
+          api('/api/diary/delete/' + id, { method: 'POST', body: '{}' })
+            .then(function () { window.location.reload(); })
+            .catch(function () { show('Не удалось удалить запись. Попробуйте позже.'); });
+        }
+      });
+      document.getElementById('rClose').addEventListener('click', closeReader);
+      document.getElementById('eCancel').addEventListener('click', closeEditor);
+
+      editForm.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (!currentId) return;
+        var titleErr = document.getElementById('eTitleErr');
+        var bodyErr = document.getElementById('eBodyErr');
+        titleErr.hidden = true;
+        bodyErr.hidden = true;
+        api('/api/diary/update/' + currentId, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.getElementById('eTitle').value,
+            body: document.getElementById('eBody').value,
+            visibility: document.getElementById('eVis').value
+          })
+        }).then(function (res) {
+          var d = res.data || {};
+          if (res.ok && d.ok) {
+            try {
+              window.sessionStorage.setItem(
+                'skazDiaryFlash',
+                d.status === 'pending'
+                  ? 'Запись отправлена на проверку редактору.'
+                  : 'Запись сохранена.'
+              );
+            } catch (e) {}
+            window.location.reload();
+            return;
+          }
+          var errs = d.errors || {};
+          if (errs.title) { titleErr.textContent = errs.title; titleErr.hidden = false; }
+          if (errs.body) { bodyErr.textContent = errs.body; bodyErr.hidden = false; }
+          if (!errs.title && !errs.body) show(d.error || 'Не удалось сохранить. Попробуйте позже.');
+        }).catch(function () {
+          show('Сеть недоступна — попробуйте ещё раз.');
+        });
+      });
+
+      var page = 1;
+      try {
+        page = Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10) || 1);
+      } catch (e) {}
+
+      api('/api/diary/feed?page=' + page).then(function (res) {
+        if (!res.ok) {
+          show((res.data && res.data.error) || 'Не удалось загрузить записи. Попробуйте позже.');
+          return;
+        }
+        var d = res.data || {};
+        renderMine(d.mine || []);
+        renderFeed(d.entries || []);
+        renderPager(d.page || page, d.total || 0, d.perPage || 10);
+        show('');
+      }).catch(function (e) {
+        if (!e || !e.auth) show('Не удалось загрузить записи. Проверьте связь и попробуйте позже.');
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .feed {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 64ch;
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  .head h1 {
+    font-size: var(--step-2);
+    margin: 0;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .sec-label {
+    margin-top: 1.8rem;
+    font-size: var(--step-1);
+  }
+  .flash {
+    margin-top: 1rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  #feedStatus {
+    margin-top: 1rem;
+  }
+  .list {
+    display: grid;
+    gap: 0.7rem;
+    margin-top: 0.8rem;
+  }
+  .list :global(.card) {
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .list :global(.card h2) {
+    font-size: 1.05rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .list :global(.linklike) {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .list :global(.card-head) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .list :global(.card-name) {
+    line-height: 1.25;
+  }
+  .list :global(.card .meta) {
+    margin: 0.3rem 0;
+  }
+  .list :global(.card p:last-child) {
+    margin-bottom: 0;
+  }
+  .status {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding: 0 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .status--pending {
+    border-color: #c9a227;
+    color: #8a6d00;
+  }
+  .status--rejected {
+    border-color: #d09090;
+    color: #a33;
+  }
+  .status--published {
+    border-color: #7aa87a;
+    color: #2f6b2f;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .btn--danger {
+    color: #a33;
+  }
+  .err {
+    color: #a33;
+    font-size: 0.92rem;
+    margin: 0.3rem 0;
+  }
+  .pager {
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 1.2rem;
+  }
+  .panel {
+    margin-top: 1.4rem;
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+  .panel h2 {
+    font-size: var(--step-1);
+  }
+  .entry-body :global(p) {
+    margin: 0.7rem 0;
+    white-space: normal;
+  }
+  .list :global(.err) {
+    color: #a33;
+    font-size: 0.92rem;
+    margin: 0.3rem 0;
+  }
+  .form label {
+    display: block;
+    margin-top: 0.9rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .form input,
+  .form textarea,
+  .form select {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground);
+  }
+  .form textarea {
+    resize: vertical;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+</style>

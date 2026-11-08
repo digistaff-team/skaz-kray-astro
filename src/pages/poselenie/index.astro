@@ -79,6 +79,7 @@ import Base from '../../layouts/Base.astro';
     </noscript>
   </div>
 
+
   <!-- Домашний экран приложения — порт residents/src/templates/app/home.php:
        приветствие + сетка плиток разделов. Нет сессии → страница входа; нет
        поместья → выбор поместья (первый вход). -->
@@ -215,6 +216,7 @@ import Base from '../../layouts/Base.astro';
         });
     })();
   </script>
+
 </Base>
 
 <style>
@@ -222,50 +224,72 @@ import Base from '../../layouts/Base.astro';
     padding-top: 2rem;
     padding-bottom: 3rem;
   }
+  /* Шапка лаунчера — построчный порт .app-head / .app-logo / .app-hello
+     из residents.css. Размеры и скругления держим те же (48px логотип,
+     8px зазор, 20px название), иначе кабинет на сайте и в приложении
+     разъезжается. Отличие только одно: там .app-head был max-width: 460px
+     (мобильный лаунчер), здесь страница шире — сетку сжимает .app. */
   .app-head {
     display: flex;
     align-items: center;
-    gap: 0.9rem;
+    gap: 8px;
+    padding: 4px 4px 16px;
   }
   .app-logo {
-    border-radius: 14px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    flex: none;
+  }
+  /* min-width: 0 — длинное название поместья сжимается с многоточием, а не
+     растягивает строку и не выдавливает иконки; nowrap — «Сказочный Край»
+     всегда одной строкой. */
+  .app-hello {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
   }
   .app-hello b {
-    display: block;
-    font-size: var(--step-1);
-    line-height: 1.2;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 20px;
+    color: #036844;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .app-hello span {
-    display: block;
+    font-size: 13px;
     color: var(--muted);
-    font-size: 0.95rem;
-    margin-top: 0.15rem;
-  }
-  /* Иконки справа — порт .app-head-actions / .app-map из residents.css:
-     две квадратные кнопки 40×40, держатся вместе у правого края.
-     .app-hello растягивается и прижимает их вправо — в легаси это делает
-     margin-left: auto, но здесь достаточно flex-grow, чтобы длинное название
-     поместья сжималось с многоточием, а не выдавливало иконки. */
-  .app-hello {
-    min-width: 0;
-    flex: 1;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+  /* Две иконки в хедере (уровень воды и карта) держатся вместе справа. */
   .app-head-actions {
     margin-left: auto;
     flex: none;
     display: flex;
-    gap: 0.15rem;
   }
+  /* background/border/cursor — как в легаси: там это были <button>, UA-стили
+     браузера не должны вылезать. */
   .app-map {
+    margin-left: 0;
     flex: none;
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: none;
+    border: 0;
+    padding: 0;
     border-radius: 10px;
+    font-size: 24px;
+    line-height: 1;
     color: var(--green);
+    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
   .app-map svg {
@@ -275,16 +299,18 @@ import Base from '../../layouts/Base.astro';
   }
   .app-map:hover,
   .app-map:active {
-    background: var(--green-soft);
+    background: #e7f2ec;
     text-decoration: none;
   }
+  /* Совсем узкие экраны (до 360 px): уплотняем логотип, иконки и название,
+     чтобы строка оставалась одной и без многоточия. */
   @media (max-width: 360px) {
+    .app-hello b {
+      font-size: 18px;
+    }
     .app-logo {
       width: 44px;
       height: 44px;
-    }
-    .app-head-actions {
-      gap: 0;
     }
     .app-map {
       width: 36px;
@@ -301,6 +327,7 @@ import Base from '../../layouts/Base.astro';
     margin-top: 1.1rem;
     min-height: 1.4em;
   }
+
   /* Баннер дневников — порт .app-diary / .app-sec-label из residents.css
      (тёплый пергаментный фон #f5ecdd = --wheat-soft). Содержимое создаётся
      скриптом, поэтому детям нужен :global. */

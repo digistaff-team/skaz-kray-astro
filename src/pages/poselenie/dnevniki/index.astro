@@ -307,6 +307,13 @@ import Base from '../../../layouts/Base.astro';
         page = Math.max(1, parseInt(new URLSearchParams(window.location.search).get('page') || '1', 10) || 1);
       } catch (e) {}
 
+      // ?entry={id} — ссылка с главной (баннер «Новое в дневниках соседей»):
+      // отдельного URL /dnevniki/{id} на статике нет, открываем инлайн-читалку.
+      var entryId = 0;
+      try {
+        entryId = Math.max(0, parseInt(new URLSearchParams(window.location.search).get('entry') || '0', 10) || 0);
+      } catch (e) {}
+
       api('/api/diary/feed?page=' + page).then(function (res) {
         if (!res.ok) {
           show((res.data && res.data.error) || 'Не удалось загрузить записи. Попробуйте позже.');
@@ -317,6 +324,7 @@ import Base from '../../../layouts/Base.astro';
         renderFeed(d.entries || []);
         renderPager(d.page || page, d.total || 0, d.perPage || 10);
         show('');
+        if (entryId) openReader(entryId);
       }).catch(function (e) {
         if (!e || !e.auth) show('Не удалось загрузить записи. Проверьте связь и попробуйте позже.');
       });

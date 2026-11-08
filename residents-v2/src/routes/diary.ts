@@ -100,6 +100,49 @@ router.get('/feed', requireAuth, requireSection('dnevniki'), async (req: AuthReq
   }
 });
 
+// GET /api/diary/dashboard — баннер на главной /poselenie/ (порт
+// AppDashboard::build, диарическая часть): статус дневника семьи и две свежие
+// опубликованные записи соседей. Последняя запись — по id, как usort в легаси
+// (SQL сортирует по updated_at, но легаси пересортировывает по id DESC).
+// Чужие записи фильтруем в SQL (легаси брал первые 6 и отбрасывал свои —
+// комментарий AppDashboard: «две свежие из дневников ДРУГИХ поместий»).
+router.get('/dashboard', requireAuth, requireSection('dnevniki'), async (req: AuthRequest, res) => {
+  try {
+    const familyId = req.user!.familyId;
+    const [count, latest, others] = await Promise.all([
+      db.diaryEntry.count({ where: { familyId } }),
+      db.diaryEntry.findFirst({
+        where: { familyId },
+        orderBy: { id: 'desc' },
+        select: { title: true, status: true },
+      }),
+      db.diaryEntry.findMany({
+        where: {
+          status: 'published',
+          visibility: { not: 'private' },
+          familyId: { not: familyId },
+        },
+        orderBy: { publishedAt: 'desc' },
+        take: 2,
+        select: { id: true, title: true, family: { select: { name: true } } },
+      }),
+    ]);
+    res.json({
+      count,
+      latestTitle: latest?.title ?? null,
+      latestStatus: latest?.status ?? null,
+      otherDiaries: others.map((e) => ({
+        id: e.id,
+        title: e.title,
+        family: e.family?.name ?? '',
+      })),
+    });
+  } catch (err) {
+    console.error('Diary dashboard error:', err);
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
 // GET /api/diary/entry/:id — порт feedShow: опубликованная не-приватная ЛИБО
 // своя запись любой видимости/статуса (чужие private не раскрываем).
 router.get('/entry/:id', requireAuth, requireSection('dnevniki'), async (req: AuthRequest, res) => {

@@ -13,10 +13,9 @@ import Base from '../../layouts/Base.astro';
         <b>Сказочный Край</b>
         <span id="appHello">Загружаем кабинет…</span>
       </div>
-      <!-- Иконки вверху справа — порт .app-head-actions из app/home.php. В легаси
-           они открывают модальные окна (карта «пинч-зум», замер воды); на статике
-           окон нет, поэтому ссылки ведут на готовые страницы: график гидропоста и
-           план поселения с разметкой поместий. -->
+      <!-- Иконки вверху справа — порт .app-head-actions из app/home.php.
+           Капля ведёт на подробный график гидропоста; пин открывает оверлей
+           с картой (порт partials/map.php — см. ниже). -->
       <div class="app-head-actions">
         <a
           class="app-map"
@@ -41,9 +40,10 @@ import Base from '../../layouts/Base.astro';
             <path d="M9.5 17.5a2.5 2.5 0 0 0 2.5 2.5"></path>
           </svg>
         </a>
-        <a
-          class="app-map"
-          href="/o-nas/plan-poseleniya/"
+        <button
+          type="button"
+          class="app-map js-map-open"
+          id="mapOpen"
           aria-label="Карта поселения"
           title="Карта поселения"
         >
@@ -61,7 +61,7 @@ import Base from '../../layouts/Base.astro';
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
-        </a>
+        </button>
       </div>
     </header>
 
@@ -79,6 +79,22 @@ import Base from '../../layouts/Base.astro';
     </noscript>
   </div>
 
+  <!-- Полноэкранная карта поселения — порт residents/src/templates/partials/map.php.
+       Картинку тянем лениво при первом открытии: она весит ~1 МБ, а скрытый
+       контейнер загрузку не отменяет — иначе её качала бы каждая страница портала. -->
+  <div class="map-overlay" id="mapOverlay" hidden>
+    <button type="button" class="map-close" id="mapClose" aria-label="Закрыть карту" title="Закрыть">&times;</button>
+    <div class="map-scroll" id="mapScroll">
+      {/* ?v= как asset_ver() в легаси: кэш годится держать вечно,
+          а обновление карты подхватывается сменой версии. */}
+      <img
+        data-src="/poselenie/assets/karta-sk.png?v=20260901"
+        alt="Карта поселения «Сказочный Край»"
+        class="map-img"
+        id="mapImg"
+      />
+    </div>
+  </div>
 
   <!-- Домашний экран приложения — порт residents/src/templates/app/home.php:
        приветствие + сетка плиток разделов. Нет сессии → страница входа; нет
@@ -217,6 +233,118 @@ import Base from '../../layouts/Base.astro';
     })();
   </script>
 
+  <!-- Карта: порт логики из residents/src/templates/partials/map.php —
+       пинч-зум двумя пальцами, пан одним, двойной тап, на десктопе колесо
+       и перетаскивание. state (s/tx/ty) и границы зума как в легаси. -->
+  <script is:inline>
+    (function () {
+      var openers = document.querySelectorAll('.js-map-open');
+      var overlay = document.getElementById('mapOverlay');
+      var closeBtn = document.getElementById('mapClose');
+      var scroll = document.getElementById('mapScroll');
+      var img = document.getElementById('mapImg');
+      if (!openers.length || !overlay) return;
+
+      var s = 1, tx = 0, ty = 0, MIN = 1, MAX = 6;
+      function apply() { img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')'; }
+      function reset() { s = 1; tx = 0; ty = 0; apply(); }
+      function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+      function crect() { return scroll.getBoundingClientRect(); }
+
+      // Масштаб вокруг точки (px,py в координатах контейнера); центр — начало отсчёта transform.
+      function zoomTo(ns, px, py) {
+        ns = clamp(ns, MIN, MAX);
+        var r = crect(), cx = r.width / 2, cy = r.height / 2;
+        var ix = (px - cx - tx) / s, iy = (py - cy - ty) / s;
+        tx = px - cx - ix * ns; ty = py - cy - iy * ns;
+        s = ns;
+        if (s <= 1.001) { s = 1; tx = 0; ty = 0; }
+        apply();
+      }
+
+      function show() {
+        if (!img.getAttribute('src')) { img.src = img.getAttribute('data-src') || ''; }
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+        reset();
+      }
+      function hide() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        reset();
+      }
+      for (var i = 0; i < openers.length; i++) {
+        openers[i].addEventListener('click', show);
+      }
+      closeBtn.addEventListener('click', hide);
+      // Клик по краю тёмного фона (мимо контейнера с картой) — закрывает.
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) hide(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) hide(); });
+
+      // --- Сенсор: пинч-зум двумя пальцами, панорамирование одним, двойной тап ---
+      var prevDist = 0, lastX = 0, lastY = 0, panning = false, lastTap = 0, isTouch = false;
+      function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+      function midC(t) {
+        var r = crect();
+        return { x: (t[0].clientX + t[1].clientX) / 2 - r.left, y: (t[0].clientY + t[1].clientY) / 2 - r.top };
+      }
+
+      scroll.addEventListener('touchstart', function (e) {
+        isTouch = true;
+        if (e.touches.length === 2) { prevDist = dist(e.touches); }
+        else if (e.touches.length === 1) {
+          panning = s > 1; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+          var now = e.timeStamp || 0;
+          if (now - lastTap < 300) {           // двойной тап — приблизить/сбросить
+            e.preventDefault();                // гасим синтетический dblclick браузера
+            var r = crect();
+            zoomTo(s > 1 ? 1 : 2.5, e.touches[0].clientX - r.left, e.touches[0].clientY - r.top);
+            lastTap = 0;
+          } else { lastTap = now; }
+        }
+      }, { passive: false });
+
+      scroll.addEventListener('touchmove', function (e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          var nd = dist(e.touches); if (!prevDist) { prevDist = nd; return; }
+          var m = midC(e.touches);
+          zoomTo(s * nd / prevDist, m.x, m.y);
+          prevDist = nd;
+        } else if (e.touches.length === 1 && panning) {
+          e.preventDefault();
+          tx += e.touches[0].clientX - lastX; ty += e.touches[0].clientY - lastY;
+          lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+          apply();
+        }
+      }, { passive: false });
+
+      scroll.addEventListener('touchend', function (e) {
+        if (e.touches.length < 2) prevDist = 0;
+        if (e.touches.length === 0) panning = false;
+      });
+
+      // --- Мышь (десктоп): колесо — зум к курсору, перетаскивание, двойной клик ---
+      scroll.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        var r = crect();
+        zoomTo(s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX - r.left, e.clientY - r.top);
+      }, { passive: false });
+      var mdown = false, mx = 0, my = 0;
+      scroll.addEventListener('mousedown', function (e) {
+        if (s > 1) { mdown = true; mx = e.clientX; my = e.clientY; img.style.cursor = 'grabbing'; e.preventDefault(); }
+      });
+      window.addEventListener('mousemove', function (e) {
+        if (mdown) { tx += e.clientX - mx; ty += e.clientY - my; mx = e.clientX; my = e.clientY; apply(); }
+      });
+      window.addEventListener('mouseup', function () { mdown = false; img.style.cursor = 'grab'; });
+      scroll.addEventListener('dblclick', function (e) {
+        if (isTouch) return;
+        var r = crect();
+        zoomTo(s > 1 ? 1 : 2.5, e.clientX - r.left, e.clientY - r.top);
+      });
+    })();
+  </script>
 </Base>
 
 <style>
@@ -328,6 +456,58 @@ import Base from '../../layouts/Base.astro';
     min-height: 1.4em;
   }
 
+  /* Полноэкранная карта — порт .map-* из residents.css (кнопка «×» с учётом
+     safe-area, контейнер с touch-action: none, чтобы жесты доставались
+     скрипту, а не браузеру). */
+  .map-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(20, 22, 20, 0.92);
+    display: flex;
+  }
+  .map-overlay[hidden] {
+    display: none;
+  }
+  .map-scroll {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+  }
+  .map-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transform-origin: center center;
+    will-change: transform;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .map-close {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    right: 12px;
+    z-index: 1001;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .map-close:hover {
+    background: rgba(0, 0, 0, 0.82);
+  }
   /* Баннер дневников — порт .app-diary / .app-sec-label из residents.css
      (тёплый пергаментный фон #f5ecdd = --wheat-soft). Содержимое создаётся
      скриптом, поэтому детям нужен :global. */

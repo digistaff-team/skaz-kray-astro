@@ -13,6 +13,56 @@ import Base from '../../layouts/Base.astro';
         <b>Сказочный Край</b>
         <span id="appHello">Загружаем кабинет…</span>
       </div>
+      <!-- Иконки вверху справа — порт .app-head-actions из app/home.php. В легаси
+           они открывают модальные окна (карта «пинч-зум», замер воды); на статике
+           окон нет, поэтому ссылки ведут на готовые страницы: график гидропоста и
+           план поселения с разметкой поместий. -->
+      <div class="app-head-actions">
+        <a
+          class="app-map"
+          href="https://shebsh-water-level.vercel.app"
+          target="_blank"
+          rel="noopener"
+          aria-label="График уровня воды в Шебше"
+          title="График уровня воды в Шебше"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 2c3.5 5 7 8.5 7 13a7 7 0 0 1-14 0c0-4.5 3.5-8 7-13Z"></path>
+            <path d="M9.5 17.5a2.5 2.5 0 0 0 2.5 2.5"></path>
+          </svg>
+        </a>
+        <a
+          class="app-map"
+          href="/o-nas/plan-poseleniya/"
+          aria-label="Карта поселения"
+          title="Карта поселения"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </a>
+      </div>
     </header>
 
     <p id="appStatus" class="app-status" role="status">Проверяем доступ…</p>
@@ -190,6 +240,60 @@ import Base from '../../layouts/Base.astro';
     color: var(--muted);
     font-size: 0.95rem;
     margin-top: 0.15rem;
+  }
+  /* Иконки справа — порт .app-head-actions / .app-map из residents.css:
+     две квадратные кнопки 40×40, держатся вместе у правого края.
+     .app-hello растягивается и прижимает их вправо — в легаси это делает
+     margin-left: auto, но здесь достаточно flex-grow, чтобы длинное название
+     поместья сжималось с многоточием, а не выдавливало иконки. */
+  .app-hello {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+  .app-head-actions {
+    margin-left: auto;
+    flex: none;
+    display: flex;
+    gap: 0.15rem;
+  }
+  .app-map {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: var(--green);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app-map svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+  }
+  .app-map:hover,
+  .app-map:active {
+    background: var(--green-soft);
+    text-decoration: none;
+  }
+  @media (max-width: 360px) {
+    .app-logo {
+      width: 44px;
+      height: 44px;
+    }
+    .app-head-actions {
+      gap: 0;
+    }
+    .app-map {
+      width: 36px;
+      height: 36px;
+    }
+    .app-map svg {
+      width: 20px;
+      height: 20px;
+    }
   }
   .app-status {
     color: var(--muted);

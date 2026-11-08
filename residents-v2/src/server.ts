@@ -26,6 +26,10 @@ import { councilRoutes } from './routes/council';
 import { publicRoutes } from './routes/public';
 import { healthRoutes } from './routes/health';
 import { residentsRoutes } from './routes/residents';
+import { houseRoutes } from './routes/house';
+import { budgetRoutes } from './routes/budget';
+import { tasksRoutes } from './routes/tasks';
+import { waterLevelRoutes } from './routes/water-level';
 
 const app = express();
 
@@ -72,6 +76,10 @@ app.use('/api/council', councilRoutes);
 app.use('/api/residents', residentsRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/house', houseRoutes);
+app.use('/api/budget', budgetRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/water', waterLevelRoutes);
 
 // Health check
 app.get('/api/health', (_req: any, res: any) => {

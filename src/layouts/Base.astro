@@ -50,6 +50,31 @@ const ogDesc = clip(desc, 120);
   <meta name="twitter:image" content={ogImage} />
   <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
   <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed.xml" />
+  {/* PWA портала жителей — порт app/layout.php: манифест и мета только для
+      /poselenie/*. На публичных страницах «установить как приложение» быть не
+      должно: там нет сессии, а ярлык открывал бы пустой кабинет. */}
+  {bare && (
+    <>
+      <link rel="manifest" href="/poselenie/manifest.webmanifest" />
+      <meta name="theme-color" content="#008757" />
+      <link rel="apple-touch-icon" href="/images/app-icons/icon-192.png" />
+      <meta name="mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      <meta name="apple-mobile-web-app-title" content="Сказочный Край" />
+      {/* scope '/' обязателен: файл лежит на том же пути, где легаси отдавал SW со
+          Service-Worker-Allowed: / (см. headers в vercel.json). Сужать scope до
+          /poselenie нельзя — у вернувшихся жителей уже зарегистрирован SW со
+          scope '/', и браузер сверяет его по скрипту на этом же пути. */}
+      <script is:inline>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/poselenie/sw.js', { scope: '/' }).catch(function () {});
+          });
+        }
+      </script>
+    </>
+  )}
   <!-- Прячем не загрузившиеся картинки вместе с их обёрткой (figure/ссылка).
        В старых постах 2013–2016 есть ~сотня битых ссылок на утраченные ещё в
        WordPress файлы — так на сайте не будет «сломанных» иконок и пустых

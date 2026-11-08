@@ -1,0 +1,34 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base
+  title="Нет сети"
+  description="Нет соединения — страница ещё не сохранена для офлайна."
+  noindex
+>
+  <div class="wrap app-offline">
+    <h1>Нет сети</h1>
+    <p class="app-offline-note">
+      Эта страница ещё не сохранена для офлайна. Проверьте соединение и повторите.
+    </p>
+    <p class="app-offline-actions">
+      <a class="btn btn--solid" href="/poselenie/">На главную портала</a>
+    </p>
+  </div>
+</Base>
+
+<style>
+  .app-offline {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    max-width: 60ch;
+  }
+  .app-offline-note {
+    color: var(--muted);
+    font-size: var(--step-0);
+    margin-top: 1rem;
+  }
+  .app-offline-actions {
+    margin-top: 1.4rem;
+  }
+</style>

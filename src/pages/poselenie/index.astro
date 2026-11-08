@@ -17,13 +17,16 @@ import Base from '../../layouts/Base.astro';
 
     <p id="appStatus" class="app-status" role="status">Проверяем доступ…</p>
 
+    <!-- Баннер дневников над сеткой — порт home.php (широкий .app-diary;
+         плитки dnevniki в сетке нет намеренно). Скрывается, пока нет данных
+         или раздел выключен. -->
+    <div id="diaryBanner" class="diary-wrap" hidden></div>
+
     <div id="appGrid" class="app-grid" hidden></div>
 
     <noscript>
       <p class="app-status">Нужен включённый JavaScript. Откройте портал через бота @SkazKray_bot.</p>
     </noscript>
-
-    <p class="app-foot"><a href="/">Вернуться на сайт</a></p>
   </div>
 
   <!-- Домашний экран приложения — порт residents/src/templates/app/home.php:
@@ -36,6 +39,8 @@ import Base from '../../layouts/Base.astro';
       // Порядок плиток — как в app/home.php. href есть только у разделов,
       // которые уже есть на Astro-сайте; остальные рисуем с бейджем «скоро»,
       // чтобы не вести в 404. Раздел без строки в app_sections не показывается.
+      // Плитки «Дневники поместий» здесь нет намеренно — как в home.php:
+      // на дневники ведёт широкий баннер над сеткой (#diaryBanner).
       var TILES = [
         { key: 'sosedi', title: 'Наши<br>соседи', sub: 'справочник поселения', href: '/poselenie/sosedi/', ready: true },
         {
@@ -50,19 +55,71 @@ import Base from '../../layouts/Base.astro';
         { key: 'obshchiy-dom', title: 'Общий дом', sub: 'бронирование и отчёт' },
         { key: 'yarmarka', title: 'Ярмарка', sub: 'рынок поселения', href: '/poselenie/yarmarka/', ready: true },
         { key: 'zakupki', title: 'Закупки', sub: 'оптом вскладчину', href: '/poselenie/zakupki/', ready: true },
-        { key: 'poezdki', title: 'Поездки', sub: 'попутчики и доставка' },
-        { key: 'dnevniki', title: 'Дневники<br>поместий', sub: 'записи семей', href: '/poselenie/dnevniki/', ready: true }
+        { key: 'poezdki', title: 'Поездки', sub: 'попутчики и доставка' }
       ];
 
       var statusEl = document.getElementById('appStatus');
       var helloEl = document.getElementById('appHello');
       var gridEl = document.getElementById('appGrid');
+      var bannerEl = document.getElementById('diaryBanner');
       function show(msg) { if (statusEl) statusEl.textContent = msg; }
 
       function authHeaders() {
         var t = '';
         try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
         return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+
+      // Статус последней записи — порт diary_status_line (helpers.php).
+      function diaryStatusLine(status) {
+        var map = { pending: 'на проверке', published: 'опубликована', rejected: 'отклонена' };
+        return 'Ваш дневник: последняя запись ' + (map[status] || 'в дневнике');
+      }
+
+      // Баннер дневников над сеткой — порт home.php (широкий блок .app-diary,
+      // плитки для раздела в сетке нет). Показывается только при включённом
+      // разделе dnevniki: сервер отдаёт 403 и баннер просто не рисуется.
+      function renderDiaryBanner(d) {
+        var html = '';
+        if (d.count > 0) {
+          html += '<a class="diary" href="/poselenie/dnevniki/">' +
+            '<b>' + esc(diaryStatusLine(d.latestStatus)) + '</b>' +
+            '<span>' + esc(d.latestTitle) + '</span></a>';
+        } else {
+          html += '<a class="diary" href="/poselenie/dnevnik/novaya/">' +
+            '<b>Дневник нашего поместья</b>' +
+            '<span>Добавьте первую запись</span></a>';
+        }
+        if (d.otherDiaries && d.otherDiaries.length) {
+          html += '<div class="diary-label">Новое в дневниках соседей</div>';
+          d.otherDiaries.forEach(function (o) {
+            // Легаси вело на /dnevniki/{id} — на статике такого URL нет,
+            // страница ленты открывает запись по ?entry= (инлайн-читалка).
+            html += '<a class="diary diary--other" href="/poselenie/dnevniki/?entry=' + o.id + '">' +
+              '<b>' + esc(o.family) + '</b>' +
+              '<span>' + esc(o.title) + '</span></a>';
+          });
+        }
+        bannerEl.innerHTML = html;
+        bannerEl.hidden = false;
+      }
+
+      function loadDiaryBanner() {
+        fetch('/api/diary/dashboard', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+          .then(function (r) {
+            if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+            // 403 — раздел выключен админом: баннера нет, как в home.php.
+            if (!r.ok) return null;
+            return r.json();
+          })
+          .then(function (d) { if (d) renderDiaryBanner(d); })
+          .catch(function () {});
       }
 
       function render(sections) {
@@ -100,6 +157,7 @@ import Base from '../../layouts/Base.astro';
           }
           if (helloEl) helloEl.textContent = (d.family && d.family.name) || 'Житель';
           render(d.sections || []);
+          loadDiaryBanner();
           show('');
         })
         .catch(function () {
@@ -138,6 +196,46 @@ import Base from '../../layouts/Base.astro';
     font-size: var(--step-0, 1rem);
     margin-top: 1.1rem;
     min-height: 1.4em;
+  }
+  /* Баннер дневников — порт .app-diary / .app-sec-label из residents.css
+     (тёплый пергаментный фон #f5ecdd = --wheat-soft). Содержимое создаётся
+     скриптом, поэтому детям нужен :global. */
+  .diary-wrap[hidden] {
+    display: none;
+  }
+  .diary-wrap :global(.diary) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 14px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: var(--wheat-soft);
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .diary-wrap :global(.diary b) {
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .diary-wrap :global(.diary span) {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .diary-wrap :global(.diary--other) {
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .diary-wrap :global(.diary--other b) {
+    color: var(--green-deep);
+  }
+  .diary-wrap :global(.diary-label) {
+    padding: 8px 4px 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
   .app-grid {
     display: grid;
@@ -182,10 +280,6 @@ import Base from '../../layouts/Base.astro';
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 0.05rem 0.45rem;
-  }
-  .app-foot {
-    margin-top: 2.2rem;
-    font-size: 0.95rem;
   }
 </style>
 

@@ -14,16 +14,15 @@ import Base from '../../layouts/Base.astro';
         <span id="appHello">Загружаем кабинет…</span>
       </div>
       <!-- Иконки вверху справа — порт .app-head-actions из app/home.php.
-           Капля ведёт на подробный график гидропоста; пин открывает оверлей
-           с картой (порт partials/map.php — см. ниже). -->
+           Капля открывает панель уровня воды (порт partials/water.php);
+           пин открывает оверлей с картой (порт partials/map.php). -->
       <div class="app-head-actions">
-        <a
-          class="app-map"
-          href="https://shebsh-water-level.vercel.app"
-          target="_blank"
-          rel="noopener"
-          aria-label="График уровня воды в Шебше"
-          title="График уровня воды в Шебше"
+        <button
+          type="button"
+          class="app-map js-water-open"
+          id="waterOpen"
+          aria-label="Уровень воды в Шебше"
+          title="Уровень воды в Шебше"
         >
           <svg
             viewBox="0 0 24 24"
@@ -39,7 +38,7 @@ import Base from '../../layouts/Base.astro';
             <path d="M12 2c3.5 5 7 8.5 7 13a7 7 0 0 1-14 0c0-4.5 3.5-8 7-13Z"></path>
             <path d="M9.5 17.5a2.5 2.5 0 0 0 2.5 2.5"></path>
           </svg>
-        </a>
+        </button>
         <button
           type="button"
           class="app-map js-map-open"
@@ -93,6 +92,17 @@ import Base from '../../layouts/Base.astro';
         class="map-img"
         id="mapImg"
       />
+    </div>
+  </div>
+
+  <!-- Модалка «Уровень воды в Шебше» — порт residents/src/templates/partials/water.php.
+       Содержимое подгружается при первом открытии: замер спрашивать на каждой
+       странице портала не нужно (так же лениво, как картинка карты). -->
+  <div class="water-overlay" id="waterOverlay" hidden>
+    <div class="water-card" role="dialog" aria-modal="true" aria-label="Уровень воды в Шебше">
+      <button type="button" class="water-close" id="waterClose" aria-label="Закрыть" title="Закрыть">&times;</button>
+      <h2 class="water-title">Река Шебш</h2>
+      <div class="water-content" id="waterContent"><p class="water-empty">Смотрим уровень…</p></div>
     </div>
   </div>
 
@@ -349,6 +359,103 @@ import Base from '../../layouts/Base.astro';
       });
     })();
   </script>
+
+  <!-- Уровень воды: порт логики из partials/water.php — ленивый fetch панели при
+       первом открытии и закрытие по Escape/фону. Данные приходят JSON от
+       GET /api/water (тот же panel(), что у легаси-фрагмента water_panel.php),
+       разметку панели строим здесь же. -->
+  <script is:inline>
+    (function () {
+      var opener = document.querySelector('.js-water-open');
+      var overlay = document.getElementById('waterOverlay');
+      var closeBtn = document.getElementById('waterClose');
+      var box = document.getElementById('waterContent');
+      if (!opener || !overlay) return;
+
+      var loaded = false;
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+
+      // Панель — порт water_panel.php: крупная цифра запаса до кромки моста,
+      // подпись уровня и изменений, спарклайн за сутки, ссылка на подробный график.
+      function render(d) {
+        if (!d || d.level === null) {
+          box.innerHTML = '<p class="water-empty">Замер пока не получен: гидропост не ответил. Попробуйте позже.</p>';
+          return;
+        }
+        var html =
+          '<div class="water-gap water-gap--' + esc(d.status || 'calm') + '">' +
+            '<b>' + esc(d.gapLabel || '') + '</b>' +
+            '<span>' + (d.flooded ? 'выше нижней кромки моста' : 'до нижней кромки моста') + '</span>' +
+          '</div>' +
+          '<p class="water-meta">Уровень ' + esc(d.levelLabel || '') + ' БСВ · ' + esc(d.changeLabel || '') +
+            '<br>Прошлый замер был в ' + esc(d.measuredAt || '') + '</p>';
+
+        var c = d.chart;
+        if (c) {
+          html +=
+            '<svg class="water-chart" viewBox="0 0 ' + Number(c.w) + ' ' + Number(c.h) + '" role="img"' +
+              ' aria-label="Уровень воды за последние ' + Number(c.days) + ' суток">' +
+              '<polygon class="water-chart-area" points="' + esc(c.area) + '"></polygon>' +
+              '<polyline class="water-chart-line" points="' + esc(c.poly) + '"></polyline>';
+          (c.marks || []).forEach(function (m) {
+            html +=
+              '<line class="water-chart-mark" x1="0" y1="' + Number(m.y) + '"' +
+                ' x2="' + Number(c.w) + '" y2="' + Number(m.y) + '"></line>' +
+              '<text class="water-chart-mark-label" x="2" y="' + (Number(m.y) - 3) + '">' + esc(m.label) + '</text>';
+          });
+          html += '</svg>' +
+            '<div class="water-axis"><span>' + esc(c.firstDate) + '</span>' +
+              '<span>' + esc(c.rangeLabel) + '</span><span>' + esc(c.lastDate) + '</span></div>';
+        } else {
+          html += '<p class="water-meta">История пока копится — диаграмма появится через сутки наблюдений.</p>';
+        }
+
+        html +=
+          '<p class="water-note">Данные гидропоста на мосту, замер каждый час ' +
+            '<a href="https://shebsh-water-level.vercel.app" target="_blank" rel="noopener">Подробный график</a></p>';
+        box.innerHTML = html;
+      }
+
+      function load() {
+        var t = '';
+        try { t = window.sessionStorage.getItem('skazV2Token') || ''; } catch (e) {}
+        fetch('/api/water', {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: t ? { Authorization: 'Bearer ' + t } : {}
+        })
+          .then(function (r) {
+            if (!r.ok) { throw new Error(r.status); }
+            return r.json();
+          })
+          .then(function (d) { loaded = true; render(d); })
+          .catch(function () {
+            box.innerHTML = '<p class="water-empty">Не удалось получить замер. Проверьте связь и откройте снова.</p>';
+          });
+      }
+
+      function show() {
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+        if (!loaded) { load(); }
+      }
+      function hide() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+      }
+
+      opener.addEventListener('click', show);
+      closeBtn.addEventListener('click', hide);
+      // Клик по тёмному фону мимо карточки — закрывает.
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) hide(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) hide(); });
+    })();
+  </script>
 </Base>
 
 <style>
@@ -511,6 +618,118 @@ import Base from '../../layouts/Base.astro';
   }
   .map-close:hover {
     background: rgba(0, 0, 0, 0.82);
+  }
+
+  /* Модалка уровня воды — порт .water-* из residents.css. Цвета статусов те же
+     (зелёный/охра/красный); --wheat здесь равен --ochre легаси (#c98a3a). */
+  .water-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(20, 22, 20, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .water-overlay[hidden] {
+    display: none;
+  }
+  .water-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 18px;
+  }
+  .water-close {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 38px;
+    height: 38px;
+    background: none;
+    border: 0;
+    font-size: 26px;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .water-title {
+    margin: 0 6px 12px 0;
+    font-size: 20px;
+    color: var(--green);
+  }
+  /* Внутренности панели создаёт скрипт через innerHTML, поэтому :global —
+     Astro не добавит им data-astro-cid (тот же приём, что у баннера дневников). */
+  .water-content :global(.water-gap) {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+  .water-content :global(.water-gap b) {
+    font-family: var(--font-head);
+    font-size: 40px;
+  }
+  .water-content :global(.water-gap span) {
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .water-content :global(.water-gap--calm b) {
+    color: var(--green);
+  }
+  .water-content :global(.water-gap--watch b) {
+    color: var(--wheat);
+  }
+  .water-content :global(.water-gap--alert b) {
+    color: #b3261e;
+  }
+  .water-content :global(.water-meta) {
+    margin: 10px 0 12px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .water-content :global(.water-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .water-content :global(.water-chart-area) {
+    fill: #dbeef7;
+  }
+  .water-content :global(.water-chart-line) {
+    fill: none;
+    stroke: #0284c7;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  .water-content :global(.water-chart-mark) {
+    stroke: #b3261e;
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+  }
+  .water-content :global(.water-chart-mark-label) {
+    font-size: 7px;
+    fill: #b3261e;
+  }
+  .water-content :global(.water-axis) {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .water-content :global(.water-note) {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .water-content :global(.water-empty) {
+    margin: 0;
+    font-size: 15px;
+    color: var(--muted);
   }
   /* Баннер дневников — порт .app-diary / .app-sec-label из residents.css
      (тёплый пергаментный фон #f5ecdd = --wheat-soft). Содержимое создаётся

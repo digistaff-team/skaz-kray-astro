@@ -85,6 +85,10 @@ const ogDesc = clip(desc, 120);
     (function () {
       function hideBroken(img) {
         if (!img || img.tagName !== 'IMG') return;
+        // Картинка без src — отложенная загрузка (data-src подставит скрипт):
+        // complete у неё true, а naturalWidth 0, и без этой проверки она
+        // считалась бы битой и пряталась ещё до своего открытия.
+        if (!img.getAttribute('src')) return;
         var fig = img.closest ? img.closest('figure') : null;
         if (fig) { fig.style.display = 'none'; return; }
         var a = img.parentElement;

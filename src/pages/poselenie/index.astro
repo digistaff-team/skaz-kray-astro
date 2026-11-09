@@ -263,6 +263,10 @@ import Base from '../../layouts/Base.astro';
       }
 
       function show() {
+        // Снимаем display:none, который мог проставить скрипт из Base.astro:
+        // у <img> без src complete === true и naturalWidth === 0, поэтому
+        // ленивая картинка попадает под его проверку «битых» и прячется.
+        img.style.display = '';
         if (!img.getAttribute('src')) { img.src = img.getAttribute('data-src') || ''; }
         overlay.hidden = false;
         document.body.style.overflow = 'hidden';

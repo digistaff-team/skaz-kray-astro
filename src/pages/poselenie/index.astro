@@ -232,7 +232,14 @@ import Base from '../../layouts/Base.astro';
             }, 600);
             return;
           }
-          if (helloEl) helloEl.textContent = (d.family && d.family.name) || 'Житель';
+          // Подпись под названием — порт AppController::home: название
+          // привязанного поместья, а если его ещё нет — имя семьи.
+          var estate = (d.estateName || '').trim();
+          if (helloEl) {
+            helloEl.textContent = estate !== ''
+              ? 'Поместье «' + estate + '»'
+              : (d.family && d.family.name) || 'Житель';
+          }
           render(d.sections || []);
           loadDiaryBanner();
           show('');

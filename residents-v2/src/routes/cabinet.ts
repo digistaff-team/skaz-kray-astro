@@ -6,7 +6,8 @@ import { enabledSections } from '../lib/sections';
 const router = Router();
 
 // GET /api/cabinet — данные домашнего экрана приложения (главная /poselenie/):
-// имя семьи для приветствия, факт привязанного поместья (нет → страница выбора
+// подпись под «Сказочный Край» (название поместья, иначе имя семьи — порт
+// AppController::home), факт привязанного поместья (нет → страница выбора
 // поместья, как первый вход в легаси) и включённые разделы для плиток.
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -22,13 +23,17 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
           telegramUsername: true,
         },
       }),
-      db.householdOwner.findUnique({ where: { familyId }, select: { id: true } }),
+      db.householdOwner.findUnique({
+        where: { familyId },
+        select: { household: { select: { estateName: true } } },
+      }),
       enabledSections(),
     ]);
 
     if (!family) return res.status(404).json({ error: 'Не найдено' });
 
-    res.json({ family, hasHousehold: owner !== null, sections });
+    const estateName = (owner?.household.estateName ?? '').trim();
+    res.json({ family, estateName, hasHousehold: owner !== null, sections });
   } catch (err) {
     console.error('Cabinet error:', err);
     res.status(500).json({ error: 'Ошибка' });

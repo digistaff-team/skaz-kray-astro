@@ -73,7 +73,8 @@ import Base from '../../../layouts/Base.astro';
         try {
           var b64 = sp.replace(/-/g, '+').replace(/_/g, '/');
           var pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-          var decoded = Buffer.from(b64 + pad, 'base64').toString('utf8');
+          // decodeURIComponent(escape(atob(...))) — UTF-8 из base64 без Buffer (в браузере его нет)
+          var decoded = decodeURIComponent(escape(atob(b64 + pad)));
           if (!decoded.startsWith('/sovet') || decoded.indexOf('\uFFFD') >= 0) return fallback;
           return decoded;
         } catch (e) { return fallback; }

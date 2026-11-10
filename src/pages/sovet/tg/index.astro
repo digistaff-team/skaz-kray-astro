@@ -82,10 +82,11 @@ import Base from '../../../layouts/Base.astro';
 
       // Асинхронная загрузка SDK с таймаутом; колбэк вызывается всегда.
       var SDK_TIMEOUT_MS = 8000;
+      function currentWa() { return (window.Telegram && window.Telegram.WebApp) || null; }
       function ensure(cb, timeoutMs) {
         if (typeof cb !== 'function') { return; }
-        var currentWa = (window.Telegram && window.Telegram.WebApp) || null;
-        if (currentWa) { cb(currentWa); return; }
+        var ready = currentWa();
+        if (ready) { cb(ready); return; }
         function inTelegram() {
           if (currentWa()) { return true; }
           if (window.SkazPlatform === 'tg') { return true; }

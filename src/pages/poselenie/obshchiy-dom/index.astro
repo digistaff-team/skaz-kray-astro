@@ -1,0 +1,561 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+
+<Base
+  title="Общий дом"
+  description="Бронирование помещений, отчёт о расходах Общего дома и протоколы встреч Попечительского совета."
+  noindex
+>
+  <div class="wrap house">
+    <a class="back" href="/poselenie/">← В кабинет жителя</a>
+
+    <h1>Общий дом</h1>
+    <p class="meta">
+      Забронируйте помещение, посмотрите отчёт о расходах на содержание Общего
+      дома и протоколы встреч Попечительского совета.
+    </p>
+
+    <p id="houseStatus" class="meta" role="status">Загружаем…</p>
+
+    <!-- Бронирование помещений — порт common/house.php: ссылка на мини-приложение
+         бронирования (@SkazTerem_bot). Внутри Telegram открываем нативно
+         (openTelegramLink), иначе WebView уводит во внешний браузер. -->
+    <section class="res-card house-option" id="houseBookingCard">
+      <b>Бронирование помещений</b>
+      <span class="meta">Проверьте расписание и забронируйте нужное помещение на свободные часы</span>
+      <p class="house-actions">
+        <a class="btn btn--solid" id="houseBooking" href="https://t.me/SkazTerem_bot/booking" rel="noopener">
+          Перейти к бронированию
+        </a>
+      </p>
+    </section>
+
+    <!-- Отчёт о расходах — порт budget/report.php + partials/ledger_report.php.
+         Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
+         один — LedgerReport), но формы ввода жителям не показываются. -->
+    <section class="res-card" id="budgetCard" hidden>
+      <h2>Бюджет Общего дома</h2>
+      <p class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</p>
+      <div id="budgetReport"></div>
+    </section>
+
+    <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
+    <details class="res-card house-protocols" id="protocolsCard" hidden>
+      <summary><h2>Протоколы встреч Попечительского совета Общего дома</h2></summary>
+      <ul class="doclist" id="protocolsList"></ul>
+    </details>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <!-- Общий дом — порт residents/src/templates/common/house.php + budget/report.php.
+       Данные: GET /api/house (ссылка бронирования, флаг бюджета, протоколы)
+       и GET /api/budget (отчёт по расходам). Оба требуют входа жителя. -->
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var statusEl = document.getElementById('houseStatus');
+      var bookingLink = document.getElementById('houseBooking');
+      var budgetCard = document.getElementById('budgetCard');
+      var budgetReport = document.getElementById('budgetReport');
+      var protocolsCard = document.getElementById('protocolsCard');
+      var protocolsList = document.getElementById('protocolsList');
+
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function api(url) {
+        return fetch(url, { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+          .then(function (r) {
+            if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+            return r.json().catch(function () { return {}; }).then(function (data) {
+              return { status: r.status, ok: r.ok, data: data };
+            });
+          });
+      }
+
+      /** «42 000 ₽» — модуль с разделителем, как в ledger_report.php. */
+      function money(n) {
+        return String(Math.round(Math.abs(Number(n) || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+      }
+      function sign(n) { return (Number(n) < 0 ? '−' : '+') + money(n); }
+      function opDate(d) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+        return m ? m[3] + '.' + m[2] + '.' + m[1] : (d || '');
+      }
+
+      /** Отчёт — порт partials/ledger_report.php: плитки, помесячно, диаграмма, операции. */
+      function renderReport(r) {
+        if (!r || !r.months || !r.months.length) {
+          return '<p class="meta ledger-empty">Пока нет ни одной операции. Данные появятся здесь, ' +
+            'как только совет внесёт первые приходы и расходы.</p>';
+        }
+        var bal = Number(r.monthBalance) || 0;
+        var html =
+          '<div class="ledger-tiles">' +
+            '<div class="ledger-tile ledger-tile--in"><div class="label">Доход, ' + esc(r.selectedLabel) + '</div>' +
+              '<div class="val">' + money(r.monthIncome) + '</div></div>' +
+            '<div class="ledger-tile ledger-tile--out"><div class="label">Расходы, ' + esc(r.selectedLabel) + '</div>' +
+              '<div class="val">' + money(r.monthExpense) + '</div></div>' +
+            '<div class="ledger-tile ledger-tile--bal' + (bal < 0 ? ' neg' : '') + '">' +
+              '<div class="label">Остаток месяца</div><div class="val">' + sign(bal) + '</div></div>' +
+          '</div>' +
+          '<div class="months-scroll"><table class="months"><thead><tr><th>Месяц</th><th>Доход</th>' +
+            '<th>Расходы</th><th>Остаток месяца</th></tr></thead><tbody>' +
+          r.months.map(function (m) {
+            return '<tr><td class="m-name"><a class="' + (m.ym === r.selectedYm ? 'active' : '') + '" ' +
+              'href="/poselenie/obshchiy-dom/?mesyac=' + encodeURIComponent(m.ym) + '">' + esc(m.label) + '</a></td>' +
+              '<td class="m-in">' + money(m.income) + '</td>' +
+              '<td class="m-out">' + money(m.expense) + '</td>' +
+              '<td class="m-bal ' + (m.balance < 0 ? 'neg' : 'pos') + '">' + sign(m.balance) + '</td></tr>';
+          }).join('') +
+          '</tbody><tfoot><tr><td>Итого за всё время</td>' +
+            '<td class="m-in">' + money(r.totalIncome) + '</td>' +
+            '<td class="m-out">' + money(r.totalExpense) + '</td>' +
+            '<td class="m-bal ' + (r.totalBalance < 0 ? 'neg' : 'pos') + '">' + sign(r.totalBalance) + '</td></tr>' +
+          '</tfoot></table></div>';
+
+        // Расходы по статьям — круговая диаграмма (conic-gradient).
+        html += '<h3>Расходы по статьям — ' + esc(r.selectedLabel) + '</h3>';
+        if (!r.breakdown || !r.breakdown.length) {
+          html += '<p class="meta">В этом месяце расходов не было.</p>';
+        } else {
+          var stops = [];
+          var acc = 0;
+          var last = r.breakdown.length - 1;
+          r.breakdown.forEach(function (b, i) {
+            var from = acc;
+            acc += Number(b.share) || Number(b.pct) || 0;
+            var to = i === last ? 100 : acc;
+            stops.push(b.color + ' ' + Math.round(from * 100) / 100 + '% ' + Math.round(to * 100) / 100 + '%');
+          });
+          html += '<div class="ledger-pie-wrap"><div class="ledger-pie" style="background:conic-gradient(' +
+            stops.join(', ') + ')" role="img" aria-label="Круговая диаграмма расходов по статьям"></div>' +
+            '<ul class="ledger-legend">' + r.breakdown.map(function (b) {
+              return '<li><span class="lg-dot" style="background:' + esc(b.color) + '"></span>' +
+                '<span class="lg-name">' + esc(b.name) + '</span>' +
+                '<span class="lg-sum">' + money(b.sum) + ' · ' + b.pct + '%</span></li>';
+            }).join('') + '</ul></div>';
+        }
+
+        // Операции месяца — только просмотр (житель не правит чужой учёт).
+        html += '<h3>Операции — ' + esc(r.selectedLabel) + '</h3>';
+        if (!r.operations || !r.operations.length) {
+          html += '<p class="meta">Операций за этот месяц нет.</p>';
+        } else {
+          html += '<ul class="ops">' + r.operations.map(function (op) {
+            var out = op.kind === 'expense';
+            return '<li><div class="op-row"><div class="op-head">' +
+              '<span class="op-date">' + opDate(op.entry_date) + '</span>' +
+              '<span class="op-cat">' + esc(op.category) + '</span></div>' +
+              '<div class="op-note">' + esc(op.note) + '</div>' +
+              '<div class="op-sum ' + (out ? 'op-sum--out' : 'op-sum--in') + '">' +
+              (out ? '−' : '+') + money(op.amount) +
+              (op.hasReceipt && op.receiptPath
+                ? '<a class="op-doc" href="' + esc(op.receiptPath) + '" target="_blank" rel="noopener">чек</a>'
+                : '') +
+              '</div></div></li>';
+          }).join('') + '</ul>';
+        }
+        return html;
+      }
+
+      function renderProtocols(list) {
+        if (!list || !list.length) {
+          protocolsList.innerHTML = '<li class="meta">Протоколов пока нет.</li>';
+          protocolsCard.hidden = false;
+          return;
+        }
+        protocolsList.innerHTML = list.map(function (p) {
+          return '<li><a href="' + esc(p.href) + '" target="_blank" rel="noopener">' + esc(p.title) + '</a></li>';
+        }).join('');
+        protocolsCard.hidden = false;
+      }
+
+      function loadBudget() {
+        var ym = new URLSearchParams(window.location.search).get('mesyac');
+        return api('/api/budget' + (ym ? '?mesyac=' + encodeURIComponent(ym) : ''))
+          .then(function (res) {
+            if (res.status === 403) {
+              budgetCard.hidden = false;
+              budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
+              return null;
+            }
+            if (!res.ok) throw new Error('http ' + res.status);
+            budgetReport.innerHTML = renderReport(res.data);
+            budgetCard.hidden = false;
+            return res.data;
+          });
+      }
+
+      api('/api/house')
+        .then(function (res) {
+          if (!res.ok) throw new Error('http ' + res.status);
+          var d = res.data || {};
+          if (d.bookingLink && bookingLink) bookingLink.setAttribute('href', d.bookingLink);
+          renderProtocols(d.protocols || []);
+          if (d.budgetOpen === false) {
+            budgetCard.hidden = false;
+            budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
+            return null;
+          }
+          return loadBudget();
+        })
+        .then(function () { show(''); })
+        .catch(function (e) {
+          if (e && e.auth) return;
+          show('Не удалось загрузить раздел. Проверьте связь и обновите страницу.');
+        });
+
+      // Бронирование — отдельное мини-приложение. Когда портал открыт внутри
+      // Telegram, ссылку надо отдавать клиенту через openTelegramLink: обычный
+      // переход внутри WebView либо ничего не делает, либо выкидывает во внешний
+      // браузер, где человек оказывается разлогиненным. Вне Telegram (браузер,
+      // PWA) работает обычная ссылка — поэтому href настоящий, а не «#».
+      (function () {
+        var SRC = 'https://telegram.org/js/telegram-web-app.js';
+        var TIMEOUT_MS = 8000;
+        if (!bookingLink) return;
+
+        function currentWa() { return (window.Telegram && window.Telegram.WebApp) || null; }
+        function inTelegram() {
+          if (currentWa()) return true;
+          try {
+            if (window.sessionStorage.getItem('tg-miniapp') === '1') return true;
+          } catch (e) {}
+          return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto);
+        }
+        function ensure(cb) {
+          var ready = currentWa();
+          if (ready) { cb(ready); return; }
+          if (!inTelegram()) { cb(null); return; }
+          var settled = false;
+          var timer = null;
+          function finish() {
+            if (settled) return;
+            settled = true;
+            if (timer) clearTimeout(timer);
+            cb(currentWa());
+          }
+          timer = setTimeout(finish, TIMEOUT_MS);
+          var existing = document.querySelector('script[src="' + SRC + '"]');
+          if (existing) {
+            existing.addEventListener('load', finish, { once: true });
+            existing.addEventListener('error', finish, { once: true });
+            return;
+          }
+          var sc = document.createElement('script');
+          sc.src = SRC;
+          sc.async = true;
+          sc.onload = finish;
+          sc.onerror = finish;
+          (document.head || document.body || document.documentElement).appendChild(sc);
+        }
+
+        ensure(function (wa) {
+          if (!wa) return;
+          bookingLink.addEventListener('click', function (e) {
+            var url = bookingLink.getAttribute('href');
+            if (wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
+            else if (wa.openLink) { e.preventDefault(); wa.openLink(url); }
+          });
+        });
+      })();
+    })();
+  </script>
+</Base>
+
+<style>
+  .house {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+  }
+  .back {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .house h1 {
+    font-size: var(--step-3);
+    margin: 0 0 0.4rem;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .res-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem;
+    margin-top: 1.2rem;
+  }
+  .res-card[hidden] {
+    display: none;
+  }
+  .res-card h2 {
+    font-size: var(--step-1);
+    margin: 0 0 0.2rem;
+  }
+  .res-card h3 {
+    font-size: 1rem;
+    margin: 1.2rem 0 0.4rem;
+  }
+  .house-option b {
+    display: block;
+    font-size: 1.05rem;
+    margin-bottom: 0.2rem;
+  }
+  .house-actions {
+    margin: 0.8rem 0 0;
+  }
+  .house-actions .btn {
+    display: inline-block;
+    margin: 0;
+  }
+  /* Протоколы — аккордеон на нативном <details>. */
+  .house-protocols > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .house-protocols > summary::-webkit-details-marker {
+    display: none;
+  }
+  .house-protocols > summary h2 {
+    margin: 0;
+  }
+  .house-protocols > summary::after {
+    content: '\25BE';
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  .house-protocols[open] > summary {
+    margin-bottom: 0.8rem;
+  }
+  .house-protocols[open] > summary::after {
+    transform: rotate(180deg);
+  }
+  .doclist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .doclist li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .doclist li:last-child {
+    border-bottom: 0;
+  }
+
+  /* Отчёт о расходах — те же блоки, что в residents.css (ledger_*),
+     но в стилях сайта: страница живёт в разделе жителей, а не совета. */
+  .ledger-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.1rem 0;
+  }
+  @media (max-width: 640px) {
+    .ledger-tiles {
+      grid-template-columns: 1fr;
+    }
+  }
+  .ledger-tile {
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+  }
+  .ledger-tile .label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .ledger-tile .val {
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.2rem;
+  }
+  .ledger-tile--in .val {
+    color: var(--green);
+  }
+  .ledger-tile--out .val {
+    color: var(--wheat);
+  }
+  .ledger-tile--bal {
+    background: var(--green-soft);
+    border-color: #d7e8dd;
+  }
+  .ledger-tile--bal.neg .val {
+    color: #c0392b;
+  }
+  .months-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .months {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .months th,
+  .months td {
+    text-align: right;
+    padding: 0.5rem 0.45rem;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .months th {
+    font-size: 0.76rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .months th:first-child,
+  .months td:first-child {
+    text-align: left;
+  }
+  .months tr:last-child td {
+    border-bottom: 0;
+  }
+  .months tfoot td {
+    border-top: 2px solid var(--line);
+    font-weight: 700;
+  }
+  .months .m-name a.active {
+    font-weight: 700;
+    color: var(--green-deep);
+  }
+  .months .m-bal.pos {
+    color: var(--green);
+  }
+  .months .m-bal.neg {
+    color: #c0392b;
+  }
+  .ledger-pie-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+  }
+  .ledger-pie {
+    flex: none;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+  }
+  .ledger-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    min-width: 12rem;
+  }
+  .ledger-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ledger-legend li:last-child {
+    border-bottom: 0;
+  }
+  .lg-dot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+  .lg-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .lg-sum {
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .ops {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+  }
+  .ops > li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ops > li:last-child {
+    border-bottom: 0;
+  }
+  .op-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .op-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .op-date {
+    color: var(--muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .op-note {
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+  }
+  .op-cat {
+    font-size: 0.72rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--green-soft);
+    color: var(--green);
+    white-space: nowrap;
+  }
+  .op-sum {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .op-sum--out {
+    color: var(--wheat);
+  }
+  .op-sum--in {
+    color: var(--green);
+  }
+  .op-doc {
+    font-size: 0.8rem;
+    margin-left: 0.4rem;
+  }
+  .ledger-empty {
+    padding: 1.2rem 0;
+  }
+  .foot {
+    margin-top: 2.2rem;
+    font-size: 0.95rem;
+  }
+</style>

@@ -1,0 +1,201 @@
+---
+// Лэйаут раздела /sovet — порт residents/src/templates/council/layout.php.
+// Шапка с гамбургер-меню, «Назад/На главную», flash, подтверждения и защита
+// от повторной отправки. Статика проверяет сессию через GET /api/council/me
+// (легаси это делал CouncilAuth::requireLogin на сервере).
+//
+// auth=false — экраны входа (vhod/vosstanovit/sbros/vyhod): там гостевое
+// меню и никаких запросов сессии — иначе редирект-цикл «вход → вход».
+const { path, auth = true } = Astro.props;
+---
+<header class="res-header">
+  <a class="res-logo" href="/sovet/">Попечительский совет<span class="sovet-sub">внутренний портал</span></a>
+  <details class="res-menu" id="sovetMenu">
+    <summary class="res-menu-btn" aria-label="Меню" title="Меню"><span class="res-menu-ico"></span></summary>
+    <nav class="res-nav" id="sovetNav">
+      {!auth && (
+        <>
+          <a href="/">На сайт</a>
+          <a href="/sovet/vhod/">Вход</a>
+        </>
+      )}
+      {/* Пункты вошедшего рисует скрипт: нужны роль и проверка сессии. */}
+    </nav>
+  </details>
+</header>
+
+{/* Контейнер как main в council/layout.php, но без тега <main> — у Base.astro
+    уже есть свой main#main, вкладывать нельзя. Правило «без Назад на главной» —
+    как в легаси: партиал не подключается на /sovet и /sovet/. */}
+<div class="res-main sovet-main">
+  {auth && path !== '/sovet/' && (
+    <div class="res-back-row">
+      <a class="res-back js-back js-back-top" href="/sovet/">← Назад</a>
+      <a class="res-back" href="/sovet/">На главную</a>
+    </div>
+  )}
+  <div id="sovetFlash" hidden></div>
+  <slot />
+</div>
+
+<!-- Подтверждение опасных действий — порт partials/confirm.php.
+     Разметка ДО скрипта: скрипт ищет #resConfirm при выполнении. -->
+<div class="res-confirm" id="resConfirm" hidden>
+  <div class="res-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="resConfirmText">
+    <p class="res-confirm-text" id="resConfirmText"></p>
+    <div class="res-confirm-actions">
+      <button type="button" class="res-btn res-btn--ghost js-confirm-no">Отмена</button>
+      <button type="button" class="res-btn js-confirm-yes">Да</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  // Пункты меню вошедшего (порт council/layout.php): главная, повестка,
+  // направления, задачи, бухгалтерия, участники (только админ), пароль, выход.
+  (function () {
+    var NAV_AUTH = '<a href="/sovet/">Главная</a>' +
+      '<a href="/sovet/povestka/">Повестка</a>' +
+      '<a href="/sovet/napravleniya/">Направления</a>' +
+      '<a href="/sovet/zadachi/">Текущие задачи</a>' +
+      '<a href="/sovet/buhgalteriya/">Бухгалтерия</a>' +
+      '<a href="/sovet/parol/">Пароль</a>' +
+      '<a href="#" id="sovetLogout">Выход</a>';
+    var NAV_ADMIN = '<a href="/sovet/upravlenie/">Участники</a>';
+    var GUEST = document.querySelectorAll('#sovetNav a').length > 0;
+    if (GUEST) return; // экран входа — меню уже на месте
+
+    fetch('/api/council/me', { credentials: 'include', cache: 'no-store' })
+      .then(function (r) {
+        if (r.status === 401) {
+          // requireLogin(): нет cookie council_token → экран входа.
+          window.location.replace('/sovet/vhod/');
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d) return;
+        var nav = document.getElementById('sovetNav');
+        if (!nav) return;
+        var isAdmin = d.me && d.me.role === 'admin';
+        nav.innerHTML = NAV_ADMIN + NAV_AUTH; // участники — первыми, как в легаси
+        if (!isAdmin) {
+          var a = nav.querySelector('a[href="/sovet/upravlenie/"]');
+          if (a) a.parentNode.removeChild(a);
+        }
+        var out = document.getElementById('sovetLogout');
+        if (out) {
+          out.addEventListener('click', function (e) {
+            e.preventDefault();
+            // Выход: гасим cookie на сервере и уходим на вход (легаси
+            // CouncilAuth::logout → Clear-Site-Data: "cache" → /sovet/vhod).
+            fetch('/api/council/logout', { method: 'POST', credentials: 'include' })
+              .catch(function () {})
+              .then(function () {
+                try { window.caches && caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }); } catch (e) {}
+                window.location.replace('/sovet/vhod/');
+              });
+          });
+        }
+      })
+      .catch(function () { /* связи нет — оставляем гостевое меню */ });
+  })();
+
+  // Одноразовые сообщения — порт partials/flash.php: Flash-сессию
+  // имитирует sessionStorage (пишет done()/flash() из lib/sovet.js).
+  (function () {
+    var box = document.getElementById('sovetFlash');
+    if (!box) return;
+    var raw = '';
+    try { raw = sessionStorage.getItem('sovetFlash') || ''; sessionStorage.removeItem('sovetFlash'); } catch (e) {}
+    if (!raw) return;
+    try {
+      var f = JSON.parse(raw);
+      if (!f || !f.msg) return;
+      box.className = 'res-flash res-flash--' + (f.type || 'info');
+      box.textContent = f.msg;
+      box.hidden = false;
+    } catch (e) {}
+  })();
+
+  // «← Назад» — порт partials/back.php: без истории вкладки ссылку убираем,
+  // чтобы подпись не обещала лишнего.
+  (function () {
+    function bind() {
+      var top = document.querySelector('.js-back-top');
+      if (window.history.length <= 1) { if (top) top.remove(); return; }
+      Array.prototype.forEach.call(document.querySelectorAll('.js-back'), function (link) {
+        link.addEventListener('click', function (e) { e.preventDefault(); window.history.back(); });
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+  })();
+
+  // Подтверждение опасных действий — порт partials/confirm.php: своё окно
+  // вместо window.confirm (в мини-приложениях системное окно глушится).
+  (function () {
+    var box = document.getElementById('resConfirm');
+    if (!box) return;
+    var text = box.querySelector('.res-confirm-text');
+    var yes = box.querySelector('.js-confirm-yes');
+    var no = box.querySelector('.js-confirm-no');
+    var pending = null;
+
+    function close(ok) {
+      var p = pending;
+      pending = null;
+      box.hidden = true;
+      if (!p) return;
+      if (!ok) { if (p.submitter && p.submitter.focus) p.submitter.focus(); return; }
+      p.form.dataset.confirmed = '1';
+      if (p.form.requestSubmit) p.form.requestSubmit(p.submitter && p.submitter.form === p.form ? p.submitter : undefined);
+      else p.form.submit();
+    }
+
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+      var msg = form.getAttribute('data-confirm');
+      if (!msg) return;
+      e.preventDefault();
+      pending = { form: form, submitter: e.submitter || null };
+      text.textContent = msg;
+      box.hidden = false;
+      yes.focus();
+    }, true);
+
+    yes.addEventListener('click', function () { close(true); });
+    no.addEventListener('click', function () { close(false); });
+    box.addEventListener('click', function (e) { if (e.target === box) close(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) close(false); });
+  })();
+
+  // Защита от повторной отправки — порт partials/submit-guard.php:
+  // блокируем нажатую кнопку следующим тиком (до отправки disabled выкинул
+  // бы её из данных формы).
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || !form || form.dataset.sent) return;
+    form.dataset.sent = '1';
+    var btn = e.submitter || form.querySelector('button[type="submit"], button:not([type])');
+    if (!btn || btn.tagName !== 'BUTTON') return;
+    setTimeout(function () {
+      btn.disabled = true;
+      if (btn.classList.contains('res-btn')) {
+        btn.dataset.label = btn.textContent;
+        btn.textContent = 'Отправляем…';
+      }
+    }, 0);
+  });
+  // Возврат «назад» достаёт страницу из кэша вместе с заблокированной кнопкой.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    Array.prototype.forEach.call(document.querySelectorAll('form[data-sent]'), function (f) { delete f.dataset.sent; });
+    Array.prototype.forEach.call(document.querySelectorAll('button[disabled]'), function (btn) {
+      btn.disabled = false;
+      if (btn.dataset.label) { btn.textContent = btn.dataset.label; delete btn.dataset.label; }
+    });
+  });
+</script>

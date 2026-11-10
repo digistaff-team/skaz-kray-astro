@@ -1,0 +1,114 @@
+---
+import Base from '../../../../layouts/Base.astro';
+import Shell from '../../../../components/sovet/Shell.astro';
+---
+<Base title="Статьи бюджета" noindex>
+  <Shell path="/sovet/buhgalteriya/statyi/">
+    <section class="sovet-hero" style="margin-bottom:1rem">
+      <p class="sovet-eyebrow">Бухгалтерия · только админ</p>
+      <h1>Статьи бюджета</h1>
+      <p>Статьи прихода и расхода для учёта. Архивная статья не предлагается при вводе новых операций, но остаётся в исторических отчётах.</p>
+      <p class="sovet-hero-actions"><a class="res-btn res-btn--ghost" href="/sovet/buhgalteriya/">← К операциям</a></p>
+    </section>
+
+    <p class="res-meta" id="loadStatus" role="status">Загружаю статьи…</p>
+    <div id="blocks"></div>
+    <div class="res-flash res-flash--error" id="err" hidden></div>
+  </Shell>
+
+  <!-- Справочник статей — порт residents/src/templates/council/categories.php.
+       Только админ (гейт requireCouncilAdmin на сервере): при не-админе
+       GET /api/council/ledger/categories отдаёт 403. -->
+  <script>
+    import { api, post, esc, failText } from '../../../../lib/sovet.js';
+
+    const $ = (id) => document.getElementById(id);
+    const err = $('err');
+
+    function showError(msg) {
+      if (err) { err.textContent = msg; err.hidden = false; }
+    }
+
+    function render(list, kind) {
+      const rows = list.map((c) =>
+        '<tr>' +
+          '<td>' +
+            '<form class="sovet-sub-rename" data-rename="' + c.id + '">' +
+              '<input type="text" name="name" value="' + esc(c.name) + '" maxlength="160">' +
+              '<button type="submit" class="res-btn" style="margin-top:0;padding:.35rem .9rem;font-size:.85rem">Сохранить</button>' +
+            '</form>' +
+          '</td>' +
+          '<td style="text-align:right">' +
+            (c.isActive
+              ? '<span class="res-status res-status--published">активна</span>'
+              : '<span class="res-status res-status--rejected">архив</span>') +
+            '<form data-toggle="' + c.id + '" style="display:inline;margin-left:.5rem">' +
+              '<button type="submit" class="res-link-btn">' + (c.isActive ? 'В архив' : 'Вернуть') + '</button>' +
+            '</form>' +
+          '</td>' +
+        '</tr>').join('');
+
+      return '<div class="res-card">' +
+        '<h2 style="font-size:1.1rem">' + (kind === 'income' ? 'Статьи прихода' : 'Статьи расхода') + '</h2>' +
+        '<table class="sovet-members"><tbody>' + rows + '</tbody></table>' +
+        '<form class="sovet-sub-add" data-kind="' + kind + '">' +
+          '<input type="hidden" name="kind" value="' + kind + '">' +
+          '<input type="text" name="name" placeholder="Новая статья" maxlength="160">' +
+          '<button type="submit" class="res-btn">Добавить</button>' +
+        '</form>' +
+      '</div>';
+    }
+
+    function load() {
+      api('/api/council/ledger/categories').then((res) => {
+        if (!res.ok) throw new Error('http ' + res.status);
+        const d = res.data;
+        const box = $('blocks');
+        if (box) box.innerHTML = render(d.income || [], 'income') + render(d.expense || [], 'expense');
+        const st = $('loadStatus');
+        if (st) st.hidden = true;
+      }).catch((e) => {
+        if (e && e.auth) return;
+        const st = $('loadStatus');
+        if (st) st.textContent = 'Справочник статей доступен только администратору совета.';
+      });
+    }
+
+    // Делегирование: добавление, переименование, архив/возврат.
+    document.addEventListener('submit', (e) => {
+      if (e.defaultPrevented) return;
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const add = form.getAttribute('data-kind');
+      if (add) {
+        e.preventDefault();
+        const name = form.querySelector<HTMLInputElement>('input[name="name"]');
+        post('/api/council/ledger/categories', { kind: add, name: ((name && name.value) || '').trim() })
+          .then((res) => { if (!res.ok) { showError(failText(res)); return; } load(); })
+          .catch(() => showError('Ошибка связи.'));
+        return;
+      }
+
+      const rename = form.getAttribute('data-rename');
+      if (rename) {
+        e.preventDefault();
+        const name = form.querySelector<HTMLInputElement>('input[name="name"]');
+        post('/api/council/ledger/categories/' + rename, { name: ((name && name.value) || '').trim() })
+          .then((res) => { if (!res.ok) { showError(failText(res)); return; } load(); })
+          .catch(() => showError('Ошибка связи.'));
+        return;
+      }
+
+      const toggle = form.getAttribute('data-toggle');
+      if (toggle) {
+        e.preventDefault();
+        post('/api/council/ledger/categories/' + toggle + '/toggle', {})
+          .then((res) => { if (!res.ok) { showError(failText(res)); return; } load(); })
+          .catch(() => showError('Ошибка связи.'));
+      }
+    }, true);
+
+    load();
+  </script>
+</Base>

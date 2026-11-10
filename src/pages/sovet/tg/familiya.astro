@@ -1,0 +1,165 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base title="Код привязки Telegram" noindex>
+  <div class="wrap">
+    <div class="tg-entry">
+      <h1>Код привязки Telegram</h1>
+      <p class="res-meta">Введите фамилию и код привязки. Код выдаёт администратор совета — он действует 7 дней и нужен только при первом входе.</p>
+      <div class="res-flash res-flash--error" id="claimError" hidden></div>
+      <form class="res-form" id="claimForm">
+        <label>Фамилия
+          <input type="text" name="surname" id="surname" maxlength="120" autocomplete="family-name" required autofocus />
+        </label>
+        <label>Код привязки
+          <input type="text" name="code" id="code" maxlength="20" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH" required />
+        </label>
+        <button class="res-btn" type="submit">Войти</button>
+      </form>
+      <p class="res-meta" id="claimNote" style="margin-top:0.8rem;"></p>
+    </div>
+  </div>
+
+  <!-- Порт residents/src/templates/council/tg/familiya.php.
+       Формирует initData из SDK (или из sessionStorage, если telegram.org недоступен),
+       отправляет на POST /api/council/tg/claim (surname + code + initData). -->
+  <script is:inline>
+    (function () {
+      window.SkazPlatform = 'tg';
+
+      var STORE_KEY = 'skazTgInitData';
+      function launchInitData() {
+        var pick = function (src) {
+          if (!src) { return ''; }
+          var m = /[#&?]tgWebAppData=([^&]*)/.exec(src);
+          if (!m) { return ''; }
+          try { return decodeURIComponent(m[1]); } catch (e) { return ''; }
+        };
+        var fresh = pick(window.location.hash) || pick(window.location.search);
+        try {
+          if (fresh) { window.sessionStorage.setItem(STORE_KEY, fresh); return fresh; }
+          return window.sessionStorage.getItem(STORE_KEY) || '';
+        } catch (e) { return fresh; }
+      }
+
+      var errorBox = document.getElementById('claimError');
+      var form = document.getElementById('claimForm');
+      var note = document.getElementById('claimNote');
+      var surnameInput = document.getElementById('surname');
+
+      function showError(msg) {
+        if (errorBox) { errorBox.textContent = msg; errorBox.hidden = false; }
+      }
+
+      // initData: SDK优先, fallback — sessionStorage (launchInitData).
+      var SDK_TIMEOUT_MS = 8000;
+      var _initData = launchInitData(); // early value from hash
+
+      function ensure(cb, timeoutMs) {
+        if (typeof cb !== 'function') { return; }
+        var currentWa = (window.Telegram && window.Telegram.WebApp) || null;
+        if (currentWa) { cb(currentWa); return; }
+        function inTelegram() {
+          if (currentWa()) { return true; }
+          if (window.SkazPlatform === 'tg') { return true; }
+          if (window.SkazPlatform === 'max' || window.SkazPlatform === 'web') { return false; }
+          return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto || launchInitData());
+        }
+        if (!inTelegram()) { cb(null); return; }
+        var settled = false;
+        var timer = null;
+        function finish() {
+          if (settled) { return; }
+          settled = true;
+          if (timer) { clearTimeout(timer); }
+          cb((window.Telegram && window.Telegram.WebApp) || null);
+        }
+        timer = setTimeout(finish, timeoutMs || SDK_TIMEOUT_MS);
+        var src = 'https://telegram.org/js/telegram-web-app.js';
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) {
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener('error', finish, { once: true });
+          return;
+        }
+        var sc = document.createElement('script');
+        sc.src = src;
+        sc.async = true;
+        sc.onload = finish;
+        sc.onerror = finish;
+        (document.head || document.body || document.documentElement).appendChild(sc);
+      }
+
+      // Если SDK доступен — обновляем initData и инициализируем WebApp UI.
+      ensure(function (wa) {
+        if (wa) {
+          try { wa.ready(); } catch (e) {}
+          try { wa.expand(); } catch (e) {}
+        }
+        if (wa && wa.initData) {
+          _initData = wa.initData;
+        } else if (note) {
+          note.textContent = 'Откройте раздел Совета через бота @SkazKray_bot в Telegram, иначе вход не сработает.';
+        }
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        var surname = (surnameInput.value || '').trim();
+        var code = (document.getElementById('code').value || '').trim();
+        var initData = _initData;
+
+        if (!initData) {
+          showError('Не удалось получить данные Telegram. Откройте раздел через бота @SkazKray_bot.');
+          btn.disabled = false;
+          return;
+        }
+
+        fetch('/api/council/tg/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            surname: surname,
+            code: code,
+            initData: initData
+          })
+        })
+          .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+          .then(function (res) {
+            if (res.ok) {
+              window.location.replace('/sovet/');
+              return;
+            }
+            showError(res.error || 'Ошибка привязки. Попробуйте ещё раз.');
+            btn.disabled = false;
+          })
+          .catch(function () {
+            showError('Ошибка связи. Попробуйте ещё раз.');
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .tg-entry {
+    padding: 3rem 0;
+    max-width: 48ch;
+  }
+  .tg-status {
+    color: var(--muted);
+    font-size: var(--step-1);
+    margin-top: 0.8rem;
+  }
+  .tg-noscript {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+</style>

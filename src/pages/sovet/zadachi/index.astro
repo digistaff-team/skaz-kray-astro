@@ -1,0 +1,529 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Текущие задачи" noindex>
+  <Shell path="/sovet/zadachi/">
+    <h1>Текущие задачи</h1>
+    <p class="res-meta">Живой список задач по содержанию Терема.<br />Любой член совета может выбрать себе задачу, взять её в работу, отметить выполненной.</p>
+
+    <div class="sovet-toolbar">
+      <div class="sovet-sorts" id="sorts">
+        Сортировка:
+        <a class="sovet-sort" href="/sovet/zadachi/?sort=created">по дате</a>
+        <a class="sovet-sort" href="/sovet/zadachi/?sort=progress">по прогрессу</a>
+        <a class="sovet-sort" href="/sovet/zadachi/?sort=spent">по расходам</a>
+      </div>
+    </div>
+
+    <details class="sovet-newtask" id="newTask">
+      <summary class="sovet-addlink">+ Новая задача</summary>
+      <form class="res-form" id="createForm">
+        <label>Что сделать<input type="text" name="title" id="cTitle" maxlength="300" required /></label>
+        <label>Кто сделает<select name="assignee" id="cAssignee"></select></label>
+        <div class="sovet-edit-row">
+          <label>Крайний срок<input type="date" name="due_date" id="cDue" /></label>
+          <label>Приоритет
+            <select name="priority" id="cPriority">
+              <option value="низкая">Низкий</option>
+              <option value="средняя" selected>Средний</option>
+              <option value="высокая">Высокий</option>
+            </select>
+          </label>
+        </div>
+        <div class="sovet-money-row">
+          <label class="sovet-money-spent">Расходы, руб.<input type="number" name="spent" id="cSpent" min="0" step="1" class="js-spent" /></label>
+          <label class="sovet-money-timing js-expense-money" hidden>Оплата расходов
+            <select name="expense_timing" id="cTiming">
+              <option value="" selected>— выберите —</option>
+              <option value="pre">Предоплата</option>
+              <option value="post">Постоплата</option>
+            </select>
+          </label>
+        </div>
+        <label class="js-expense-money" hidden>Статья расхода (обязательно)
+          <select name="expense_category_id" id="cCat"></select>
+        </label>
+        <label>Как сделать и что учесть<textarea name="description" id="cDesc"></textarea></label>
+        <div class="sovet-form-actions">
+          <button class="res-btn" type="submit">Добавить</button>
+          <button class="res-btn res-btn--ghost" type="button" id="cCancel">Отменить</button>
+        </div>
+      </form>
+    </details>
+
+    <p class="res-meta sovet-empty" id="emptyNote" hidden>Нет активных задач. Добавьте первую 👆</p>
+    <div id="activeList"></div>
+
+    <details class="sovet-acc sovet-archive" id="archiveCard" hidden>
+      <summary><h2 class="sovet-archive-h" id="archTitle">Выполненные задачи</h2></summary>
+      <div id="archiveList"></div>
+    </details>
+
+    <div class="res-flash res-flash--error" id="err" hidden></div>
+  </Shell>
+
+  <!-- Доска задач — порт residents/src/templates/council/tasks.php + TaskController.
+       Загрузка одним GET /api/council/tasks (там же members/expenseCats/me). -->
+  <script>
+    import { api, post, esc, failText } from '../../../lib/sovet.js';
+
+    const $ = (id: string) => document.getElementById(id);
+    const err = $('err');
+    let members: any[] = [];
+    let expenseCats: any[] = [];
+    let me = '';
+    let sort = 'created';
+
+    function showError(msg: string) {
+      if (err) { err.textContent = msg; err.hidden = false; }
+    }
+
+    const STATUS_LABEL: Record<string, string> = {
+      'новая': 'Поставлена', 'в работе': 'В работе', 'выполнена': 'Выполнена',
+    };
+    const STATUS_ICON: Record<string, string> = {
+      'новая': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10.5"/></svg>',
+      'в работе': '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 1.5a10.5 10.5 0 0 1 0 21z" fill="currentColor"/></svg>',
+      'выполнена': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
+    };
+    const EXPENSE_STATUS: Record<string, string> = {
+      pending: '⏳ на одобрении', approved: '✅ одобрено', rejected: '🚫 отклонено',
+    };
+
+  const priorityClass = (p: string) =>
+    'sovet-pri--' + (p === 'высокая' ? 'high' : p === 'низкая' ? 'low' : 'mid');
+  const statusClass = (s: string) =>
+    'sovet-st--' + (s === 'выполнена' ? 'done' : s === 'в работе' ? 'progress' : 'new');
+
+  /** «14 ноября 2026» — порт ru_date() (легаси писал даты на русском). */
+  const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  function ruDate(v: string): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || '');
+    return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : (v || '');
+  }
+
+  /** Фото: путь tg: → превью через /tg-media (порт entry_image_thumb). */
+  function thumb(path: string): string {
+    if (path.startsWith('tg:')) return '/tg-media/w240/' + path.slice(3) + '.jpg';
+    return path;
+  }
+
+  function money(n: number): string {
+    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  /** Опции «Кто сделает»: я первым (как в легаси), потом остальные. */
+  function assigneeOptions(sel: string): string {
+    const names = members.map((m) => m.name);
+    if (names.includes(me)) {
+      const rest = names.filter((n) => n !== me);
+      return `<option value="${esc(me)}" selected>${esc(me)}</option>` +
+        rest.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    }
+    return '<option value="" selected>— не назначен —</option>' +
+      names.map((n) => `<option value="${esc(n)}"${n === sel ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  }
+
+  function catOptions(cur: number): string {
+    const opts = expenseCats.map((c) =>
+      `<option value="${c.id}"${c.id === cur ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+    // Архивная текущая статья — отдельной строкой, чтобы выбор не пропал.
+    const archived = cur > 0 && !expenseCats.some((c) => c.id === cur);
+    return '<option value="">— выберите статью —</option>' +
+      (archived ? `<option value="${cur}" selected>Текущая статья (архив)</option>` : '') + opts;
+  }
+
+  /** Блок подзадач — порт _subtasks.php (список + форма добавления). */
+  function subsHtml(t: any): string {
+    const rows = (t.subtasks || []).map((s: any) =>
+      `<div class="sovet-sub${s.done ? ' sovet-sub--done' : ''}${s.title === '' ? ' sovet-sub--blank' : ''}" id="sub-${s.id}">` +
+        `<button class="sovet-check" type="button" data-sub-toggle="${s.id}" data-task="${t.id}" title="Отметить">${s.done ? '☑' : '☐'}</button>` +
+        `<div class="sovet-sub-rename" data-sub-id="${s.id}" data-task="${t.id}">` +
+          `<input type="text" name="title" maxlength="300" value="${esc(s.title)}" placeholder="Название подзадачи" />` +
+          `<button class="res-link-btn sovet-danger js-sub-del" type="button" title="Удалить подзадачу" aria-label="Удалить подзадачу"${s.title === '' ? ' hidden' : ''}>✕</button>` +
+        `</div>` +
+      `</div>`).join('');
+    return rows +
+      `<form class="sovet-sub-add" data-task="${t.id}">` +
+        `<input type="text" name="title" maxlength="300" placeholder="Название подзадачи" />` +
+        `<button class="res-btn" type="submit" title="Добавить подзадачу" aria-label="Добавить подзадачу">+</button>` +
+      `</form>`;
+  }
+
+  /** Карточка активной задачи — порт <details class="sovet-task"> из tasks.php. */
+  function taskHtml(t: any): string {
+    const spent = Number(t.spent) || 0;
+    const esLabel = EXPENSE_STATUS[t.expense_status] || '';
+    const tmLabel = t.expense_timing === 'pre' ? 'предоплата' : 'постоплата';
+    const hasCat = Number(t.expenseCategoryId) > 0;
+    const meta =
+      `Исполнитель: <strong>${t.assignee ? esc(t.assignee) : '<span class="sovet-vacant">Вакантна</span>'}</strong>` +
+      ` · Автор: ${t.author ? esc(t.author) : '—'}` +
+      ` · Подзадачи: ${t.done_count}/${t.total_count}` +
+      (spent > 0 ? ` · Расходы: ${money(spent)} ₽` +
+        (hasCat ? ` <span class="res-meta">(${tmLabel}${esLabel ? ' · ' + esLabel : ''})</span>` : '') : '') +
+      ` · Прогресс: ${t.progress}%` +
+      (t.dueDate ? ` · Срок: ${ruDate(String(t.dueDate).slice(0, 10))}` : '');
+
+    const photos = (t.photos || []).length
+      ? '<div class="res-meta">Фото (× — удалить):</div><div class="photo-preview">' +
+        t.photos.map((p: any) =>
+          `<span class="photo-uploaded" data-photo-task="${t.id}" data-photo-id="${p.id}">` +
+            `<img class="photo-thumb" src="${esc(thumb(p.path))}" alt="" loading="lazy" />` +
+            `<button type="button" class="photo-del" data-del-photo="${p.id}" data-task="${t.id}" title="Удалить фото">×</button>` +
+          `</span>`).join('') +
+        '</div>'
+      : '';
+
+    const timingSel = t.expenseTiming === 'pre'
+      ? '<select disabled><option selected>Предоплата — деньги нужны заранее</option></select>'
+      : `<select name="expense_timing"><option value="post"${t.expenseTiming === 'post' ? ' selected' : ''}>Постоплата — возместить после выполнения</option><option value="pre"${t.expenseTiming === 'pre' ? ' selected' : ''}>Предоплата — деньги нужны заранее</option></select>`;
+
+    return `<details class="res-card sovet-task" id="task-${t.id}">
+      <summary class="sovet-task-head">
+        <span class="sovet-pri-dot ${priorityClass(t.priority)}" title="Приоритет: ${esc(t.priority)}" aria-label="Приоритет: ${esc(t.priority)}"></span>
+        <span class="sovet-st ${statusClass(t.status)}" title="Статус: ${esc(STATUS_LABEL[t.status] || t.status)}" aria-label="Статус: ${esc(STATUS_LABEL[t.status] || t.status)}">${STATUS_ICON[t.status] || STATUS_ICON['новая']}</span>
+        <span class="sovet-task-title">${esc(t.title)}</span>
+        <span class="sovet-task-assignee">${t.assignee ? '👤 ' + esc(t.assignee) : '<span class="sovet-vacant">Вакантна</span>'}</span>
+        <span class="sovet-progress"><span class="sovet-progress-fill" style="width:${t.progress}%"></span></span>
+        <button class="sovet-del-ico" type="submit" form="del-${t.id}" title="Удалить задачу" aria-label="Удалить задачу"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
+      </summary>
+
+      <form id="del-${t.id}" data-del-task="${t.id}" data-confirm="Удалить задачу?"></form>
+
+      <p class="sovet-task-meta">${meta}</p>
+      ${t.description ? `<p class="sovet-task-desc">${esc(t.description).replace(/\n/g, '<br>')}</p>` : ''}
+      ${photos}
+
+      <form class="res-form sovet-edit" data-edit-task="${t.id}">
+        <label>Что сделать<input type="text" name="title" maxlength="300" value="${esc(t.title)}" /></label>
+        <label>Кто сделает<select name="assignee">${assigneeOptions(t.assignee || '')}</select></label>
+        <div class="sovet-edit-row">
+          <label>Приоритет
+            <select name="priority">
+              <option value="низкая"${t.priority === 'низкая' ? ' selected' : ''}>Низкий</option>
+              <option value="средняя"${t.priority === 'средняя' ? ' selected' : ''}>Средний</option>
+              <option value="высокая"${t.priority === 'высокая' ? ' selected' : ''}>Высокий</option>
+            </select>
+          </label>
+          <label>Статус выполнения
+            <select name="status">
+              <option value="новая"${t.status === 'новая' ? ' selected' : ''}>Поставлена</option>
+              <option value="в работе"${t.status === 'в работе' ? ' selected' : ''}>В работе</option>
+              <option value="выполнена"${t.status === 'выполнена' ? ' selected' : ''}>Выполнена</option>
+            </select>
+          </label>
+        </div>
+        <div class="sovet-edit-row">
+          <label>Крайний срок<input type="date" name="due_date" value="${t.dueDate ? String(t.dueDate).slice(0, 10) : ''}" /></label>
+          <label>Прогресс
+            <select name="progress">${[20, 50, 80].map((p) =>
+              `<option value="${p}"${Number(t.progress) === p ? ' selected' : ''}>${p}%</option>`).join('')}</select>
+          </label>
+        </div>
+        <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent" value="${spent || ''}" /></label>
+        <label class="js-expense-money"${spent > 0 ? '' : ' hidden'}>Оплата расходов${timingSel}</label>
+        <label class="js-expense-money"${spent > 0 ? '' : ' hidden'}>Статья расхода (обязательно)<select name="expense_category_id">${catOptions(Number(t.expenseCategoryId) || 0)}</select></label>
+        <label>Как сделать и что учесть<textarea name="description">${esc(t.description || '')}</textarea></label>
+      </form>
+
+      <div class="sovet-subs js-subs" id="subs-${t.id}" data-task="${t.id}">
+        <h3 class="sovet-h3">Подзадачи</h3>
+        ${subsHtml(t)}
+      </div>
+
+      <button class="res-btn sovet-save" type="submit" form="edit-${t.id}">Сохранить</button>
+    </details>`;
+  }
+
+  /** Карточка архива — порт .sovet-arch из tasks.php. */
+  function archHtml(t: any): string {
+    const spent = Number(t.spent) || 0;
+    return `<div class="res-card sovet-arch" id="task-${t.id}">
+      <span class="sovet-arch-title">${esc(t.title)}</span>
+      <span class="res-meta">${t.assignee ? esc(t.assignee) : '—'}${spent > 0 ? ' · ' + money(spent) + ' ₽' : ''}</span>
+      <span class="sovet-arch-actions">
+        <button class="sovet-arch-ico" type="button" data-reopen="${t.id}" title="Вернуть в работу" aria-label="Вернуть в работу"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-2"/></svg></button>
+        <form data-del-task="${t.id}" data-confirm="Удалить задачу?">
+          <button class="sovet-arch-ico sovet-arch-ico--del" type="submit" title="Удалить" aria-label="Удалить"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 7V5h4v2"/><path d="M6 7l1 13h10l1-13"/></svg></button>
+        </form>
+      </span>
+      ${(t.photos || []).length
+        ? '<div class="photo-preview sovet-arch-photos">' + t.photos.map((p: any) =>
+            `<span class="photo-uploaded"><img class="photo-thumb" src="${esc(thumb(p.path))}" alt="" loading="lazy" /></span>`).join('') + '</div>'
+        : ''}
+    </div>`;
+  }
+
+  function syncSpent(input: HTMLInputElement) {
+    const form = input.closest('form');
+    if (!form) return;
+    const on = parseFloat(String(input.value || '0').replace(',', '.')) > 0;
+    form.querySelectorAll('.js-expense-money').forEach((box) => {
+      (box as HTMLElement).hidden = !on;
+    });
+    const row = input.closest('.sovet-money-row');
+    if (row) row.classList[on ? 'add' : 'remove']('has-timing');
+    form.querySelectorAll('.js-expense-money select').forEach((sel) => {
+      if (on) sel.setAttribute('required', 'required'); else sel.removeAttribute('required');
+    });
+  }
+
+  function bindSpent(root: ParentNode) {
+    root.querySelectorAll<HTMLInputElement>('.js-spent').forEach((inp) => {
+      if (inp.dataset.spentInit) return;
+      inp.dataset.spentInit = '1';
+      syncSpent(inp);
+      inp.addEventListener('input', () => syncSpent(inp));
+    });
+  }
+
+  /** Подзадачи: автосохранение, удаление, AJAX-добавление — порт initSovetSubs. */
+  function initSubs(root: ParentNode) {
+    // Строка переименования: blur/Ctrl+Enter сохраняют, крестик удаляет.
+    root.querySelectorAll<HTMLElement>('.sovet-sub-rename').forEach((box) => {
+      if (box.dataset.subInit) return;
+      box.dataset.subInit = '1';
+      const id = box.getAttribute('data-sub-id');
+      const task = box.getAttribute('data-task');
+      const inp = box.querySelector<HTMLInputElement>('input[name="title"]');
+      const del = box.querySelector<HTMLElement>('.js-sub-del');
+      if (!inp) return;
+      if (del) {
+        del.addEventListener('click', () => {
+          api(`/api/council/subtasks/${id}`, { method: 'DELETE' }).then(() => {
+            const row = box.closest('.sovet-sub');
+            if (row && row.parentNode) row.parentNode.removeChild(row);
+          });
+        });
+      }
+      let saved = inp.value;
+      const syncDel = () => { if (del) del.hidden = inp.value.trim() === ''; };
+      const save = () => {
+        const v = inp.value;
+        if (v === saved || v.trim() === '') { syncDel(); return; }
+        post(`/api/council/subtasks/${id}`, { title: v }).then(() => { saved = v; syncDel(); });
+      };
+      inp.addEventListener('blur', save);
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && ((e as KeyboardEvent).ctrlKey || (e as KeyboardEvent).metaKey)) {
+          e.preventDefault(); save(); inp.blur();
+        }
+      });
+      inp.addEventListener('input', syncDel);
+      syncDel();
+      void task;
+    });
+
+    // Форма добавления: POST через fetch, блок «Подзадачи» заменяется целиком.
+    root.querySelectorAll<HTMLFormElement>('.sovet-sub-add').forEach((form) => {
+      if (form.dataset.subInit) return;
+      form.dataset.subInit = '1';
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const box = form.closest('.js-subs') as HTMLElement | null;
+        const taskId = form.getAttribute('data-task');
+        const inp = form.querySelector<HTMLInputElement>('input[name="title"]');
+        const title = (inp && inp.value.trim()) || '';
+        post(`/api/council/tasks/${taskId}/subtasks`, { title })
+          .then((res) => {
+            if (!res.ok) throw new Error(failText(res));
+            const sub = res.data;
+            // Вставляем строку перед формой добавления — задача остаётся раскрытой.
+            const html = `<div class="sovet-sub sovet-sub--blank" id="sub-${sub.id}">` +
+              `<button class="sovet-check" type="button" data-sub-toggle="${sub.id}" data-task="${taskId}" title="Отметить">☐</button>` +
+              `<div class="sovet-sub-rename" data-sub-id="${sub.id}" data-task="${taskId}">` +
+                `<input type="text" name="title" maxlength="300" value="" placeholder="Название подзадачи" />` +
+                `<button class="res-link-btn sovet-danger js-sub-del" type="button" title="Удалить подзадачу" aria-label="Удалить подзадачу" hidden>✕</button>` +
+              `</div></div>`;
+            form.insertAdjacentHTML('beforebegin', html);
+            if (inp) inp.value = '';
+            initSubs(box || document);
+            const next = form.querySelector<HTMLInputElement>('input[name="title"]');
+            if (next) next.focus();
+            if (box) {
+              const note = box.querySelector('.js-sub-err');
+              if (note) note.remove();
+            }
+          })
+          .catch((e) => {
+            if (box && box) {
+              let note = box.querySelector('.js-sub-err') as HTMLElement | null;
+              if (!note) {
+                note = document.createElement('p');
+                note.className = 'res-meta js-sub-err';
+                box.appendChild(note);
+              }
+              note.textContent = String(e && e.message ? e.message : 'Не удалось добавить — попробуйте ещё раз.');
+            }
+          });
+      });
+    });
+  }
+
+  function render(data: any) {
+    const active = data.active || [];
+    const archive = data.archive || [];
+    sort = data.sort;
+    members = data.members || [];
+    expenseCats = data.expenseCats || [];
+    me = data.me || '';
+
+    // Сортировка: активная ссылка подчёркивается.
+    document.querySelectorAll<HTMLAnchorElement>('#sorts .sovet-sort').forEach((a) => {
+      const key = new URL(a.href).searchParams.get('sort') || 'created';
+      a.classList.toggle('sovet-sort--active', key === sort);
+    });
+
+    // Опции создания.
+    const sel = $('cAssignee') as HTMLSelectElement | null;
+    if (sel) sel.innerHTML = assigneeOptions('');
+    const cat = $('cCat') as HTMLSelectElement | null;
+    if (cat) cat.innerHTML = catOptions(0);
+
+    ($('emptyNote') as HTMLElement).hidden = active.length > 0;
+    ($('activeList') as HTMLElement).innerHTML = active.map(taskHtml).join('');
+
+    const arch = $('archiveCard') as HTMLElement;
+    arch.hidden = archive.length === 0;
+    $('archTitle')!.textContent = 'Выполненные задачи · ' + archive.length;
+    $('archiveList')!.innerHTML = archive.map(archHtml).join('');
+
+    bindSpent(document);
+    initSubs(document);
+  }
+
+  function load() {
+    const key = new URLSearchParams(window.location.search).get('sort');
+    const url = '/api/council/tasks' + (key ? '?sort=' + encodeURIComponent(key) : '');
+    api(url).then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      render(res.data);
+    }).catch((e) => {
+      if (e && e.auth) return;
+      showError('Не удалось загрузить задачи. Обновите страницу.');
+    });
+  }
+
+  // ─── Создание задачи ───
+  $('cCancel')!.addEventListener('click', function () {
+    const d = (this as HTMLElement).closest('details') as HTMLDetailsElement;
+    if (d) d.removeAttribute('open');
+  });
+  $('createForm')!.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const body: any = {
+      title: ($('cTitle') as HTMLInputElement).value.trim(),
+      assignee: ($('cAssignee') as HTMLSelectElement).value,
+      priority: ($('cPriority') as HTMLSelectElement).value,
+      due_date: ($('cDue') as HTMLInputElement).value,
+      spent: ($('cSpent') as HTMLInputElement).value,
+      expense_timing: ($('cTiming') as HTMLSelectElement).value,
+      expense_category_id: ($('cCat') as HTMLSelectElement).value,
+      description: ($('cDesc') as HTMLTextAreaElement).value,
+      status: 'новая',
+    };
+    post('/api/council/tasks', body).then((res) => {
+      if (!res.ok) { showError(failText(res)); return; }
+      ($('cTitle') as HTMLInputElement).value = '';
+      ($('cDesc') as HTMLTextAreaElement).value = '';
+      ($('cSpent') as HTMLInputElement).value = '';
+      const d = $('newTask') as HTMLDetailsElement;
+      d.removeAttribute('open');
+      load();
+    }).catch(() => showError('Ошибка связи.'));
+  });
+
+  // ─── Делегирование: удаление/возврат задач, сохранение правки, фото, подзадачи ───
+  document.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement;
+    const reopen = t.closest('[data-reopen]');
+    if (reopen) {
+      post(`/api/council/tasks/${reopen.getAttribute('data-reopen')}/reopen`, {})
+        .then(load).catch(() => showError('Ошибка связи.'));
+      return;
+    }
+    const delPhoto = t.closest<HTMLElement>('[data-del-photo]');
+    if (delPhoto) {
+      if (!window.confirm('Удалить это фото?')) return;
+      api(`/api/council/tasks/${delPhoto.getAttribute('data-task')}/photos/${delPhoto.getAttribute('data-del-photo')}`,
+        { method: 'DELETE' }).then(load).catch(() => showError('Ошибка связи.'));
+      return;
+    }
+    const toggle = t.closest<HTMLElement>('[data-sub-toggle]');
+    if (toggle) {
+      post(`/api/council/subtasks/${toggle.getAttribute('data-sub-toggle')}/toggle`, {})
+        .then((res) => {
+          if (!res.ok) return;
+          // Переключаем глиф на месте — без перерисовки всей карточки.
+          toggle.textContent = res.data.done ? '☑' : '☐';
+          const row = toggle.closest('.sovet-sub');
+          if (row) row.classList.toggle('sovet-sub--done', !!res.data.done);
+        })
+        .catch(() => showError('Ошибка связи.'));
+      return;
+    }
+  });
+
+  // Удаление задачи — форма с data-confirm подтверждает Shell.
+  document.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    // defaultPrevented: Shell отклонил подтверждение («Отмена») — не уходим в API.
+    if (e.defaultPrevented) return;
+    const delTask = form.getAttribute('data-del-task');
+    if (delTask) {
+      e.preventDefault();
+      api(`/api/council/tasks/${delTask}`, { method: 'DELETE' })
+        .then(load).catch(() => showError('Ошибка связи.'));
+      return;
+    }
+
+    const editTask = form.getAttribute('data-edit-task');
+    if (editTask) {
+      e.preventDefault();
+      const g = (n: string) => form.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${n}"]`);
+      post(`/api/council/tasks/${editTask}`, {
+        title: g('title')!.value,
+        assignee: g('assignee')!.value,
+        priority: g('priority')!.value,
+        status: g('status')!.value,
+        due_date: g('due_date')!.value,
+        progress: g('progress')!.value,
+        spent: g('spent')!.value,
+        expense_timing: g('expense_timing') ? (g('expense_timing') as HTMLSelectElement).value : undefined,
+        expense_category_id: (g('expense_category_id') as HTMLSelectElement).value,
+        description: g('description')!.value,
+      }).then((res) => {
+        if (!res.ok) { showError(failText(res)); return; }
+        load();
+      }).catch(() => showError('Ошибка связи.'));
+    }
+  }, true);
+
+  // Переход по якорю из «Бюджета» (#task-N / #task-N-sub-M) — порт задач tasks.php.
+  (function () {
+    function openTarget() {
+      if (location.hash.indexOf('#task-') !== 0) return;
+      const el = document.getElementById(location.hash.slice(1));
+      if (!el) return;
+      for (let node: HTMLElement | null = el as HTMLElement; node; node = node.parentElement) {
+        if (node.tagName === 'DETAILS') (node as HTMLDetailsElement).open = true;
+      }
+      el.scrollIntoView({ block: 'start' });
+      const m = location.hash.match(/^#task-\d+-sub-(\d+)$/);
+      if (m) {
+        const inp = document.querySelector<HTMLInputElement>(`#sub-${m[1]} input[name="title"]`);
+        if (inp) inp.focus();
+      }
+    }
+    window.addEventListener('load', openTarget);
+    window.addEventListener('hashchange', openTarget);
+  })();
+
+  load();
+  </script>
+</Base>

@@ -1,0 +1,135 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Повестка встречи" noindex>
+  <Shell path="/sovet/povestka/">
+    <h1>Повестка встречи</h1>
+    <p class="res-meta">Встреча: <strong id="meetLine">…</strong>. Любой член совета может добавить пункт. Необсуждённые пункты переходят на следующую встречу.</p>
+
+    <details class="sovet-newtask">
+      <summary class="res-btn">+ Добавить пункт</summary>
+      <form class="res-form" id="addForm">
+        <label>Пункт повестки
+          <input type="text" name="title" id="title" maxlength="500" placeholder="Что вынести на обсуждение" required />
+        </label>
+        <div class="sovet-form-actions">
+          <button class="res-btn" type="submit">Добавить</button>
+          <button class="res-btn res-btn--ghost" type="button" id="cancelAdd">Отменить</button>
+        </div>
+      </form>
+    </details>
+
+    <p class="res-meta sovet-empty" id="emptyNote" hidden>Повестка пока пуста — добавьте первый пункт 👆</p>
+
+    <ul class="sovet-agenda-list" id="list"></ul>
+    <div class="res-flash res-flash--error" id="err" hidden></div>
+  </Shell>
+
+  <!-- Повестка — порт residents/src/templates/council/agenda.php + AgendaController.
+       Права: чекбокс/сортировка — дежурный/админ (isEditor); удаление — автор
+       пункта или дежурный/админ. -->
+  <script>
+    import { api, post, esc, failText } from '../../../lib/sovet.js';
+
+    const $ = (id: string) => document.getElementById(id);
+    const list = $('list');
+    const err = $('err');
+    const empty = $('emptyNote');
+    let isEditor = false;
+    let me = '';
+
+    function showError(msg: string) {
+      if (err) { err.textContent = msg; err.hidden = false; }
+    }
+
+    // Один рендер списка — после каждой мутации перечитываем GET /agenda.
+    function render(items: any[]) {
+      if (!list) return;
+      empty!.hidden = items.length > 0;
+      list.innerHTML = items.map((it) => {
+        const canDel = isEditor || it.author === me;
+        return '<li class="sovet-agenda-item' + (it.discussed ? ' is-discussed' : '') + '">' +
+          // Чекбокс «обсуждено»: только дежурный/админ (легаси disabled остальным).
+          (isEditor
+            ? '<form class="sovet-agenda-check" data-toggle="' + it.id + '">' +
+                '<input type="checkbox"' + (it.discussed ? ' checked' : '') + ' title="Отметить обсуждённым">' +
+              '</form>'
+            : '<span class="sovet-agenda-check"><input type="checkbox" disabled' +
+                (it.discussed ? ' checked' : '') + ' title="Обсуждено"></span>') +
+          '<div class="sovet-agenda-body">' +
+            '<span class="sovet-agenda-text">' + esc(it.title) + '</span>' +
+            (it.author ? ' <span class="sovet-agenda-author">— ' + esc(it.author) + '</span>' : '') +
+            (it.carriedOver ? ' <span class="sovet-agenda-carried">с прошлой встречи</span>' : '') +
+          '</div>' +
+          '<div class="sovet-agenda-actions">' +
+            (isEditor
+              ? '<button class="res-link-btn" data-move="up" data-id="' + it.id + '" title="Выше">↑</button>' +
+                '<button class="res-link-btn" data-move="down" data-id="' + it.id + '" title="Ниже">↓</button>'
+              : '') +
+            (canDel
+              ? '<form data-confirm="Удалить пункт повестки?" data-del="' + it.id + '">' +
+                  '<button class="res-link-btn sovet-danger sovet-agenda-del" type="submit" title="Удалить" aria-label="Удалить">🗑</button>' +
+                '</form>'
+              : '') +
+          '</div>' +
+        '</li>';
+      }).join('');
+    }
+
+    function load() {
+      return api('/api/council/agenda').then((res) => {
+        if (!res.ok) throw new Error('http ' + res.status);
+        const d: any = res.data;
+        isEditor = d.isEditor;
+        me = d.me;
+        const line = $('meetLine');
+        if (line) line.textContent = d.meeting.meetingDate || '';
+        render(d.items || []);
+      }).catch(() => showError('Не удалось загрузить повестку.'));
+    }
+
+    $('addForm')!.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inp = $('title') as HTMLInputElement;
+      post('/api/council/agenda', { title: inp.value.trim() }).then((res) => {
+        if (!res.ok) { showError(failText(res)); return; }
+        inp.value = '';
+        load();
+      }).catch(() => showError('Ошибка связи.'));
+    });
+    $('cancelAdd')!.addEventListener('click', function () {
+      const d = (this as HTMLElement).closest('details') as HTMLDetailsElement;
+      if (d) d.removeAttribute('open');
+    });
+
+    // Делегирование: чекбокс, стрелки, удаление (подтверждение ловит Shell).
+    list!.addEventListener('change', (e) => {
+      const t = e.target as HTMLInputElement;
+      const form = t.closest('form[data-toggle]') as HTMLFormElement | null;
+      if (!form) return;
+      const id = form.getAttribute('data-toggle');
+      post('/api/council/agenda/' + id + '/toggle', {}).then(load).catch(() => showError('Ошибка связи.'));
+    });
+    // Стрелки — обычные кнопки; удаление живёт в форме (Shell подтверждает её
+    // через data-confirm, а после «Да» requestSubmit попадает сюда же).
+    list!.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-move]');
+      if (!btn) return;
+      post('/api/council/agenda/' + btn.getAttribute('data-id') + '/move',
+        { dir: btn.getAttribute('data-move') })
+        .then(load).catch(() => showError('Ошибка связи.'));
+    });
+    list!.addEventListener('submit', (e) => {
+      const form = e.target as HTMLFormElement;
+      if (!(form instanceof HTMLFormElement)) return;
+      const del = form.getAttribute('data-del');
+      if (!del) return;
+      e.preventDefault();
+      api('/api/council/agenda/' + del, { method: 'DELETE' })
+        .then(load).catch(() => showError('Ошибка связи.'));
+    });
+
+    load();
+  </script>
+</Base>

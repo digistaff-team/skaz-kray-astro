@@ -1,0 +1,57 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Смена пароля" noindex>
+  <Shell path="/sovet/parol/">
+    <h1>Смена пароля</h1>
+    <div class="res-flash res-flash--error" id="pwError" hidden></div>
+    <form class="res-form" id="pwForm">
+      <label>Текущий пароль
+        <input type="password" name="current" id="current" required />
+      </label>
+      <label>Новый пароль (не короче 8 символов)
+        <input type="password" name="password" id="password" required />
+      </label>
+      <button class="res-btn" type="submit">Изменить пароль</button>
+    </form>
+  </Shell>
+
+  <!-- Порт residents/src/templates/council/password.php: смена с залогиненным
+       членом; успех → Flash + переход на главную (легаси changePassword). -->
+  <script is:inline>
+    (function () {
+      var error = document.getElementById('pwError');
+      document.getElementById('pwForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        fetch('/api/council/password', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current: document.getElementById('current').value,
+            password: document.getElementById('password').value
+          })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (res.ok && res.d.ok) {
+              try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: 'Пароль изменён.' })); } catch (e) {}
+              window.location.replace('/sovet/');
+              return;
+            }
+            error.textContent = res.d.error || 'Не удалось сменить пароль.';
+            error.hidden = false;
+            btn.disabled = false;
+          })
+          .catch(function () {
+            error.textContent = 'Ошибка связи. Попробуйте ещё раз.';
+            error.hidden = false;
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</Base>

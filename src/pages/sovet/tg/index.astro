@@ -1,0 +1,167 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base title="Вход в приложение" noindex>
+  <div class="wrap">
+    <div class="tg-entry">
+      <h1>Вход в приложение</h1>
+      <p id="tg-status" class="tg-status">Проверяем доступ через Telegram…</p>
+      <noscript>
+        <p class="tg-noscript">Нужен включённый JavaScript.</p>
+      </noscript>
+    </div>
+  </div>
+
+  <!-- Порт residents/src/templates/council/tg/entry.php.
+       Поток: Mini App отдаёт initData на POST /api/council/tg/login.
+       Подпись привязан к council_member.telegram_id → вход (cookie council_token).
+       Не привязан → reason: need_surname → переход на форму фамилии и кода. -->
+  <script is:inline>
+    (function () {
+      window.SkazPlatform = 'tg';
+
+      var statusEl = document.getElementById('tg-status');
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+
+      // initData из параметров запуска Mini App — без SDK.
+      var STORE_KEY = 'skazTgInitData';
+      function launchInitData() {
+        var pick = function (src) {
+          if (!src) { return ''; }
+          var m = /[#&?]tgWebAppData=([^&]*)/.exec(src);
+          if (!m) { return ''; }
+          try { return decodeURIComponent(m[1]); } catch (e) { return ''; }
+        };
+        var fresh = pick(window.location.hash) || pick(window.location.search);
+        try {
+          if (fresh) { window.sessionStorage.setItem(STORE_KEY, fresh); return fresh; }
+          return window.sessionStorage.getItem(STORE_KEY) || '';
+        } catch (e) { return fresh; }
+      }
+      function initDataOf(wa) {
+        if (wa && wa.initData) { return wa.initData; }
+        return launchInitData();
+      }
+
+      // start_param из всех источников.
+      function startParam(wa) {
+        try {
+          var qs = new URLSearchParams(window.location.search);
+          var fromQuery = qs.get('startapp') || qs.get('tgWebAppStartParam');
+          if (fromQuery) { return fromQuery; }
+        } catch (e) {}
+        if (wa && wa.initDataUnsafe && wa.initDataUnsafe.start_param) {
+          return wa.initDataUnsafe.start_param;
+        }
+        try {
+          var hs = new URLSearchParams(String(window.location.hash).replace(/^#/, ''));
+          var fromHash = hs.get('tgWebAppStartParam');
+          if (fromHash) { return fromHash; }
+          var raw = launchInitData();
+          if (raw) {
+            var sp = new URLSearchParams(raw).get('start_param');
+            if (sp) { return sp; }
+          }
+        } catch (e) {}
+        return '';
+      }
+
+      // base64url(путь) → безопасный путь внутри /sovet, иначе fallback.
+      function decodeStartParam(sp, fallback) {
+        if (!sp) { return fallback; }
+        if (!/^[A-Za-z0-9\-_]+={0,2}$/.test(sp)) { return fallback; }
+        try {
+          var b64 = sp.replace(/-/g, '+').replace(/_/g, '/');
+          var pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+          var decoded = Buffer.from(b64 + pad, 'base64').toString('utf8');
+          if (!decoded.startsWith('/sovet') || decoded.indexOf('\uFFFD') >= 0) return fallback;
+          return decoded;
+        } catch (e) { return fallback; }
+      }
+
+      // Асинхронная загрузка SDK с таймаутом; колбэк вызывается всегда.
+      var SDK_TIMEOUT_MS = 8000;
+      function ensure(cb, timeoutMs) {
+        if (typeof cb !== 'function') { return; }
+        var currentWa = (window.Telegram && window.Telegram.WebApp) || null;
+        if (currentWa) { cb(currentWa); return; }
+        function inTelegram() {
+          if (currentWa()) { return true; }
+          if (window.SkazPlatform === 'tg') { return true; }
+          if (window.SkazPlatform === 'max' || window.SkazPlatform === 'web') { return false; }
+          return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto || launchInitData());
+        }
+        if (!inTelegram()) { cb(null); return; }
+        var settled = false;
+        var timer = null;
+        function finish() {
+          if (settled) { return; }
+          settled = true;
+          if (timer) { clearTimeout(timer); }
+          cb((window.Telegram && window.Telegram.WebApp) || null);
+        }
+        timer = setTimeout(finish, timeoutMs || SDK_TIMEOUT_MS);
+        var src = 'https://telegram.org/js/telegram-web-app.js';
+        var existing = document.querySelector('script[src="' + src + '"]');
+        if (existing) {
+          existing.addEventListener('load', finish, { once: true });
+          existing.addEventListener('error', finish, { once: true });
+          return;
+        }
+        var sc = document.createElement('script');
+        sc.src = src;
+        sc.async = true;
+        sc.onload = finish;
+        sc.onerror = finish;
+        (document.head || document.body || document.documentElement).appendChild(sc);
+      }
+
+      // Все переходы — location.replace: страница-вход техническая.
+      ensure(function (wa) {
+        var sp = startParam(wa);
+        var initData = initDataOf(wa);
+
+        if (!initData) {
+          show('Откройте раздел Совета через бота @SkazKray_bot в Telegram.');
+          return;
+        }
+        if (wa) {
+          try { wa.ready(); } catch (e) {}
+          try { wa.expand(); } catch (e) {}
+        }
+
+        fetch('/api/council/tg/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'initData=' + encodeURIComponent(initData) + '&startapp=' + encodeURIComponent(sp)
+        }).then(function (r) { return r.json().catch(function () { return { ok: false, reason: 'error' }; }); })
+          .then(function (data) {
+            if (data.ok && data.redirect) { window.location.replace(data.redirect); return; }
+            if (data.reason === 'need_surname') { window.location.replace('/sovet/tg/familiya/'); return; }
+            if (data.reason === 'blocked') { show('Ваш доступ заблокирован. Обратитесь к администратору совета.'); return; }
+            show('Не удалось войти. Проверьте, что вы открыли раздел через бота @SkazKray_bot.');
+          })
+          .catch(function () { show('Ошибка связи. Попробуйте ещё раз.'); });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .tg-entry {
+    padding: 3rem 0;
+    max-width: 48ch;
+  }
+  .tg-status {
+    color: var(--muted);
+    font-size: var(--step-1);
+    margin-top: 0.8rem;
+  }
+  .tg-noscript {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--ground-2);
+  }
+</style>

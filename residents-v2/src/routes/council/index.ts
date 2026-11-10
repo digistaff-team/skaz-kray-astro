@@ -30,6 +30,26 @@ router.use(councilTaskRoutes); // /tasks, /subtasks
 router.use(councilLedgerRoutes); // /ledger, /ledger/categories
 
 /**
+ * GET /api/council/me — сессия для лэйаута статических страниц /sovet/*:
+ * кто вошёл и видна ли кнопка «Участники» (только админ). Лёгкий ответ
+ * без запросов к встрече/повестке — лэйаут грузится на каждой странице.
+ * 401 без cookie council_token — как CouncilAuth::requireLogin().
+ */
+router.get('/me', requireCouncil, async (req: AuthRequest, res) => {
+  try {
+    const me = await db.councilMember.findUnique({
+      where: { id: req.council!.memberId },
+      select: { id: true, name: true, role: true, status: true, isDutyChair: true },
+    });
+    if (!me || me.status !== 'active') return httpError(res, 401, 'Не авторизован');
+    res.json({ me, roleLabel: roleLabel(me) });
+  } catch (err) {
+    console.error('Council me error:', err);
+    httpError(res, 500, 'Ошибка');
+  }
+});
+
+/**
  * GET /api/council/home — данные главной /sovet/ (легаси PagesController::home):
  * карточка собрания, повестка, счётчики, ротация дежурных, статика CouncilData.
  */

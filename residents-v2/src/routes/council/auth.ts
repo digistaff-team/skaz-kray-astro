@@ -145,6 +145,25 @@ router.post('/forgot', async (req: AuthRequest, res) => {
   }
 });
 
+/**
+ * GET /api/council/reset?token= — проверка ссылки перед показом формы
+ * (легаси showReset: findValid → valid/invalid). Ответ { valid: boolean }.
+ * Токен в БД лежит как sha256 — здесь только сверка, смена пароля в POST.
+ */
+router.get('/reset', async (req: AuthRequest, res) => {
+  try {
+    const token = String(req.query?.token ?? '');
+    const row = token
+      ? await db.councilPasswordReset.findUnique({ where: { token } })
+      : null;
+    const valid = Boolean(row && row.expiresAt.getTime() > Date.now());
+    res.json({ valid });
+  } catch (err) {
+    console.error('Council reset check error:', err);
+    httpError(res, 500, 'Ошибка');
+  }
+});
+
 // POST /api/council/reset — новый пароль по токену (легаси reset).
 router.post('/reset', async (req: AuthRequest, res) => {
   try {

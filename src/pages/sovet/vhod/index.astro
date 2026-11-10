@@ -1,0 +1,65 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Вход — Попечительский совет" noindex>
+  <Shell path="/sovet/vhod/" auth={false}>
+    <h1>Вход для членов совета</h1>
+    <p class="res-meta">Раздел Попечительского совета — только для его членов. Доступ выдаёт администратор совета.</p>
+    <div class="res-flash res-flash--error" id="loginError" hidden></div>
+    <form class="res-form" id="loginForm">
+      <label>Email
+        <input type="email" name="email" id="email" required autofocus />
+      </label>
+      <label>Пароль
+        <input type="password" name="password" id="password" required />
+      </label>
+      <button class="res-btn" type="submit">Войти</button>
+    </form>
+    <p class="res-meta"><a href="/sovet/vosstanovit/">Забыли пароль?</a></p>
+  </Shell>
+
+  <!-- Экран входа — порт residents/src/templates/council/auth/login.php.
+       Уже вошли → уходим на главную (легаси showLogin делает это на сервере). -->
+  <script is:inline>
+    (function () {
+      var errorBox = document.getElementById('loginError');
+      var form = document.getElementById('loginForm');
+
+      // Сессия есть — ведём на /sovet/ (порт showLogin: if CouncilAuth::id() → Location /sovet).
+      fetch('/api/council/me', { credentials: 'include', cache: 'no-store' })
+        .then(function (r) { if (r.ok) window.location.replace('/sovet/'); })
+        .catch(function () {});
+
+      function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.hidden = false;
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        fetch('/api/council/login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+          })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (res.ok && res.d.ok) { window.location.replace(res.d.redirect || '/sovet/'); return; }
+            showError(res.d.error || 'Ошибка входа. Попробуйте ещё раз.');
+            btn.disabled = false;
+          })
+          .catch(function () {
+            showError('Ошибка связи. Попробуйте ещё раз.');
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</Base>

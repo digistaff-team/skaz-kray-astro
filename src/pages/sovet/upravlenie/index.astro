@@ -1,0 +1,238 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Участники совета" noindex>
+  <Shell path="/sovet/upravlenie/" auth={Astro.url.pathname.startsWith('/sovet/upravlenie')}>
+    <section class="sovet-hero" style="margin-bottom:1rem">
+      <p class="sovet-eyebrow">Управление</p>
+      <h1>Участники совета</h1>
+      <p class="res-meta">Аккаунты заводятся по приглашению. При добавлении генерируется пароль — он показывается админу один раз и отправляется на email. Член совета может сменить его сам.</p>
+      <p class="res-meta">Для первого входа через Telegram член совета вводит фамилию и код привязки — выдайте его кнопкой «код привязки Telegram» и передайте лично. Код действует 7 дней и только один раз.</p>
+    </section>
+
+    <div class="res-card">
+      <h2>Добавить члена совета</h2>
+      <form class="res-form" id="addForm">
+        <label>Email
+          <input type="email" name="email" id="addEmail" required />
+          <span class="sovet-err" id="errAddEmail" hidden></span>
+        </label>
+        <label>Имя
+          <input type="text" name="name" id="addName" maxlength="160" required />
+          <span class="sovet-err" id="errAddName" hidden></span>
+        </label>
+        <label>Роль
+          <select name="role" id="addRole">
+            <option value="member">член совета</option>
+            <option value="admin">администратор</option>
+          </select>
+        </label>
+        <button class="res-btn" type="submit">Добавить</button>
+      </form>
+    </div>
+
+    <!-- Модалка результата добавления (показать пароль один раз) -->
+    <dialog id="addDialog" class="sovet-dialog">
+      <h3 class="sovet-h3">Аккаунт создан</h3>
+      <div id="addResult"></div>
+      <div class="sovet-dialog-actions">
+        <button class="res-btn" type="button" id="addDialogCopy">Копировать пароль</button>
+        <form method="dialog"><button class="res-btn res-btn--ghost" type="submit">Закрыть</button></form>
+      </div>
+    </dialog>
+
+    <div class="res-card">
+      <h2>Список аккаунтов</h2>
+      <p class="res-meta">«Дежурный председатель» — переходящая роль, назначается по внешнему графику дежурств. Текущий дежурный (и любой администратор) может редактировать карточку ближайшего собрания.</p>
+      <div class="res-meta" id="membersStatus">Загружаю участников…</div>
+      <div class="sovet-members-wrap" id="membersWrap" hidden>
+        <table class="sovet-members">
+          <thead><tr><th>Имя</th><th>Telegram / Email</th><th>Роль</th><th>Статус</th><th>Дежурный</th><th></th></tr></thead>
+          <tbody id="membersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="res-flash res-flash--error" id="err" hidden></div>
+  </Shell>
+
+  <!-- Админка совета — порт admin/index.php + CouncilAdminController.
+       GET /api/council/admin/members — список аккаунтов. -->
+  <script>
+    import { api, post, esc, failText, done } from '../../../lib/sovet.js';
+
+    const $ = (id) => document.getElementById(id);
+    const err = $('err');
+
+    function showError(msg) {
+      if (err) { err.textContent = msg; err.hidden = false; }
+    }
+
+    function fieldErr(id, msg) {
+      const el = $(id);
+      if (el) { el.textContent = msg; el.hidden = !msg; }
+    }
+
+    const ROLE_LABEL = { admin: 'администратор', member: 'член совета' };
+    const STATUS_LABEL = { active: 'активен', blocked: 'заблокирован' };
+
+    /** Кнопки действий для строки участника. */
+    function memberActions(m) {
+      const mid = m.id;
+      const isDuty = !!m.isDutyChair;
+      const bound = m.telegramLinked || m.telegramId !== null;
+      const isActive = m.status === 'active';
+      let html = '';
+
+      // Блокировка/разблокировка.
+      html += '<form method="dialog" data-action="status" data-id="' + mid + '" data-confirm="' +
+        (isActive ? 'Заблокировать аккаунт?' : 'Разблокировать аккаунт?') + '">' +
+        '<button class="res-link-btn' + (isActive ? ' sovet-danger' : '') + '" type="submit">' +
+        (isActive ? 'заблокировать' : 'разблокировать') + '</button></form>';
+
+      // Отвязка Telegram / код привязки.
+      if (bound) {
+        html += '<form method="dialog" data-action="unbind-telegram" data-id="' + mid + '" data-confirm="Отвязать Telegram?">' +
+          '<button class="res-link-btn sovet-danger" type="submit">отвязать Telegram</button></form>';
+      } else if (isActive) {
+        html += '<form method="dialog" data-action="claim-code" data-id="' + mid + '" data-confirm="Выдать код привязки Telegram?">' +
+          '<button class="res-link-btn" type="submit">код привязки Telegram</button></form>';
+      }
+
+      // Дежурный председатель.
+      if (isDuty) {
+        html += '<form method="dialog" data-action="duty" data-id="0" data-confirm="Снять дежурство?">' +
+          '<button class="res-link-btn" type="submit">снять дежурство</button></form>';
+      } else if (isActive) {
+        html += '<form method="dialog" data-action="duty" data-id="' + mid + '" data-confirm="Назначить дежурным председателем?">' +
+          '<button class="res-link-btn" type="submit">сделать дежурным</button></form>';
+      }
+
+      return html;
+    }
+
+    function renderMembers(members) {
+      const tbody = $('membersBody');
+      if (!tbody) return;
+      tbody.innerHTML = members.map((m) => {
+        const mid = m.id;
+        const isDuty = !!m.isDutyChair;
+        const bound = m.telegramLinked || m.telegramId !== null;
+        const isActive = m.status === 'active';
+        const emailDisplay = bound
+          ? 'Telegram привязан'
+          : (m.email.includes('@telegram.local') ? '<span class="res-meta">ждёт входа</span>' : esc(m.email));
+
+        return '<tr>' +
+          '<td>' + esc(m.name) + '</td>' +
+          '<td>' + emailDisplay + '</td>' +
+          '<td>' + esc(ROLE_LABEL[m.role] || m.role) + '</td>' +
+          '<td>' + esc(STATUS_LABEL[m.status] || m.status) + '</td>' +
+          '<td>' + (isDuty ? '<strong>✓ дежурит</strong>' : '') + '</td>' +
+          '<td class="sovet-member-actions">' + memberActions(m) + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // ─── Загрузка списка ───
+    api('/api/council/admin/members').then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      const members = res.data.members || [];
+      renderMembers(members);
+      const st = $('membersStatus');
+      if (st) st.hidden = true;
+      const wrap = $('membersWrap');
+      if (wrap) wrap.hidden = false;
+    }).catch(() => {
+      const st = $('membersStatus');
+      if (st) st.textContent = 'Не удалось загрузить список участников.';
+    });
+
+    // ─── Добавление участника ───
+    $('addForm')!.addEventListener('submit', (e) => {
+      e.preventDefault();
+      fieldErr('errAddEmail', '');
+      fieldErr('errAddName', '');
+      const body = {
+        email: ($('addEmail') as HTMLInputElement).value.trim(),
+        name: ($('addName') as HTMLInputElement).value.trim(),
+        role: ($('addRole') as HTMLSelectElement).value,
+      };
+      post('/api/council/admin/members', body).then((res) => {
+        if (!res.ok) {
+          const text = failText(res);
+          if (res.data && res.data.fields) {
+            fieldErr('errAddEmail', res.data.fields.email || '');
+            fieldErr('errAddName', res.data.fields.name || '');
+          } else {
+            showError(text);
+          }
+          return;
+        }
+        const d = res.data;
+        // Показать пароль в модалке.
+        const resBox = $('addResult');
+        if (resBox) {
+          resBox.innerHTML =
+            '<p>Аккаунт для <strong>' + esc(d.member.name) + '</strong> (' + esc(d.member.email) + ') создан.</p>' +
+            '<p>Email: <strong>' + esc(d.member.email) + '</strong><br>' +
+            'Пароль: <strong id="addResultPass">' + esc(d.password) + '</strong></p>' +
+            '<p class="res-meta">Передайте пароль лично. После первого входа пароль нужно сменить.</p>';
+        }
+        const dlg = $('addDialog') as HTMLDialogElement | null;
+        if (dlg && dlg.showModal) dlg.showModal();
+        ($('addEmail') as HTMLInputElement).value = '';
+        ($('addName') as HTMLInputElement).value = '';
+        // Перезагрузить список.
+        api('/api/council/admin/members').then((r2) => {
+          if (r2.ok && r2.data.members) renderMembers(r2.data.members);
+        });
+      }).catch(() => showError('Ошибка связи.'));
+    });
+
+    // Копирование пароля из модалки.
+    $('addDialogCopy')!.addEventListener('click', () => {
+      const passEl = $('addResultPass');
+      if (passEl && navigator.clipboard) {
+        navigator.clipboard.writeText(passEl.textContent || '').then(() => {
+          ($('addDialogCopy') as HTMLButtonElement).textContent = 'Скопировано!';
+          setTimeout(() => { ($('addDialogCopy') as HTMLButtonElement).textContent = 'Копировать пароль'; }, 2000);
+        });
+      }
+    });
+
+    // ─── Делегирование действий (статус, unbind, claim-code, duty) ───
+    // Все формы с data-action — подтверждает Shell (data-confirm), после «Да» — AJAX.
+    document.addEventListener('submit', (e) => {
+      if (e.defaultPrevented) return;
+      const form = e.target as HTMLFormElement;
+      if (!(form instanceof HTMLFormElement)) return;
+      const action = form.getAttribute('data-action');
+      const id = form.getAttribute('data-id');
+      if (!action || !id) return;
+      e.preventDefault();
+      const url = '/api/council/admin/members/' + id + '/' + action;
+      post(url, {}).then((res) => {
+        if (!res.ok) { showError(failText(res)); return; }
+        // Перезагрузить список.
+        api('/api/council/admin/members').then((r) => {
+          if (r.ok && r.data.members) renderMembers(r.data.members);
+        });
+        // Сообщение об успехе.
+        if (action === 'claim-code' && res.data && res.data.code) {
+          // Показать код в подтверждении — Shell закрывает форму, мы выводим код.
+          const code = res.data.code;
+          try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'info', msg: 'Код привязки: ' + code + '. Передайте лично.' })); window.location.reload(); } catch (e) {}
+        } else if (action === 'duty' && res.data && res.data.dutyChair) {
+          const msg = res.data.dutyChair ? 'Дежурный председатель: ' + res.data.dutyChair : 'Дежурство снято';
+          try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: msg })); window.location.reload(); } catch (e) {}
+        } else if (action === 'unbind-telegram' && res.data) {
+          try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: 'Telegram отвязан у ' + res.data.name })); window.location.reload(); } catch (e) {}
+        } else if (action === 'status' && res.data) {
+          try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: 'Статус обновлён' })); window.location.reload(); } catch (e) {}
+        }
+      }).catch(() => showError('Ошибка связи.'));
+    }, true);
+  </script>
+</Base>

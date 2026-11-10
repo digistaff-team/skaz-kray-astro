@@ -1,0 +1,105 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Встреча Совета" noindex>
+  <Shell path="/sovet/vstrecha/">
+    <h1>Встреча Совета</h1>
+    <p class="res-meta">Правит текущий Дежурный председатель или администратор совета. Пункты повестки члены совета добавляют на <a href="/sovet/povestka/">странице повестки</a>.</p>
+
+    <div class="res-card">
+      <div class="res-flash res-flash--error" id="gateMsg" hidden>
+        Редактировать встречу может только Дежурный председатель или администратор совета.
+      </div>
+      <form class="res-form" id="meetForm" hidden>
+        <label>Дата и время
+          <input type="datetime-local" name="starts_at" id="startsAt" required />
+          <span class="sovet-err" id="errStartsAt" hidden></span>
+        </label>
+        <label>Место
+          <input type="text" name="place" id="place" maxlength="200" required />
+          <span class="sovet-err" id="errPlace" hidden></span>
+        </label>
+        <p class="res-meta">Дежурный председатель назначается автоматически по графику ротации.</p>
+        <label>Дежурный секретарь
+          <input type="text" name="duty_secretary" id="dutySecretary" maxlength="160" />
+          <span class="sovet-err" id="errSecretary" hidden></span>
+        </label>
+        <div class="sovet-form-actions">
+          <button class="res-btn" type="submit">Сохранить</button>
+          <a class="res-link-btn" href="/sovet/">Отмена</a>
+        </div>
+      </form>
+    </div>
+    <p class="res-meta" id="loadStatus" role="status">Загружаем карточку…</p>
+  </Shell>
+
+  <!-- Форма встречи — порт residents/src/templates/council/meeting_edit.php.
+       GET /api/council/meeting даёт canEdit (гейт requireEditor) и черновик даты. -->
+  <script>
+    import { api, post, failText } from '../../../lib/sovet.js';
+
+    const $ = (id: string) => document.getElementById(id);
+    const status = $('loadStatus');
+
+    /** ISO → value для datetime-local (UTC+3, как показывает карточка). */
+    function toLocalInput(iso: string): string {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    api('/api/council/meeting').then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      const d: any = res.data;
+      if (status) status.hidden = true;
+
+      if (!d.canEdit) {
+        ($('gateMsg') as HTMLElement).hidden = false;
+        return;
+      }
+      const form = $('meetForm') as HTMLFormElement;
+      form.hidden = false;
+      ($('startsAt') as HTMLInputElement).value = toLocalInput(d.meeting.startsAt);
+      ($('place') as HTMLInputElement).value = d.meeting.place || '';
+      ($('dutySecretary') as HTMLInputElement).value = d.meeting.dutySecretary || '';
+    }).catch(() => {
+      if (status) status.textContent = 'Не удалось загрузить карточку. Обновите страницу.';
+    });
+
+    function fieldErr(id: string, msg: string) {
+      const el = $(id);
+      if (el) { el.textContent = msg; el.hidden = !msg; }
+    }
+
+    $('meetForm')!.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const btn = (e.target as HTMLFormElement).querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      btn.disabled = true;
+      fieldErr('errStartsAt', '');
+      fieldErr('errPlace', '');
+      fieldErr('errSecretary', '');
+      post('/api/council/meeting', {
+        starts_at: ($('startsAt') as HTMLInputElement).value,
+        place: ($('place') as HTMLInputElement).value.trim(),
+        duty_secretary: ($('dutySecretary') as HTMLInputElement).value.trim(),
+      }).then((res) => {
+        if (res.ok && res.data.ok) {
+          // Flash «Информация о ближайшем собрании обновлена.» + уход на главную.
+          try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: 'Информация о ближайшем собрании обновлена.' })); } catch (e) {}
+          window.location.href = '/sovet/';
+          return;
+        }
+        const f = (res.data && res.data.fields) || {};
+        fieldErr('errStartsAt', f.starts_at || '');
+        fieldErr('errPlace', f.place || '');
+        fieldErr('errSecretary', f.duty_secretary || '');
+        btn.disabled = false;
+      }).catch(() => {
+        btn.disabled = false;
+      });
+    });
+  </script>
+</Base>

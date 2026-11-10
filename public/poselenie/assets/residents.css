@@ -1,0 +1,858 @@
+/* Шрифты — те же, что на сайте skaz-kray.ru (@fontsource PT Sans / PT Serif,
+   кириллические сабсеты). Файлы самостоятельно захостены рядом с приложением
+   и отдаются nginx как статика из /poselenie/assets/fonts/. */
+@font-face {
+    font-family: 'PT Sans'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-sans-cyrillic-400-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Sans'; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-sans-cyrillic-700-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-400-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: normal; font-weight: 700; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-700-normal.woff2) format('woff2');
+}
+@font-face {
+    font-family: 'PT Serif'; font-style: italic; font-weight: 400; font-display: swap;
+    src: url(/poselenie/assets/fonts/pt-serif-cyrillic-400-italic.woff2) format('woff2');
+}
+
+:root {
+    /* Светлый интерфейс: запрещаем вебвью (напр. MAX) авто-затемнять/перекрашивать
+       страницу — иначе серый текст свободных участков «зеленеет» и т.п. */
+    color-scheme: light;
+    --green: #008757;
+    --ochre: #c98a3a;
+    --ink: #2b2b2b;
+    --paper: #fbfaf6;
+    --muted: #6b6b6b;
+    /* Идентичны переменным сайта (src/styles/global.css) */
+    --font-head: "PT Serif", Georgia, "Times New Roman", serif;
+    --font-body: "PT Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--paper); color: #2b2b2b;
+    font-family: var(--font-body); font-size: 18px; line-height: 1.6;
+}
+h1, h2, h3 { font-family: var(--font-head); color: var(--green); }
+a { color: var(--green); }
+.res-header {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;
+    padding: 1rem 1.5rem; border-bottom: 2px solid var(--green); background: #fff;
+}
+.res-logo { font-family: var(--font-head); font-size: 1.4rem; font-weight: 700; text-decoration: none; }
+.res-nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+.res-nav a { text-decoration: none; }
+.res-main { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
+/* Ссылка-надпись «← На главную» над заголовком страницы (не кнопка). */
+.res-back { display: inline-block; margin: 0 0 .5rem; font-size: .9rem; color: var(--green); text-decoration: none; }
+.res-back:hover { text-decoration: underline; }
+.res-footer { text-align: center; color: var(--muted); padding: 2rem 1rem; }
+.res-footer p { font-size: .78rem; margin: .2rem 0; }
+/* Ссылка-надпись в футере, открывающая карту поселения. */
+.res-maplink { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.res-maplink:hover { color: var(--green); }
+
+/* Полноэкранная карта поселения. */
+.map-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 22, 20, .92); display: flex; }
+.map-overlay[hidden] { display: none; }
+.map-scroll { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.map-img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; will-change: transform; cursor: grab; user-select: none; -webkit-user-drag: none; }
+.map-close {
+    position: fixed; top: 10px; right: 12px; z-index: 1001;
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+    width: 44px; height: 44px; border: 0; border-radius: 50%;
+    background: rgba(0, 0, 0, .55); color: #fff; font-size: 30px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.map-close:hover { background: rgba(0, 0, 0, .82); }
+body.map-open { overflow: hidden; }
+.res-flash { padding: .8rem 1rem; border-radius: 6px; margin-bottom: 1rem; }
+.res-flash--success { background: #e5f4ec; color: #0a5; }
+.res-flash--error { background: #fbe9e7; color: #c0392b; }
+.res-flash--info { background: #fff6e5; color: var(--ochre); }
+.res-form label { display: block; margin: 1rem 0 .3rem; font-weight: 700; }
+.res-form input, .res-form textarea {
+    width: 100%; padding: .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; background: #fff;
+}
+.res-form textarea { min-height: 8rem; }
+.res-form input[type="checkbox"] { width: auto; display: inline-block; margin-right: .4rem; vertical-align: middle; }
+.res-checkbox { display: flex; align-items: center; font-weight: 400; }
+.res-btn {
+    display: inline-block; margin-top: 1.2rem; padding: .6rem 1.4rem; border: 0; border-radius: 6px;
+    background: var(--green); color: #fff; font: inherit; cursor: pointer; text-decoration: none;
+}
+.res-btn--ghost { background: transparent; color: var(--green); border: 1px solid var(--green); }
+.res-btn[disabled] { opacity: .6; cursor: default; }   /* форма уже ушла — второй раз не нажать */
+.res-link-btn { background: none; border: 0; padding: 0; color: var(--green); font: inherit; cursor: pointer; text-decoration: underline; }
+.res-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem; }
+.res-card img { max-width: 100%; height: auto; border-radius: 8px; }
+.res-meta { color: var(--muted); font-size: .9rem; }
+.res-status { font-size: .85rem; padding: .15rem .6rem; border-radius: 999px; }
+.res-status--pending { background: #fff6e5; color: var(--ochre); }
+.res-status--published { background: #e5f4ec; color: #0a5; }
+.res-status--rejected { background: #fbe9e7; color: #c0392b; }
+
+/* ==== Попечительский совет ==== */
+.sovet-main { max-width: 1040px; }
+.sovet-sub { display: block; font-size: .7rem; font-weight: 400; color: var(--muted); font-family: var(--font-body); }
+.sovet-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .75rem; color: var(--ochre); margin: 0 0 .3rem; }
+.sovet-hero { margin-bottom: 2rem; }
+.sovet-hero h1 { margin: .2rem 0 .6rem; }
+.sovet-hero-actions { display: flex; flex-wrap: wrap; gap: .8rem; }
+.sovet-hero-actions .res-btn { margin-top: .4rem; }
+
+/* Аккордеон (Документы, Протоколы) на нативном <details> */
+.sovet-acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.sovet-acc > summary::-webkit-details-marker { display: none; }
+.sovet-acc > summary h2 { margin: 0; }
+.sovet-acc > summary::after { content: "\25BE"; color: var(--muted); transition: transform .15s ease; }
+.sovet-acc[open] > summary { margin-bottom: 1rem; }
+.sovet-acc[open] > summary::after { transform: rotate(180deg); }
+.sovet-dir-head { display: flex; flex-direction: column; gap: .15rem; }
+.sovet-dir-head .sovet-eyebrow { display: block; }
+.sovet-dir-head h2 { margin: 0; }
+/* Повестка встречи — триггер модалки и само окно */
+.sovet-agenda-trigger { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--green); cursor: pointer; text-decoration: underline; }
+.sovet-dialog { border: 0; border-radius: 14px; padding: 1.5rem 1.6rem; max-width: 440px; width: calc(100% - 2rem); box-shadow: 0 12px 44px rgba(0,0,0,.22); }
+.sovet-dialog::backdrop { background: rgba(0,0,0,.45); }
+.sovet-dialog .sovet-h3 { margin-top: 0; }
+.sovet-dialog-actions { margin-top: 1.2rem; text-align: right; }
+
+.sovet-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 1.4rem; align-items: start; }
+@media (max-width: 760px) { .sovet-cols { grid-template-columns: 1fr; } }
+
+.sovet-doclist { list-style: none; padding: 0; margin: 0; }
+.sovet-doclist li { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-bottom: 1px solid #f0efe9; flex-wrap: wrap; }
+.sovet-doclist li:last-child { border-bottom: 0; }
+.sovet-kind { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #eef4ef; color: var(--green); }
+.sovet-meet-date { font-weight: 700; margin: .2rem 0; }
+.sovet-h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
+.sovet-agenda { margin: 0; }
+.sovet-agenda p { margin: .3rem 0; }
+.sovet-agenda .is-discussed { text-decoration: line-through; color: var(--muted); }
+.sovet-agenda-author { color: var(--muted); font-size: .82rem; }
+/* Страница совместной повестки */
+.sovet-agenda-list { list-style: none; padding: 0; margin: 1.2rem 0 0; }
+.sovet-agenda-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-agenda-item.is-discussed .sovet-agenda-text { text-decoration: line-through; color: var(--muted); }
+.sovet-agenda-body { flex: 1; min-width: 12rem; }
+.sovet-agenda-text { font-weight: 600; font-size: 1rem; }
+.sovet-agenda-badge { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #e5f4ec; color: #0a5; }
+.sovet-agenda-carried { margin-left: .5rem; font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; background: #fff6e5; color: var(--ochre); white-space: nowrap; }
+.sovet-agenda-actions { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+/* Кнопки повестки (вверх/вниз/удалить) — тап-таргет 44px */
+.sovet-agenda-actions .res-link-btn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+.sovet-agenda-check { flex: none; margin: 0; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.sovet-agenda-check input[type="checkbox"] { width: 1.25em; height: 1.25em; cursor: pointer; accent-color: var(--green); }
+.sovet-agenda-check input[type="checkbox"][disabled] { cursor: default; }
+.sovet-agenda-del { text-decoration: none; font-size: 1.15rem; line-height: 1; }
+.sovet-roster { list-style: none; padding: 0; margin: .6rem 0 0; }
+.sovet-roster li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-roster li:last-child { border-bottom: 0; }
+.sovet-roster-name { font-weight: 600; font-size: .9rem; }
+/* Состав в две колонки по 6 строк (заполнение по колонкам) */
+.sovet-roster--cols { display: grid; grid-template-rows: repeat(6, auto); grid-auto-flow: column; column-gap: 1.5rem; }
+
+.sovet-directions { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+@media (max-width: 760px) { .sovet-directions { grid-template-columns: 1fr; } }
+.sovet-dir-tasks { list-style: none; padding: 0; margin: .6rem 0 0; }
+.sovet-dir-task { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #f0efe9; }
+.sovet-dir-task:last-child { border-bottom: 0; }
+.sovet-dir-owner { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+
+.sovet-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem; margin: 1rem 0; }
+.sovet-sorts { color: var(--muted); font-size: .9rem; }
+.sovet-sort { margin-left: .5rem; text-decoration: none; }
+.sovet-sort--active { font-weight: 700; text-decoration: underline; }
+.sovet-newtask { margin-bottom: 1.4rem; }
+.sovet-newtask > summary { display: inline-block; list-style: none; cursor: pointer; }
+.sovet-newtask > summary::-webkit-details-marker { display: none; }
+.sovet-newtask[open] > summary { display: none; }
+.sovet-addlink { color: var(--green); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.sovet-addlink:hover { text-decoration: none; }
+.sovet-duty-ack { font-size: .8rem; color: var(--green); white-space: nowrap; }
+.sovet-form-actions { display: flex; gap: 10px; margin-top: 1rem; }
+.sovet-form-actions .res-btn { margin-top: 0; }
+.sovet-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.sovet-card-head h2 { margin: 0; }
+.sovet-whoami { margin: 0 0 1rem; font-size: .92rem; color: var(--muted); }
+.sovet-duty .sovet-meet-date { margin-bottom: .6rem; }
+.sovet-handoff { margin-top: .8rem; }
+.sovet-empty { padding: 1.5rem 0; }
+
+.sovet-task { padding: 0; }
+.sovet-task > summary { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; padding: 1rem 1.2rem; cursor: pointer; list-style: none; }
+.sovet-task > summary::-webkit-details-marker { display: none; }
+.sovet-task[open] > summary { border-bottom: 1px solid #f0efe9; }
+.sovet-task-title { font-weight: 700; flex: 1; min-width: 12rem; font-size: 1.1rem; }
+.sovet-task { position: relative; }
+.sovet-task > summary { padding-right: 2.6rem; }
+.sovet-del-ico { position: absolute; top: 8px; right: 8px; z-index: 2; flex: none; background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: #c0392b; -webkit-tap-highlight-color: transparent; }
+.sovet-del-ico svg { display: block; }
+.sovet-del-ico:hover { opacity: .6; }
+.sovet-task-assignee { font-size: 1rem; color: var(--muted); white-space: nowrap; }
+.sovet-vacant { color: #c0392b; font-weight: 700; }
+/* Приоритет — цветной кружок: зелёный (высокий) · оранжевый (средний) · красный (низкий) */
+.sovet-pri-dot { display: inline-block; width: .85rem; height: .85rem; border-radius: 50%; flex: none; }
+.sovet-pri-dot.sovet-pri--high { background: #2e9e5b; }
+.sovet-pri-dot.sovet-pri--mid  { background: #e08a1e; }
+.sovet-pri-dot.sovet-pri--low  { background: #d64531; }
+/* Статус задачи — глиф-индикатор сразу за кружком приоритета (текстовый бейдж убран) */
+.sovet-st { display: inline-block; flex: none; width: .85rem; height: .85rem; }
+.sovet-st svg { display: block; width: 100%; height: 100%; }
+.sovet-st--new { color: #b3b3ad; }
+.sovet-st--progress { color: var(--ochre); }
+.sovet-st--done { color: var(--green); }
+.sovet-task-meta, .sovet-task-desc, .sovet-quick, .sovet-edit, .sovet-subs { padding: 0 1.2rem; }
+.sovet-task-meta { color: var(--ink); font-size: .88rem; margin: .8rem 0 .4rem; }
+.sovet-task-desc { margin: .4rem 0; font-size: .8rem; }
+.sovet-quick { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .6rem 0; }
+.sovet-quick form { margin: 0; }
+.sovet-quick .res-btn { margin-top: 0; padding: .35rem .9rem; font-size: .85rem; }
+.sovet-danger { color: #c0392b; }
+.sovet-edit { border-top: 1px dashed #e6e5df; margin-top: .6rem; padding-top: .6rem; padding-bottom: .6rem; }
+.sovet-edit-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8rem; }
+.sovet-edit-row:has(> label:nth-child(2):last-child) { grid-template-columns: 1fr 1fr; }
+@media (max-width: 620px) { .sovet-edit-row { grid-template-columns: 1fr; } }
+.sovet-subs { padding-bottom: 1.2rem; }
+.sovet-sub { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; }
+.sovet-sub--done .sovet-sub-rename input { text-decoration: line-through; color: var(--muted); }
+.sovet-sub form { margin: 0; }
+.sovet-check { background: none; border: 0; font-size: 1.15rem; cursor: pointer; color: var(--green); padding: 0; }
+.sovet-sub-rename { display: flex; gap: .3rem; flex: 1; align-items: center; }
+.sovet-sub-rename input { flex: 1; padding: .3rem .5rem; font: inherit; border: 1px solid #e0e0da; border-radius: 5px; }
+/* Свежая подзадача без названия: только чек-бокс и поле, никаких символов справа. */
+.sovet-sub--blank .sovet-sub-rename input { border-style: dashed; }
+/* Крестик удаления — тап-таргет как у чек-бокса. */
+.sovet-sub .js-sub-del { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.sovet-sub-add { display: flex; gap: .5rem; margin-top: .6rem; align-items: stretch; }
+.sovet-sub-add input { flex: 1; padding: .4rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
+/* Компактная кнопка «+» — по высоте не выше поля ввода (align-items:stretch). */
+.sovet-sub-add .res-btn { margin-top: 0; min-height: 0; padding: 0 .9rem; font-size: 1.3rem; line-height: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--green); border: 1px solid #ccc; }
+.sovet-sub-add .res-btn:hover { background: #e7f2ec; }
+.sovet-task .sovet-save { display: block; width: fit-content; margin: 1rem auto 1.2rem; }
+
+.sovet-archive { margin-top: 2rem; }
+.sovet-archive-h { font-size: 1.2rem; }
+.sovet-arch { position: relative; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1.2rem 2.2rem; }
+.sovet-arch-title { flex: 1; text-decoration: line-through; color: var(--muted); min-width: 10rem; font-size: .8rem; }
+.sovet-arch-actions { position: absolute; right: 12px; bottom: 8px; display: flex; gap: .6rem; }
+.sovet-arch-ico { background: none; border: 0; padding: 4px; line-height: 0; cursor: pointer; color: var(--green); -webkit-tap-highlight-color: transparent; }
+.sovet-arch-ico svg { display: block; }
+.sovet-arch-ico--del { color: #c0392b; }
+.sovet-arch-ico:hover { opacity: .6; }
+.sovet-arch-actions form { margin: 0; }
+/* Миниатюры фото выполненных задач — отдельным рядом, чтобы не залезать под кнопки справа. */
+.sovet-arch-photos { width: 100%; margin: 0; padding-right: 4.5rem; }
+.sovet-arch-photos .photo-thumb { width: 52px; height: 52px; }
+
+.sovet-members { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.sovet-members th, .sovet-members td { text-align: left; padding: .5rem .4rem; border-bottom: 1px solid #f0efe9; vertical-align: top; }
+.sovet-member-actions { display: flex; flex-direction: column; gap: .3rem; }
+.sovet-member-actions form { margin: 0; }
+.sovet-err, .sovet-direction { }
+.sovet-err { display: block; color: #c0392b; font-size: .82rem; margin-top: .2rem; }
+
+/* ==== Шеринг инструментов ==== */
+.tool-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.tool-head-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.tool-head-actions .res-btn { margin-top: 0; }
+/* Кнопки действий под описанием (напр. каталог книг) — отступ сверху/снизу. */
+.book-actions { margin: .6rem 0 1.4rem; }
+.tool-filters { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0; align-items: center; }
+.tool-filters input, .tool-filters select { padding: .5rem .6rem; font: inherit; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+.tool-filters input[type="search"] { flex: 1; min-width: 12rem; }
+.tool-filters .res-btn { margin-top: 0; padding: .5rem 1.1rem; }
+.tool-empty { padding: 1.5rem 0; }
+
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.2rem; }
+.tool-card { display: flex; flex-direction: column; background: #fff; border: 1px solid #eee; border-radius: 10px; overflow: hidden; text-decoration: none; color: var(--ink); transition: box-shadow .15s ease; }
+.tool-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); text-decoration: none; }
+.tool-thumb { position: relative; aspect-ratio: 4/3; background: #f2f2ee; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.tool-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tool-thumb-empty { font-size: 2.5rem; opacity: .5; }
+.tool-card-body { padding: .8rem; display: flex; flex-direction: column; gap: .25rem; }
+.tool-card-name { line-height: 1.25; }
+.tool-cat { font-size: .75rem; color: var(--green); background: #eef4ef; align-self: flex-start; padding: .1rem .5rem; border-radius: 999px; }
+
+.tool-st { font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; white-space: nowrap; }
+.tool-thumb .tool-st { position: absolute; top: .5rem; left: .5rem; }
+.tool-st--free { background: #e5f4ec; color: #0a5; }
+.tool-st--loan { background: #fff6e5; color: var(--ochre); }
+.tool-st--maint { background: #fbe9e7; color: #c0392b; }
+.tool-st--hidden { background: #f2f2ee; color: var(--muted); }
+
+.tool-show-head { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.tool-gallery { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+.tool-gallery img { max-width: 220px; max-height: 220px; border-radius: 8px; object-fit: cover; }
+.tool-history { list-style: none; padding: 0; margin: 0; }
+.tool-history li { padding: .4rem 0; border-bottom: 1px solid #f0efe9; display: flex; gap: .5rem; flex-wrap: wrap; align-items: baseline; }
+.tool-history li:last-child { border-bottom: 0; }
+.tool-loan-st { font-size: .75rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); }
+
+.tool-mine-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem; }
+.tool-mine-actions { display: flex; gap: .9rem; align-items: center; flex-wrap: wrap; }
+.tool-mine-actions form { margin: 0; display: inline; }
+.tool-return summary { display: inline-block; list-style: none; cursor: pointer; margin-top: .5rem; }
+.tool-return summary::-webkit-details-marker { display: none; }
+
+/* ==== Совместные поездки ==== */
+.trip-card { display: block; text-decoration: none; color: var(--ink); }
+.trip-card:hover { text-decoration: none; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+.trip-route { font-family: var(--font-head); font-size: 1.15rem; font-weight: 700; color: var(--green); }
+.trip-arrow { color: var(--ochre); }
+.trip-meta { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin: .3rem 0; font-size: .9rem; }
+.trip-when { color: var(--ink); }
+.trip-seats { color: var(--green); background: #eef4ef; padding: .05rem .55rem; border-radius: 999px; font-size: .82rem; }
+
+/* ==== Бюджет Общего дома ==== */
+.ledger-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.2rem 0; }
+@media (max-width: 640px) { .ledger-tiles { grid-template-columns: 1fr; } }
+.ledger-tile { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 1rem 1.2rem; }
+.ledger-tile .label { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.ledger-tile .val { font-family: var(--font-head); font-size: 1.6rem; font-weight: 700; margin-top: .2rem; }
+.ledger-tile--in .val { color: var(--green); }
+.ledger-tile--out .val { color: var(--ochre); }
+.ledger-tile--bal { background: #eef4ef; border-color: #d7e8dd; }
+.ledger-tile--bal .val { color: var(--green); }
+.ledger-tile--bal.neg .val { color: #c0392b; }
+
+.months { width: 100%; border-collapse: collapse; }
+.months th, .months td { text-align: right; padding: .55rem .5rem; border-bottom: 1px solid #f0efe9; white-space: nowrap; }
+.months th { font-size: .76rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.months th:first-child, .months td:first-child { text-align: left; }
+.months tr:last-child td { border-bottom: 0; }
+.months tfoot td { border-top: 2px solid #e5e5de; font-weight: 700; }
+.m-in { color: var(--green); }
+.m-out { color: var(--ochre); }
+.m-bal { font-weight: 700; }
+.m-bal.pos { color: var(--green); }
+.m-bal.neg { color: #c0392b; }
+.m-name a { display: block; font-size: .78rem; font-weight: 400; text-decoration: none; }
+.m-name a.active { color: var(--ink); text-decoration: underline; }
+
+.bars { list-style: none; margin: .4rem 0 0; padding: 0; }
+.bar { padding: .55rem 0; border-bottom: 1px solid #f0efe9; }
+.bar:last-child { border-bottom: 0; }
+.bar-top { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin-bottom: .3rem; }
+.bar-name { font-weight: 700; }
+.bar-sum { white-space: nowrap; }
+.bar-pct { color: var(--muted); font-size: .85rem; margin-left: .4rem; }
+.bar-track { height: 12px; background: #f2f2ee; border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; background: var(--green); }
+
+/* Круговая диаграмма расходов по статьям (conic-gradient, без JS) */
+.ledger-pie-wrap { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: .6rem; }
+.ledger-pie { flex: none; width: 150px; height: 150px; border-radius: 50%;
+    -webkit-mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%);
+            mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%); }
+.ledger-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 12rem; }
+.ledger-legend li { display: flex; align-items: center; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid #f0efe9; }
+.ledger-legend li:last-child { border-bottom: 0; }
+.lg-dot { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.lg-name { flex: 1; font-weight: 600; font-size: .9rem; }
+.lg-sum { white-space: nowrap; color: var(--muted); font-size: .85rem; }
+@media (max-width: 640px) { .ledger-pie-wrap { justify-content: center; } }
+.ledger-op-src { margin: .4rem 0 0; font-size: .82rem; color: var(--muted); }
+
+.ops { list-style: none; margin: .4rem 0 0; padding: 0; }
+/* Единственный разделитель — между операциями (на <li>), а не внутри них. */
+.ops > li { padding: .5rem 0; border-bottom: 1px solid #f0efe9; }
+.ops > li:last-child { border-bottom: 0; }
+/* Операция — вертикально: дата+бейдж → название → сумма (внизу, в пределах карточки). */
+.op-row { display: flex; flex-direction: column; gap: .25rem; }
+.op-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.op-date { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+.op-note { font-size: .85rem; overflow-wrap: anywhere; }
+.op-cat { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; }
+.op-sum { font-weight: 700; overflow-wrap: anywhere; }
+.op-sum--out { color: var(--ochre); }
+.op-sum--in { color: var(--green); }
+.op-doc { font-size: .8rem; color: var(--green); margin-left: .4rem; }
+.ledger-hint { background: #fff6e5; border: 1px solid #f0e2c2; border-radius: 8px; padding: .6rem .9rem; font-size: .88rem; color: #7a5a1e; margin: .2rem 0 1rem; }
+.ledger-empty { padding: 1.5rem 0; color: var(--muted); }
+.ledger-forms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.4rem 0; }
+@media (max-width: 640px) { .ledger-forms { grid-template-columns: 1fr; } }
+/* Строка «Сумма / Дата» в формах бухгалтерии — строго в одну линию. */
+.res-form .ledger-amount-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: flex-end; }
+.res-form .ledger-amount-row > label { margin-top: .8rem; }
+.ledger-op-edit { margin-top: .4rem; }
+.ledger-op-edit summary { cursor: pointer; font-size: .82rem; color: var(--muted); list-style: none; }
+.ledger-op-edit summary::-webkit-details-marker { display: none; }
+
+/* ==== Мобильный лаунчер (PWA) ==== */
+.app-wrap { max-width: 460px; margin: 0 auto; }
+.app-head { display: flex; align-items: center; gap: 8px; padding: 4px 4px 16px; }
+.app-logo { width: 48px; height: 48px; border-radius: 10px; flex: none; }
+/* min-width: 0 — длинное название поместья сжимается с многоточием, а не растягивает
+   строку и не выдавливает иконки; nowrap — «Сказочный Край» всегда одной строкой. */
+.app-hello { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.app-hello b { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: #036844;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-hello span { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Две иконки в хедере главной (уровень воды и карта) держатся вместе справа. */
+.app-head-actions { margin-left: auto; flex: none; display: flex; }
+.app-head-actions .app-map { margin-left: 0; }
+.app-map { margin-left: auto; flex: none; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+           background: none; border: 0; border-radius: 10px; font-size: 24px; line-height: 1; color: var(--green); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.app-map svg { display: block; width: 22px; height: 22px; }
+.app-map:hover, .app-map:active { background: #e7f2ec; }
+/* Совсем узкие экраны (до 360 px): уплотняем логотип, иконки и название, чтобы
+   строка оставалась одной и без многоточия. */
+@media (max-width: 360px) {
+  .app-hello b { font-size: 18px; }
+  .app-logo { width: 44px; height: 44px; }
+  .app-map { width: 36px; height: 36px; }
+  .app-map svg { width: 20px; height: 20px; }
+}
+
+.app-card { background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+.app-card-body { padding: 16px 18px 6px; display: flex; flex-direction: column; gap: 2px; }
+.app-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ochre); }
+.app-card-title { font-family: var(--font-head); font-weight: 700; font-size: 20px; color: var(--ink); }
+.app-card-meta { font-size: 14px; color: var(--muted); }
+.app-card-actions { padding: 14px 18px 18px; display: flex; gap: 10px; }
+.app-btn { flex: 1; min-height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 999px; font-weight: 700; font-size: 15px; text-decoration: none; }
+.app-btn--fill { background: var(--green); color: #fff; }
+.app-btn--fill:active { background: #036844; }
+.app-btn--ghost { border: 1.5px solid var(--green); color: var(--green); }
+.app-btn--ghost:active { background: #e7f2ec; }
+
+.app-diary { margin-bottom: 14px; background: #f5ecdd; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--ink); }
+.app-diary b { font-weight: 700; font-size: 15px; }
+.app-diary span { font-size: 14px; color: var(--muted); }
+.app-diary--other { background: #fff; border: 1px solid #e6e4d8; }
+.app-diary--other b { color: #036844; }
+
+/* «Мои дела»: блок на главной — заметнее блока дневника, это то, что ждёт ответа. */
+.app-tasks { margin-bottom: 14px; background: #008757; color: #fff; border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
+.app-tasks b { font-weight: 700; font-size: 15px; }
+.app-tasks span { font-size: 14px; opacity: .92; }
+/* День рождения жителя: баннер на главной — виден, только когда сегодня есть
+   у кого поздравить; греет тем же тёплым тоном, что и срочные дела. */
+.app-birthday { margin-bottom: 14px; background: #fdf4ea; border: 1px solid #f0dcb8; border-radius: 14px; padding: 14px 18px; }
+.app-birthday b { font-weight: 700; font-size: 15px; color: #a4540f; }
+/* Список на странице «Мои дела»; срочные («пора вернуть») — тёплым цветом. */
+.task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.task-item { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; color: var(--ink); text-decoration: none; }
+.task-item b { color: var(--green); }
+.task-item span { font-size: .9rem; color: #6b6b60; }
+.task-item--urgent { border-color: #d9822b; background: #fdf4ea; }
+.task-item--urgent b { color: #a4540f; }
+/* Число дел рядом с пунктом меню. */
+.res-nav-count { display: inline-block; min-width: 1.4em; padding: 0 .4em; border-radius: 999px; background: #008757; color: #fff; font-size: .78rem; line-height: 1.4; text-align: center; }
+
+.app-sec-label { padding: 8px 4px 0; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.app-grid { padding: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.app-tile { min-height: 104px; background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; text-decoration: none; color: var(--ink); }
+.app-tile:active { background: #e7f2ec; }
+.app-tile b { font-family: var(--font-head); font-weight: 700; font-size: 16px; line-height: 1.3; color: #036844; }
+.app-tile span { font-size: 13px; color: var(--muted); }
+.app-tile span.accent { color: var(--ochre); font-weight: 700; }
+
+.app-offline-banner { display: none; margin: 18px 4px 0; padding: 12px 16px; border: 1px dashed #e6e4d8; border-radius: 12px; align-items: center; gap: 10px; background: #f3f1e8; }
+.app-offline-banner.show { display: flex; }
+.app-offline-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ochre); flex: none; }
+.app-offline-banner span { font-size: 13px; color: var(--muted); }
+
+.app-offline-page { max-width: 460px; margin: 0 auto; padding: 40px 20px; text-align: center; }
+.app-offline-page h1 { font-family: var(--font-head); color: var(--green); }
+
+/* ==== Гамбургер-меню шапки жителей ==== */
+.res-menu { position: relative; }
+.res-menu > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 8px; }
+.res-menu > summary::-webkit-details-marker { display: none; }
+.res-menu > summary:hover { background: #e7f2ec; }
+.res-menu-ico { position: relative; }
+.res-menu-ico, .res-menu-ico::before, .res-menu-ico::after { display: block; width: 24px; height: 2.5px; background: var(--green); border-radius: 2px; transition: transform .15s ease, top .15s ease, background .15s ease; }
+.res-menu-ico::before, .res-menu-ico::after { content: ""; position: absolute; left: 0; }
+.res-menu-ico::before { top: -7px; }
+.res-menu-ico::after { top: 7px; }
+.res-menu[open] .res-menu-ico { background: transparent; }
+.res-menu[open] .res-menu-ico::before { top: 0; transform: rotate(45deg); }
+.res-menu[open] .res-menu-ico::after { top: 0; transform: rotate(-45deg); }
+
+.res-menu .res-nav { position: absolute; right: 0; top: 100%; margin-top: .5rem; flex-direction: column; gap: 0; background: #fff; border: 1px solid #e6e4d8; border-radius: 12px; box-shadow: 0 10px 28px rgba(0,0,0,.14); padding: .4rem; min-width: 210px; z-index: 60; }
+.res-menu .res-nav a { padding: .7rem 1rem; border-radius: 8px; min-height: 44px; display: flex; align-items: center; white-space: nowrap; }
+.res-menu .res-nav a:hover { background: #e7f2ec; text-decoration: none; }
+
+/* ==== Мобильное = приложение: уплотнение на телефоне (десктоп не трогаем) ==== */
+@media (max-width: 600px) {
+  .res-main, .sovet-main { padding: 1rem 0.9rem; }
+  .res-card { border-radius: 12px; }
+}
+/* В приложении (на мобильном) хедер не нужен — прячем его на всех страницах
+   разделов; «Выход» уезжает в подвал/лаунчер. На десктопе шапка остаётся. */
+@media (max-width: 760px) {
+  .res-header { display: none; }
+}
+.footer-logout { display: none; }
+@media (max-width: 760px) {
+  .footer-logout { display: inline-block; margin-top: .5rem; color: var(--green); font-weight: 700; }
+}
+.app-logout { display: block; text-align: center; margin: 1.6rem 0 .4rem; color: var(--muted); font-weight: 700; }
+
+/* ==== App-native вид внутренних страниц на мобильном (по макету «Мобильное приложение») ==== */
+@media (max-width: 760px) {
+  /* Компактные серифные заголовки, как в приложении (десктопные 2em слишком крупны) */
+  .res-main h1, .sovet-main h1 { font-size: 1.45rem; line-height: 1.25; margin-bottom: .6rem; }
+  .res-main h2, .sovet-main h2 { font-size: 1.15rem; }
+  .res-main h3, .sovet-main h3 { font-size: 1rem; }
+
+  /* Карточки — мягкий бордюр и радиус 14, как в макете */
+  .res-card, .tool-card, .trip-card { border-color: #e6e4d8; border-radius: 14px; }
+
+  /* Кнопки — крупные пилюли (тап-таргет), первичные секционные — во всю ширину */
+  .res-btn { min-height: 52px; display: inline-flex; align-items: center; justify-content: center;
+             border-radius: 999px; padding: .6rem 1.4rem; margin-top: 1rem; font-size: 15px; }
+  section > p:first-of-type > .res-btn:first-child:last-child { display: flex; width: 100%; }
+  .sovet-hero-actions .res-btn { flex: 1; }
+
+  /* Компактные быстрые действия на доске задач — тоже крупнее */
+  .sovet-quick .res-btn { min-height: 44px; }
+
+  /* Подзаголовок Совета — мельче на мобильном */
+  .sovet-hero .sovet-lead { font-size: .8rem; line-height: 1.4; }
+  /* Названия документов и протоколов — мельче на мобильном */
+  .sovet-doclist a { font-size: .8rem; }
+  /* Названия работ в направлениях — мельче на мобильном */
+  .sovet-dir-title { font-size: .8rem; }
+  /* Повестка встречи — мельче на мобильном */
+  .sovet-agenda { font-size: .8rem; }
+
+  /* Строки списков — комфортнее для пальца */
+  .sovet-doclist li, .sovet-roster li { min-height: 52px; }
+}
+
+/* ==== Экран «Мой кабинет» (по макету «Мобильное приложение») ==== */
+.cab-sec { margin-bottom: 1.6rem; }
+.cab-item { border-color: #e6e4d8; }
+.cab-item-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.cab-item-title { font-weight: 700; font-size: 1rem; }
+.cab-item-actions { display: flex; gap: 10px; margin-top: .7rem; }
+.cab-item-actions form { margin: 0; flex: 1; display: flex; }
+.cab-item-actions .res-btn { margin-top: 0; flex: 1; min-height: 48px; }
+.res-btn--muted { background: transparent; color: var(--muted); border: 1px solid #d9d9d2; }
+.cab-thing { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+             background: #fff; border: 1px solid #e6e4d8; border-radius: 14px; padding: 14px 18px;
+             min-height: 64px; margin-bottom: 10px; text-decoration: none; color: var(--ink); }
+.cab-thing:hover { text-decoration: none; }
+.cab-thing:active { background: #e7f2ec; }
+.cab-thing-name { font-weight: 700; }
+.cab-thing-meta { color: var(--muted); font-size: .9rem; text-align: right; }
+
+/* ==== Рынок «Товары и услуги соседей» ==== */
+/* Лента Ярмарки: карточка-строка — слева фото, справа название и цена, вся
+   карточка ведёт на полную версию с описанием. */
+.market-grid { display: grid; grid-template-columns: 1fr; gap: .7rem; }
+.market-card { display: flex; flex-direction: row; align-items: center; gap: .9rem;
+               padding: .7rem; margin-bottom: 0; color: inherit; text-decoration: none; }
+.market-card:hover { border-color: var(--green); }
+/* выше по файлу есть .res-card img { height: auto } — отсюда составной селектор */
+.market-card .market-photo { flex: 0 0 88px; width: 88px; height: 88px; object-fit: cover; border-radius: 10px; }
+.market-card .market-photo--none { display: flex; align-items: center; justify-content: center;
+                                  background: #eef4ef; color: var(--muted); }
+.market-card-body { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.market-title { font-weight: 700; font-size: 1rem; overflow-wrap: anywhere; }
+.market-price { color: var(--green); font-weight: 700; }
+.market-price--big { font-size: 1.15rem; margin: 0 0 .8rem; }
+/* «Позвонить» и «Написать» на карточке товара — в одну строку. */
+.market-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 0; }
+.market-actions .res-btn { margin-top: .6rem; }
+
+.market-gallery { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.2rem; }
+.market-gallery img { width: 100%; max-width: 360px; height: auto; border-radius: 10px; }
+.market-meta { font-size: .82rem; color: var(--muted); }
+.market-vis { font-size: .72rem; padding: .1rem .55rem; border-radius: 999px; background: #eef4ef; color: var(--green); white-space: nowrap; }
+
+/* ==== Совет: кнопки-действия со счётчиком + полоска прогресса задачи ==== */
+.sovet-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.4rem; }
+/* Кнопки держим в одну строку и на мобильном: надписи короткие, а две отдельные
+   строки сдвигают вниз весь список документов. */
+@media (max-width: 760px) { .sovet-action { padding-left: .8rem; padding-right: .8rem; } }
+.sovet-action { display: flex; align-items: center; justify-content: space-between; }
+/* Третья кнопка («Бюджет Общего дома») — одна под парой, занимает всю ширину
+   сетки, иначе в 1fr-колонке второй строки выглядит обрубленной. */
+.sovet-action--wide { grid-column: 1 / -1; }
+.sovet-action > span:first-child { font-weight: 700; }
+.sovet-action-n { font-weight: 700; opacity: .9; }
+.sovet-progress { flex-basis: 100%; height: 8px; background: #f3f1e8; border-radius: 999px; overflow: hidden; margin-top: .3rem; }
+.sovet-progress-fill { display: block; height: 100%; background: var(--green); border-radius: 999px; }
+
+/* ==== Каталоги (инструменты/книги/поездки) — app-native на мобильном ==== */
+@media (max-width: 760px) {
+  .tool-head { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .tool-head-actions { display: flex; gap: .6rem; }
+  .tool-head-actions .res-btn { flex: 1; margin-top: .3rem; }
+  .tool-filters { flex-direction: column; align-items: stretch; gap: .6rem; margin: 1rem 0; }
+  .tool-filters input, .tool-filters select, .tool-filters .res-btn { width: 100%; min-height: 48px; margin-top: 0; }
+  .tool-filters input[type="search"] { min-width: 0; }
+  .tool-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* ==== Унификация форм под app-стиль: мельче лейблы и ввод ==== */
+.res-form label { font-size: .9rem; font-weight: 600; margin-top: .8rem; }
+.res-form input, .res-form select, .res-form textarea { font-size: 16px; }
+.res-form select { width: 100%; padding: .55rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+
+/* Залог в форме инструмента: при денежном залоге сумма встаёт справа в ту же
+   строку, а список сужается. Без залога список занимает всю ширину. */
+/* «Назад» и «На главную» одной строкой вверху страницы (partials/back.php).
+   Когда возвращаться некуда, скрипт убирает «Назад» — остаётся одна ссылка. */
+.res-back-row { display: flex; align-items: baseline; gap: 1rem; margin: 0 0 .5rem; }
+.res-back-row .res-back { margin-bottom: 0; }
+
+.res-form label[hidden] { display: none; }   /* иначе .res-form label{display:block} перебивает [hidden] */
+.res-form .tool-terms-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .tool-terms-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .tool-terms-row.has-deposit > .tool-terms-kind { flex: 1 1 11rem; }
+.res-form .tool-terms-row.has-deposit > .tool-terms-amount { flex: 1 1 8rem; }
+
+/* Ярмарка: «Единица изм.» встаёт справа от цены, когда цена заполнена
+   (та же схема, что залог в форме инструмента и расходы задачи Совета). */
+.res-form .market-price-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .market-price-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .market-price-row.has-unit > .market-price-value { flex: 1 1 8rem; }
+.res-form .market-price-row.has-unit > .market-price-unit { flex: 1 1 8rem; }
+
+/* Расходы задачи Совета: с появлением суммы выбор предоплата/постоплата встаёт
+   справа в ту же строку, а поле суммы сужается (как залог в форме инструмента). */
+.res-form .sovet-money-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.res-form .sovet-money-row > label { flex: 1 1 100%; margin-top: .8rem; }
+.res-form .sovet-money-row.has-timing > .sovet-money-spent { flex: 1 1 8rem; }
+.res-form .sovet-money-row.has-timing > .sovet-money-timing { flex: 1 1 11rem; }
+
+/* Уровень воды в Шебше: модалка по иконке-капле в хедере главной приложения.
+   Крупная цифра — запас до нижней кромки моста, под ней спарклайн за 30 суток. */
+.water-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 22, 20, .92);
+                 display: flex; align-items: center; justify-content: center; padding: 16px; }
+.water-overlay[hidden] { display: none; }
+body.water-open { overflow: hidden; }
+.water-card { position: relative; width: 100%; max-width: 420px; background: #fff; border-radius: 16px; padding: 18px; }
+.water-close { position: absolute; top: 4px; right: 6px; width: 38px; height: 38px; background: none; border: 0;
+               font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; }
+.water-title { margin: 0 6px 12px 0; font-size: 20px; }
+.water-gap { display: flex; flex-direction: column; line-height: 1.1; }
+.water-gap b { font-family: var(--font-head); font-size: 40px; }
+.water-gap span { font-size: 14px; color: var(--muted); }
+.water-gap--calm b { color: var(--green); }
+.water-gap--watch b { color: var(--ochre); }
+.water-gap--alert b { color: #b3261e; }
+.water-meta { margin: 10px 0 12px; font-size: 14px; line-height: 1.4; color: var(--muted); }
+.water-chart { display: block; width: 100%; height: auto; }
+.water-chart-area { fill: #dbeef7; }
+.water-chart-line { fill: none; stroke: #0284c7; stroke-width: 2; stroke-linejoin: round; }
+.water-chart-mark { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 4 3; }
+.water-chart-mark-label { font-size: 7px; fill: #b3261e; }
+.water-axis { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.water-note { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+.water-empty { margin: 0; font-size: 15px; color: var(--muted); }
+
+/* «Общий дом»: две крупные опции-карточки (бронирование и отчёт) */
+.house-options { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
+.house-option { display: block; text-decoration: none; color: inherit; }
+.house-option b { display: block; font-size: 1.05rem; margin-bottom: .2rem; }
+.house-option:hover { border-color: var(--green); }
+.house-option--off { opacity: .6; }
+/* Протоколы Попечительского совета — тот же список, что в /sovet */
+.house-protocols { margin-top: 1rem; }
+.house-protocols > summary h2 { font-size: 1.05rem; }
+
+/* ==== Закупки: доска, прогресс пула, состав участников ==== */
+.buy-list { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
+.buy-card { display: block; text-decoration: none; color: inherit; }
+.buy-card:hover { border-color: var(--green); }
+.buy-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
+.buy-title { font-size: 1.05rem; }
+
+/* Полоса «собрано столько-то из цели»; при 100% заливка зеленее — видно, что набрали. */
+.buy-bar { display: block; height: 8px; margin: .5rem 0 .3rem; border-radius: 999px; background: #eceade; overflow: hidden; }
+.buy-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--green); transition: width .3s; }
+.buy-progress-text { font-size: .85rem; color: #6b6b60; }
+.buy-percent { font-weight: 700; color: var(--green); margin-left: .3rem; }
+.buy-price { font-size: 1.1rem; margin: 0 0 .3rem; }
+.buy-price b { font-size: 1.35rem; color: var(--green); }
+
+.buy-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.buy-row-actions { display: flex; align-items: center; gap: .6rem; }
+.buy-inline-form { display: inline-block; margin: 0; }
+.buy-inline-form .res-btn { margin-top: 0; }
+.buy-stage-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.buy-join { margin-bottom: .6rem; }
+
+/* Кнопка выбора фото (скрывает нативный input и его «Файл не выбран») */
+.res-form .file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+    padding: .6rem 1.4rem; margin-top: 1rem; border-radius: 999px; border: 1.5px solid var(--green);
+    color: var(--green); font-weight: 700; font-size: 15px; cursor: pointer; }
+.res-form .file-btn input { display: none; }
+
+/* Превью выбранных фото (в формах дневника и др.) */
+.photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+.photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e4d8; }
+.js-photo-full { cursor: zoom-in; }
+
+/* Авто и питомцы поместья в справочнике «Наши соседи»: название, примечание, миниатюры */
+.res-asset { margin-top: .35rem; }
+.res-asset-name { font-weight: 700; font-size: .98rem; } /* как имя жителя (.res-person-main b) */
+.res-asset .res-meta { display: block; }
+
+/* Лайтбокс: миниатюра фото раскрывается на полный размер поверх страницы */
+.res-lightbox { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center;
+                justify-content: center; padding: 1rem; background: rgba(0, 0, 0, .85); cursor: zoom-out; }
+.res-lightbox[hidden] { display: none; }
+/* Своё окно подтверждения (partials/confirm.php) вместо window.confirm. */
+.res-confirm { position: fixed; inset: 0; z-index: 1001; display: flex; align-items: center;
+               justify-content: center; padding: 1rem; background: rgba(0, 0, 0, .45); }
+.res-confirm[hidden] { display: none; }
+.res-confirm-box { width: 100%; max-width: 22rem; background: #fff; border-radius: 12px;
+                   padding: 1.2rem 1.2rem 1rem; box-shadow: 0 8px 30px rgba(0, 0, 0, .25); }
+.res-confirm-text { margin: 0; font-size: 1.05rem; line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
+.res-confirm-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.1rem; }
+.res-confirm-actions .res-btn { margin-top: 0; min-height: 44px; min-width: 6rem; }
+.res-lightbox-img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
+.photo-uploaded { position: relative; display: inline-block; margin: 0; }
+.photo-del { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%;
+             border: 0; background: #c0392b; color: #fff; font-size: 14px; line-height: 20px; text-align: center;
+             cursor: pointer; padding: 0; }
+
+/* Помесячная таблица бюджета: горизонтальный скролл, колонка «Месяц» закреплена */
+.months-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.months th:first-child, .months td:first-child { position: sticky; left: 0; background: #fff; z-index: 1; }
+
+/* ==== Справочник «Соседи»: аккордеон поляна → поместья → жители ==== */
+.res-dir { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.2rem; }
+/* Уровень 1 — поляна (насыщенно-зелёная плашка). */
+.res-glade { border: 1px solid #cfe0d5; border-radius: 12px; background: #fff; overflow: hidden; }
+.res-glade-head {
+  width: 100%; display: flex; align-items: center; gap: .7rem;
+  padding: .8rem 1rem; background: #d7e9dd; border: 0; border-radius: 12px;
+  font: inherit; text-align: left; color: inherit; cursor: pointer;
+}
+.res-glade-head:hover { background: #cee3d4; }
+.res-glade--open .res-glade-head { border-radius: 12px 12px 0 0; }
+.res-glade-name { flex: 1; min-width: 0; color: var(--green); font-weight: 700; font-size: 1.1rem; }
+.res-glade-body { display: none; flex-direction: column; gap: .5rem; padding: .6rem; }
+.res-glade--open .res-glade-body { display: flex; }
+/* Уровень 2 — поместье (светло-зелёная плашка). */
+.res-hh { border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; overflow: hidden; }
+/* Плашка поместья — кнопка-переключатель (светло-зелёная), раскрывает жителей. */
+.res-hh-head {
+  width: 100%; display: flex; align-items: center; gap: .7rem;
+  padding: .7rem .9rem; background: #eef4ef; border: 0; border-radius: 12px;
+  font: inherit; text-align: left; color: inherit; cursor: pointer;
+}
+.res-hh-head:hover { background: #e7f0e9; }
+.res-hh--open .res-hh-head { border-radius: 12px 12px 0 0; border-bottom: 1px solid #e6e4d8; }
+.res-hh-title { flex: 1; min-width: 0; }
+.res-hh-name { display: block; color: var(--green); font-size: 1.05rem; }
+.res-hh-meta { display: block; font-size: .78rem; color: #6b6b60; margin-top: .15rem; }
+.res-hh-count { flex-shrink: 0; font-size: .74rem; color: #6b6b60; white-space: nowrap; }
+.res-hh-chevron {
+  flex-shrink: 0; width: 0; height: 0;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid var(--green); transition: transform .18s;
+}
+.res-hh--open .res-hh-chevron { transform: rotate(180deg); }
+.res-people { list-style: none; margin: 0; padding: 0; display: none; }
+.res-hh--open .res-people { display: block; }
+/* Свободный участок — статичная плашка, без раскрытия. */
+.res-hh-head--static { cursor: default; }
+/* Непривязанные/свободные поместья — серая статичная плашка (ПДн не раскрываем). */
+.res-hh--free { background: #f6f5ef; border-color: #e0ded3; }
+.res-hh--free .res-hh-head--static:hover { background: transparent; }
+.res-hh--free .res-hh-name { color: #6b6b60; font-weight: 600; }
+.res-person { padding: .7rem .9rem; border-top: 1px solid #f0efe6; }
+.res-person:first-child { border-top: 0; }
+.res-person-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.res-person-main b { font-size: .98rem; }
+.res-person-skills { font-size: .86rem; margin-top: .25rem; }
+.res-person .res-meta { font-size: .78rem; margin-top: .15rem; }
+.res-person-contacts { display: flex; flex-wrap: wrap; gap: .5rem .9rem; margin-top: .4rem; }
+.res-person-contacts a { font-size: .82rem; color: var(--green); text-decoration: none; white-space: nowrap; }
+.res-person-contacts a:hover { text-decoration: underline; }
+
+/* ==== «Моё поместье»: карточки жителей и авто с действиями ==== */
+.prof-sec-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: 1.4rem 0 .6rem; }
+.prof-sec-head h2 { margin: 0; font-size: 1.15rem; color: var(--green); }
+.prof-list { display: flex; flex-direction: column; gap: .6rem; }
+.prof-card { border: 1px solid #e6e4d8; border-radius: 12px; background: #fff; padding: .7rem .9rem; }
+.prof-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.prof-name { font-size: 1rem; }
+.prof-actions { display: flex; align-items: center; gap: .8rem; flex-shrink: 0; }
+.prof-actions form { margin: 0; display: inline; }
+.res-link { background: none; border: 0; padding: 0; font: inherit; font-size: .85rem; color: var(--green); cursor: pointer; text-decoration: none; }
+.res-link:hover { text-decoration: underline; }
+.res-link--danger { color: #c0392b; }
+.res-icon { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; padding: 4px; border-radius: 8px; }
+.res-icon:hover { background: #f0efe6; text-decoration: none; }
+.res-icon svg { display: block; }
+.prof-fields { display: flex; flex-direction: column; gap: .15rem; margin-top: .4rem; font-size: .86rem; color: #4a4a42; }
+.prof-fields a { color: var(--green); }
+.prof-title { display: flex; align-items: center; gap: .5rem; margin: 0 0 .2rem; flex-wrap: wrap; }
+/* Иконка правки названия — без рамки/фона/бокса (это <button>, сбрасываем chrome). */
+.prof-estate-edit { background: none; border: 0; padding: 0; min-width: 0; min-height: 0; border-radius: 0; color: var(--green); cursor: pointer; }
+.prof-estate-edit:hover { background: none; }
+.prof-estate-form { margin: .4rem 0 .6rem; }
+.prof-estate-actions { display: flex; gap: .6rem; margin-top: .4rem; }
+.prof-add { margin-top: .6rem; }
+/* Ссылка-надпись «+ Добавить …» под списком (не кнопка). */
+.prof-add-link { display: inline-block; margin-top: .6rem; font-size: .95rem; color: var(--green); text-decoration: none; }
+.prof-add-link:hover { text-decoration: underline; }
+a.prof-card { display: block; text-decoration: none; color: inherit; }
+.prof-pick { transition: border-color .12s, background .12s; }
+.prof-pick:hover { border-color: var(--green); background: #f6faf7; }
+.prof-pick .prof-name { color: var(--green); }
+/* Экран выбора поместья: свободные участки — серым, занятые (активный аккаунт) — зелёным. */
+.prof-card--free { border-color: #d9d7cc; background: #f6f5ef; }
+.prof-card--free .prof-name { color: #6b6b60; }
+a.prof-card--free { transition: border-color .12s, background .12s; }
+a.prof-card--free:hover { border-color: #9bb0a1; background: #eef0ea; }
+a.prof-card--free:hover .prof-name { color: #3f3f38; }
+.prof-card--taken { border-color: #bcd8c6; background: #eef7f1; }
+.prof-card--taken .prof-name { color: var(--green); }
+@media (max-width: 760px) {
+  .prof-sec-head { flex-direction: column; align-items: stretch; }
+  .prof-sec-head .res-btn { width: 100%; }
+}
+
+/* ==== Перестановка плиток лаунчера длинным нажатием ==== */
+/* Лаунчер — это домашний экран приложения, выделять текст тут незачем. Отключаем
+   выделение целиком, иначе долгое нажатие в Chrome выделяет ближайший текст
+   (подписи/карточку дневника) вместо перетаскивания плитки. */
+.app-wrap { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Гасим системное меню/выделение/перетаскивание ссылки при удержании плитки.
+   touch-action: none — ОБЯЗАТЕЛЬНО с самого начала касания: браузер решает про
+   прокрутку в момент pointerdown, поэтому включать его только в режиме поздно
+   (жест уже уходит в скролл и приходит pointercancel). Страница прокручивается
+   касанием вне плиток (шапка, карточка дневника, подписи, промежутки). */
+.app-grid .app-tile {
+  cursor: pointer;                 /* в сенсорном режиме плитка — <a> без href (см. home.php) */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+}
+/* Перетаскиваемая плитка следует за пальцем (transform задаётся из JS), приподнята
+   и не перехватывает события — чтобы «видеть» плитку под пальцем. */
+.app-tile--drag {
+  position: relative; z-index: 10; pointer-events: none;
+  opacity: .95; box-shadow: 0 12px 28px rgba(0, 0, 0, .22); transition: none;
+}
+/* Плитка-цель, куда встанет перетаскиваемая при отпускании. */
+.app-tile--target { outline: 2px dashed var(--green); outline-offset: -3px; }
+
+/* ==== Вкладки «Поездки | Доставка» и доставка ==== */
+.trip-tabs { display: flex; gap: .4rem; margin: 0 0 1rem; border-bottom: 1px solid #e6e4d8; }
+.trip-tabs a { padding: .5rem .9rem; text-decoration: none; color: var(--muted); font-weight: 700; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.trip-tabs a[aria-current="page"] { color: var(--green); border-bottom-color: var(--green); }
+.delivery-kind { border: 0; padding: 0; margin: 1rem 0 .3rem; display: flex; gap: 1.2rem; }
+.delivery-kind legend { font-weight: 700; padding: 0; margin-bottom: .3rem; }
+.delivery-receipt .tool-gallery { margin-top: .6rem; }

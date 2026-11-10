@@ -1,0 +1,49 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Направления работы" noindex>
+  <Shell path="/sovet/napravleniya/">
+    <h1>Направления работы</h1>
+    <p class="res-meta">Каждое направление ведёт один член совета. Задачи направления — регулярные и сезонные работы по содержанию Терема.</p>
+
+    <div class="sovet-directions" id="list"></div>
+    <p class="res-meta" id="dirStatus" role="status">Загружаем направления…</p>
+  </Shell>
+
+  <!-- Направления — порт residents/src/templates/council/directions.php:
+       аккордеоны <details> со статикой CouncilData (GET /api/council/directions). -->
+  <script>
+    import { api, esc } from '../../../lib/sovet.js';
+
+    const statusEl = document.getElementById('dirStatus');
+    const list = document.getElementById('list');
+
+    api('/api/council/directions').then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      const dirs: any[] = res.data || [];
+      if (list) {
+        list.innerHTML = dirs.map((dir) =>
+          '<details class="res-card sovet-direction sovet-acc">' +
+            '<summary>' +
+              '<span class="sovet-dir-head">' +
+                '<span class="sovet-eyebrow">Ответственный · ' + esc(dir.lead) + '</span>' +
+                '<h2>' + esc(dir.title) + '</h2>' +
+              '</span>' +
+            '</summary>' +
+            '<ul class="sovet-dir-tasks">' +
+              (dir.tasks || []).map((t: any) =>
+                '<li class="sovet-dir-task">' +
+                  '<span class="sovet-dir-title">' + esc(t.title) + '</span>' +
+                  '<span class="sovet-dir-owner">' + esc(t.owner) + '</span>' +
+                '</li>').join('') +
+            '</ul>' +
+          '</details>'
+        ).join('');
+      }
+      if (statusEl) statusEl.hidden = true;
+    }).catch(() => {
+      if (statusEl) statusEl.textContent = 'Не удалось загрузить направления. Обновите страницу.';
+    });
+  </script>
+</Base>

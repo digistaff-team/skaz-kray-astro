@@ -1,0 +1,74 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Новый пароль" noindex>
+  <Shell path="/sovet/sbros/" auth={false}>
+    <h1>Новый пароль</h1>
+    <div id="invalidView" hidden>
+      <div class="res-flash res-flash--error">Ссылка недействительна или устарела. Запросите новую на странице <a href="/sovet/vosstanovit/">восстановления пароля</a>.</div>
+    </div>
+    <div id="resetView" hidden>
+      <div class="res-flash res-flash--error" id="resetError" hidden></div>
+      <form class="res-form" id="resetForm">
+        <input type="hidden" id="token" name="token" />
+        <label>Новый пароль (не короче 8 символов)
+          <input type="password" name="password" id="password" required autofocus />
+        </label>
+        <button class="res-btn" type="submit">Сохранить пароль</button>
+      </form>
+    </div>
+  </Shell>
+
+  <!-- Порт residents/src/templates/council/auth/reset.php: сначала проверка токена
+       (легаси showReset делал findValid на сервере), затем форма. -->
+  <script is:inline>
+    (function () {
+      var token = new URLSearchParams(window.location.search).get('token') || '';
+      var invalid = document.getElementById('invalidView');
+      var view = document.getElementById('resetView');
+      var error = document.getElementById('resetError');
+
+      fetch('/api/council/reset?token=' + encodeURIComponent(token), { cache: 'no-store' })
+        .then(function (r) { return r.json().catch(function () { return { valid: false }; }); })
+        .then(function (d) {
+          if (d.valid) {
+            document.getElementById('token').value = token;
+            view.hidden = false;
+          } else {
+            invalid.hidden = false;
+          }
+        })
+        .catch(function () { invalid.hidden = false; });
+
+      document.getElementById('resetForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        fetch('/api/council/reset', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token, password: document.getElementById('password').value })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (res.ok && res.d.ok) {
+              // Flash «Пароль обновлён…» + уход на вход (порт reset()).
+              try { sessionStorage.setItem('sovetFlash', JSON.stringify({ type: 'success', msg: 'Пароль обновлён. Теперь войдите с новым паролем.' })); } catch (e) {}
+              window.location.replace(res.d.redirect || '/sovet/vhod/');
+              return;
+            }
+            error.textContent = res.d.error || 'Не удалось сохранить пароль.';
+            error.hidden = false;
+            btn.disabled = false;
+          })
+          .catch(function () {
+            error.textContent = 'Ошибка связи. Попробуйте ещё раз.';
+            error.hidden = false;
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</Base>

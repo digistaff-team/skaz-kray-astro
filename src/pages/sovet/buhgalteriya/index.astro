@@ -1,0 +1,261 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Бухгалтерия Общего дома" noindex>
+  <Shell path="/sovet/buhgalteriya/">
+    <section class="sovet-hero" style="margin-bottom:1rem">
+      <p class="sovet-eyebrow">Внутренний портал</p>
+      <h1>Бухгалтерия Общего дома</h1>
+      <p class="res-meta">Вносите приход и расход по статьям. Жители видят эти же цифры в разделе «Бюджет Общего дома» (только просмотр).</p>
+      <p class="sovet-hero-actions" id="catsLink" hidden><a class="res-btn res-btn--ghost" href="/sovet/buhgalteriya/statyi/">Статьи бюджета</a></p>
+    </section>
+
+    <p class="res-meta" id="loadStatus" role="status">Загружаем отчёт…</p>
+
+    <!-- Формы ввода — порт ledger.php: две сворачиваемые карточки «Приход»/«Расход». -->
+    <div class="ledger-forms" id="forms" hidden>
+      <details class="res-card">
+        <summary style="cursor:pointer;font-weight:700;color:var(--green)">+ Приход</summary>
+        <form class="res-form" data-kind="income">
+          <label>Статья<select name="category_id" data-cats="income"></select></label>
+          <div class="ledger-amount-row">
+            <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="42000" /></label>
+            <label class="ledger-date">Дата <input type="date" name="entry_date" /></label>
+          </div>
+          <label>Описание <input type="text" name="note" maxlength="300" placeholder="Взносы за август" /></label>
+          <button type="submit" class="res-btn">Добавить приход</button>
+        </form>
+      </details>
+
+      <details class="res-card">
+        <summary style="cursor:pointer;font-weight:700;color:var(--ochre)">− Расход</summary>
+        <form class="res-form" data-kind="expense">
+          <label>Статья<select name="category_id" data-cats="expense"></select></label>
+          <div class="ledger-amount-row">
+            <label class="ledger-amount">Сумма, ₽ <input type="text" name="amount" inputmode="decimal" placeholder="12400" /></label>
+            <label class="ledger-date">Дата <input type="date" name="entry_date" /></label>
+          </div>
+          <label>Описание <input type="text" name="note" maxlength="300" placeholder="Замена автомата на щитке" /></label>
+          <button type="submit" class="res-btn">Добавить расход</button>
+        </form>
+      </details>
+    </div>
+
+    <!-- Отчёт — порт partials/ledger_report.php (tiles, помесячно, диаграмма, операции). -->
+    <div id="report"></div>
+    <div class="res-flash res-flash--error" id="err" hidden></div>
+  </Shell>
+
+  <!-- Бухгалтерия — порт ledger.php + ledger_report.php; данные одним GET /api/council/ledger. -->
+  <script>
+    import { api, post, esc, failText } from '../../../lib/sovet.js';
+
+    const $ = (id: string) => document.getElementById(id);
+    const reportBox = $('report');
+    const err = $('err');
+    let cats: any = { income: [], expense: [] };
+    let canManage = false;
+    let selectedYm = '';
+
+    function showError(msg: string) {
+      if (err) { err.textContent = msg; err.hidden = false; }
+    }
+
+    /** «42 000 ₽» с модулем по легаси (без копеек). */
+    const money = (n: number) => String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+    const sign = (n: number) => (n < 0 ? '−' : '+') + money(n);
+
+    function opDate(d: string): string {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+      return m ? `${m[3]}.${m[2]}.${m[1]}` : (d || '');
+    }
+
+    /** Операции из задач ссылаются на карточку (#task-N) — как в легаси. */
+    function renderReport(r: any): string {
+      if (!r.months || !r.months.length) {
+        return '<p class="ledger-empty">Пока нет ни одной операции. Данные появятся здесь, как только совет внесёт первые приходы и расходы.</p>';
+      }
+      const bal = Number(r.monthBalance) || 0;
+
+      let html =
+        '<div class="ledger-tiles">' +
+          `<div class="ledger-tile ledger-tile--in"><div class="label">Доход, ${esc(r.selectedLabel)}</div><div class="val">${money(r.monthIncome || 0)}</div></div>` +
+          `<div class="ledger-tile ledger-tile--out"><div class="label">Расходы, ${esc(r.selectedLabel)}</div><div class="val">${money(r.monthExpense || 0)}</div></div>` +
+          `<div class="ledger-tile ledger-tile--bal${bal < 0 ? ' neg' : ''}"><div class="label">Остаток месяца</div><div class="val">${sign(bal)}</div></div>` +
+        '</div>' +
+        '<div class="res-card">' +
+          '<h2 style="font-size:1.1rem;margin:0 0 .4rem">Помесячно</h2>' +
+          '<p class="ledger-hint">Доход поступает ежемесячно. В отдельные месяцы крупные траты превышают доход — остаток месяца уходит в минус, это нормально.</p>' +
+          '<div class="months-scroll"><table class="months"><thead><tr><th>Месяц</th><th>Доход</th><th>Расходы</th><th>Остаток месяца</th></tr></thead><tbody>' +
+          r.months.map((m: any) =>
+            `<tr><td class="m-name"><a class="${m.ym === r.selectedYm ? 'active' : ''}" href="/sovet/buhgalteriya/?mesyac=${m.ym}">${esc(m.label)}</a></td>` +
+            `<td class="m-in">${money(m.income)}</td><td class="m-out">${money(m.expense)}</td>` +
+            `<td class="m-bal ${m.balance < 0 ? 'neg' : 'pos'}">${sign(m.balance)}</td></tr>`).join('') +
+          '</tbody><tfoot><tr><td>Итого за всё время</td>' +
+          `<td class="m-in">${money(r.totalIncome)}</td><td class="m-out">${money(r.totalExpense)}</td>` +
+          `<td class="m-bal ${r.totalBalance < 0 ? 'neg' : 'pos'}">${sign(r.totalBalance)}</td></tr></tfoot></table></div>` +
+        '</div>';
+
+      // Круговая диаграмма расходов (conic-gradient, как в ledger_report.php).
+      html += '<div class="res-card">' +
+        `<h2 style="font-size:1.1rem;margin:0 0 .2rem">Расходы по статьям — ${esc(r.selectedLabel)}</h2>`;
+      if (!r.breakdown || !r.breakdown.length) {
+        html += '<p class="res-meta">В этом месяце расходов не было.</p>';
+      } else {
+        const stops: string[] = [];
+        let acc = 0;
+        const last = r.breakdown.length - 1;
+        r.breakdown.forEach((b: any, i: number) => {
+          const from = acc;
+          acc += Number(b.share) || Number(b.pct) || 0;
+          const to = i === last ? 100 : acc;
+          stops.push(`${b.color} ${Math.round(from * 100) / 100}% ${Math.round(to * 100) / 100}%`);
+        });
+        html += `<div class="ledger-pie-wrap"><div class="ledger-pie" style="background:conic-gradient(${stops.join(', ')})" role="img" aria-label="Круговая диаграмма расходов по статьям"></div>` +
+          '<ul class="ledger-legend">' +
+          r.breakdown.map((b: any) =>
+            `<li><span class="lg-dot" style="background:${esc(b.color)}"></span>` +
+            `<span class="lg-name">${esc(b.name)}</span>` +
+            `<span class="lg-sum">${money(b.sum)} · ${b.pct}%</span></li>`).join('') +
+          '</ul></div>';
+      }
+      html += '</div>';
+
+      // Список операций с правкой/удалением.
+      html += `<div class="res-card"><h2 style="font-size:1.1rem;margin:0 0 .2rem">Операции — ${esc(r.selectedLabel)}</h2>`;
+      if (!r.operations || !r.operations.length) {
+        html += '<p class="res-meta">Операций за этот месяц нет.</p>';
+      } else {
+        html += '<ul class="ops">' + r.operations.map((op: any) => {
+          const out = op.kind === 'expense';
+          let li = '<li><div class="op-row"><div class="op-head">' +
+            `<span class="op-date">${opDate(op.entry_date)}</span>` +
+            `<span class="op-cat">${esc(op.category)}</span></div>` +
+            `<div class="op-note">${esc(op.note)}</div>` +
+            `<div class="op-sum ${out ? 'op-sum--out' : 'op-sum--in'}">${out ? '−' : '+'}${money(op.amount)}` +
+            (op.hasReceipt && op.receiptPath ? `<a class="op-doc" href="${esc(op.receiptPath)}" target="_blank" rel="noopener">чек</a>` : '') +
+            '</div></div>';
+          if (op.fromTask) {
+            li += `<p class="ledger-op-src">🔗 Из задачи <a href="/sovet/zadachi/#task-${op.taskId}">№${op.taskId}</a> — сумму и статью расхода правьте в самой задаче.</p>`;
+          } else {
+            li += '<details class="ledger-op-edit"><summary>Изменить / удалить</summary>' +
+              '<form class="res-form" data-op="' + op.id + '">' +
+                `<input type="hidden" name="kind" value="${esc(op.kind)}" />` +
+                '<label>Статья<select name="category_id">' +
+                  catSelectOptions(op.kind, op.categoryId) + '</select></label>' +
+                `<label>Сумма, ₽ <input type="text" name="amount" value="${Number(op.amount).toFixed(2)}" /></label>` +
+                `<label>Дата <input type="date" name="entry_date" value="${esc(op.entry_date)}" /></label>` +
+                `<label>Описание <input type="text" name="note" value="${esc(op.note)}" maxlength="300" /></label>` +
+                '<button type="submit" class="res-btn">Сохранить</button>' +
+              '</form>' +
+              `<form data-op-del="${op.id}" data-confirm="Удалить операцию?" style="margin-top:.5rem">` +
+                '<button type="submit" class="res-link-btn sovet-danger">Удалить операцию</button>' +
+              '</form></details>';
+          }
+          return li + '</li>';
+        }).join('') + '</ul>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function catSelectOptions(kind: string, cur: number): string {
+      const list = cats[kind] || [];
+      const archived = Number(cur) > 0 && !list.some((c: any) => c.id === cur);
+      return (archived ? `<option value="${cur}" selected>Текущая статья (архив)</option>` : '') +
+        list.map((c: any) =>
+          `<option value="${c.id}"${c.id === cur ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+    }
+
+    function fillSelects() {
+      document.querySelectorAll<HTMLSelectElement>('select[data-cats]').forEach((sel) => {
+        const kind = sel.getAttribute('data-cats')!;
+        sel.innerHTML = (cats[kind] || []).map((c: any) =>
+          `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+      });
+    }
+
+    function load() {
+      const ym = new URLSearchParams(window.location.search).get('mesyac');
+      api('/api/council/ledger' + (ym ? '?mesyac=' + encodeURIComponent(ym) : ''))
+        .then((res) => {
+          if (!res.ok) throw new Error('http ' + res.status);
+          const d: any = res.data;
+          cats = { income: d.incomeCats || [], expense: d.expenseCats || [] };
+          canManage = !!d.canManageCategories;
+          selectedYm = d.report.selectedYm || '';
+          ($('catsLink') as HTMLElement).hidden = !canManage;
+          ($('forms') as HTMLElement).hidden = false;
+          fillSelects();
+          if (reportBox) reportBox.innerHTML = renderReport(d.report);
+          const st = $('loadStatus');
+          if (st) st.hidden = true;
+        })
+        .catch((e) => {
+          if (e && e.auth) return;
+          const st = $('loadStatus');
+          if (st) st.textContent = 'Не удалось загрузить отчёт. Обновите страницу.';
+        });
+    }
+
+    // Добавление операции — порт LedgerController::create (POST /api/council/ledger).
+    document.querySelectorAll<HTMLFormElement>('#forms form[data-kind]').forEach((form) => {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const g = (n: string) => form.querySelector<HTMLInputElement>(`[name="${n}"]`);
+        const btn = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+        btn.disabled = true;
+        post('/api/council/ledger', {
+          kind: form.getAttribute('data-kind'),
+          category_id: g('category_id')!.value,
+          amount: g('amount')!.value,
+          entry_date: g('entry_date')!.value,
+          note: g('note')!.value,
+        }).then((res) => {
+          btn.disabled = false;
+          if (!res.ok) { showError(failText(res)); return; }
+          (e.target as HTMLFormElement).reset();
+          const d = form.querySelector('details');
+          fillSelects();
+          load();
+        }).catch(() => { btn.disabled = false; showError('Ошибка связи.'); });
+      });
+    });
+
+    // Правка и удаление операций (делегирование на корень отчёта).
+    document.addEventListener('submit', (e) => {
+      if (e.defaultPrevented) return;
+      const form = e.target as HTMLFormElement;
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const opId = form.getAttribute('data-op');
+      if (opId) {
+        e.preventDefault();
+        const g = (n: string) => form.querySelector<HTMLInputElement>(`[name="${n}"]`);
+        post(`/api/council/ledger/${opId}`, {
+          category_id: g('category_id')!.value,
+          amount: g('amount')!.value,
+          entry_date: g('entry_date')!.value,
+          note: g('note')!.value,
+        }).then((res) => {
+          if (!res.ok) { showError(failText(res)); return; }
+          load();
+        }).catch(() => showError('Ошибка связи.'));
+        return;
+      }
+
+      const delId = form.getAttribute('data-op-del');
+      if (delId) {
+        e.preventDefault();
+        api(`/api/council/ledger/${delId}`, { method: 'DELETE' })
+          .then((res) => {
+            if (!res.ok) { showError(failText(res)); return; }
+            load();
+          }).catch(() => showError('Ошибка связи.'));
+      }
+    }, true);
+
+    load();
+  </script>
+</Base>

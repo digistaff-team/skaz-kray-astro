@@ -124,7 +124,29 @@ router.get('/tasks', requireCouncil, async (req: AuthRequest, res) => {
     const activeOut = sortActive(active.map((t) => ({ ...t, progress: Number(t.progress) })), sort).map(enrich);
     const archiveOut = sortArchive(archive).map(enrich);
 
-    res.json({ active: activeOut, archive: archiveOut, sort });
+    // Справочники для форм: исполнители (активные члены совета) и статьи
+    // расхода — TaskController::index отдавал members()/listByKind('expense').
+    const [members, expenseCats] = await Promise.all([
+      db.councilMember.findMany({
+        where: { status: 'active' },
+        orderBy: { createdAt: 'asc' },
+        select: { name: true },
+      }),
+      db.councilLedgerCategory.findMany({
+        where: { kind: 'expense', isActive: true },
+        orderBy: [{ position: 'asc' }, { id: 'asc' }],
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    res.json({
+      active: activeOut,
+      archive: archiveOut,
+      sort,
+      me: await councilName(req.council!.memberId),
+      members,
+      expenseCats,
+    });
   } catch (err) {
     console.error('Council tasks error:', err);
     httpError(res, 500, 'Ошибка');

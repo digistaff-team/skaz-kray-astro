@@ -1,0 +1,52 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Восстановление пароля" noindex>
+  <Shell path="/sovet/vosstanovit/" auth={false}>
+    <h1>Восстановление пароля</h1>
+    <div id="forgotView">
+      <p class="res-meta">Укажите email, на который заведён ваш аккаунт в совете.</p>
+      <form class="res-form" id="forgotForm">
+        <label>Email
+          <input type="email" name="email" id="email" required autofocus />
+        </label>
+        <button class="res-btn" type="submit">Отправить ссылку</button>
+      </form>
+    </div>
+    <div id="sentView" hidden>
+      <div class="res-flash res-flash--success">
+        Если такой email есть среди членов совета — на него отправлено письмо со ссылкой для смены пароля (действует час).
+      </div>
+      <p class="res-meta"><a href="/sovet/vhod/">Вернуться ко входу</a></p>
+    </div>
+  </Shell>
+
+  <!-- Порт residents/src/templates/council/auth/forgot.php: показывает «отправлено»
+       всегда — сервер не раскрывает, есть ли email среди членов совета. -->
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('forgotForm');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        fetch('/api/council/forgot', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: document.getElementById('email').value.trim() })
+        })
+          .then(function () {
+            document.getElementById('forgotView').hidden = true;
+            document.getElementById('sentView').hidden = false;
+          })
+          .catch(function () {
+            // Даже при сбое — как в легаси: не раскрываем наличие email.
+            document.getElementById('forgotView').hidden = true;
+            document.getElementById('sentView').hidden = false;
+          });
+      });
+    })();
+  </script>
+</Base>

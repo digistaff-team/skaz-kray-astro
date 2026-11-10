@@ -1,0 +1,33 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Shell from '../../../components/sovet/Shell.astro';
+---
+<Base title="Выход" noindex>
+  <Shell path="/sovet/vyhod/">
+    <h1>Выйти из раздела совета?</h1>
+    <form class="res-form" id="logoutForm">
+      <button class="res-btn" type="submit">Выйти</button>
+      <a class="res-btn res-btn--ghost" href="/sovet/">Остаться</a>
+    </form>
+  </Shell>
+
+  <!-- Порт residents/src/templates/council/auth/logout.php: подтверждение выхода
+       (легаси выход без CSRF-токена показывал именно эту страницу). -->
+  <script is:inline>
+    (function () {
+      document.getElementById('logoutForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        fetch('/api/council/logout', { method: 'POST', credentials: 'include' })
+          .catch(function () {})
+          .then(function () {
+            // Только куш чистит logout в легаси: Clear-Site-Data: "cache" —
+            // куки гаснут сами (clearCookie на сервере), вход жителя не трогаем.
+            try { window.caches && caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }); } catch (e) {}
+            window.location.replace('/sovet/vhod/');
+          });
+      });
+    })();
+  </script>
+</Base>

@@ -9,12 +9,16 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import TelegramMiniApp from '../components/TelegramMiniApp.astro';
 
-// bare — экраны приложения жителей (/poselenie/*): без сайтового хедера/футера,
-// как app/layout.php в легаси. Дефолт — по префиксу пути, чтобы правило держалось
-// на всех страницах раздела (и будущих тоже); можно переопределить пропом.
+// bare — экраны разделов приложения (жители /poselenie/* и совет /sovet/*):
+// без сайтового хедера/футера, как app/layout.php и council/layout.php в
+// легаси. Дефолт — по префиксу пути, чтобы правило держалось на всех
+// страницах разделов (и будущих тоже); можно переопределить пропом.
+// sovet — экраны Попечительского совета: свой манифест (manifest-sovet,
+// scope '/sovet/'), подпись в iOS и residents.css — общий стиль разделов.
 const {
   title, description, image, type = 'website', noindex = false,
-  bare = Astro.url.pathname.startsWith('/poselenie'),
+  bare = Astro.url.pathname.startsWith('/poselenie') || Astro.url.pathname.startsWith('/sovet'),
+  sovet = Astro.url.pathname.startsWith('/sovet'),
 } = Astro.props;
 const fullTitle = title ? `${title} — Сказочный Край` : 'Сказочный Край — поселение родовых поместий в Краснодарском крае';
 const desc = description || 'Поселение родовых поместий Сказочный Край в Северском районе Краснодарского края. Жизнь в гармонии с природой, свободные участки, дневники поместий.';
@@ -50,18 +54,20 @@ const ogDesc = clip(desc, 120);
   <meta name="twitter:image" content={ogImage} />
   <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
   <link rel="alternate" type="application/rss+xml" title="Сказочный Край" href="/feed.xml" />
-  {/* PWA портала жителей — порт app/layout.php: манифест и мета только для
-      /poselenie/*. На публичных страницах «установить как приложение» быть не
-      должно: там нет сессии, а ярлык открывал бы пустой кабинет. */}
-  {bare && (
+  {/* PWA разделов — порт app/layout.php и council/layout.php: манифест и мета
+      только для /poselenie/* и /sovet/*. На публичных страницах «установить
+      как приложение» быть не должно: там нет сессии, а ярлык открывал бы
+      пустой кабинет. У совета свой манифест (manifest-sovet, scope '/sovet/')
+      и своя подпись на iOS. */}
+  {(bare || sovet) && (
     <>
-      <link rel="manifest" href="/poselenie/manifest.webmanifest" />
+      <link rel="manifest" href={sovet ? '/poselenie/manifest-sovet.webmanifest' : '/poselenie/manifest.webmanifest'} />
       <meta name="theme-color" content="#008757" />
-      <link rel="apple-touch-icon" href="/images/app-icons/icon-192.png" />
+      <link rel="apple-touch-icon" href={sovet ? '/poselenie/assets/icons/icon-192.png' : '/images/app-icons/icon-192.png'} />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      <meta name="apple-mobile-web-app-title" content="Сказочный Край" />
+      <meta name="apple-mobile-web-app-title" content={sovet ? 'Совет' : 'Сказочный Край'} />
       {/* scope '/' обязателен: файл лежит на том же пути, где легаси отдавал SW со
           Service-Worker-Allowed: / (см. headers в vercel.json). Сужать scope до
           /poselenie нельзя — у вернувшихся жителей уже зарегистрирован SW со
@@ -109,6 +115,14 @@ const ogDesc = clip(desc, 120);
   </script>
 </head>
 <body>
+  {/* Стиль раздела совета — council/layout.php грузит residents.css единственным
+      и после него не подключает больше ничего. Astro же поднимает свои бандлы в
+      конец <head>, так что link в head оказался бы ДО них — глобальные правила
+      сайта (.btn и т.п.) перебивали бы стили разделов. В теле страницы link идёт
+      после всех бандлов и применяется последним, как в легаси.
+      ?v= нужен из-за immutable-кэша в vercel.json: при обновлении файла просто
+      меняется версия (в легаси её считал asset_ver по mtime). */}
+  {sovet && <link rel="stylesheet" href="/poselenie/assets/residents.css?v=20261109" />}
   <a href="#main" class="skip">Перейти к содержанию</a>
   {/* bare — экран приложения (лаунчер жителей): без сайтового хедера/футера.
       TelegramMiniApp остаётся — он нужен внутри. */}

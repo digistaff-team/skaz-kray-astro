@@ -1,0 +1,157 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shell from '../../components/sovet/Shell.astro';
+---
+<Base title="Попечительский совет" noindex>
+  <Shell path="/sovet/">
+    <section class="sovet-hero">
+      <p class="sovet-eyebrow">Внутренний портал</p>
+      <h1>Попечительский совет Общего дома</h1>
+      <p class="sovet-lead">Положение, протоколы и правила, состав совета, ближайшее собрание и живой список текущих задач.</p>
+    </section>
+
+    <!-- Кто вошёл — порт sovet-whoami из home.php; имя и роль даёт /api/council/home. -->
+    <p class="sovet-whoami" id="whoami" hidden></p>
+
+    <p id="homeStatus" class="res-meta" role="status">Загружаем данные…</p>
+
+    <div class="res-card" id="meetingCard" hidden>
+      <div class="sovet-card-head">
+        <h2>Встреча Совета</h2>
+        {/* Редактировать — только дежурному председателю/админу (canEditMeeting). */}
+        <a class="res-link-btn" id="meetingEdit" href="/sovet/vstrecha/" hidden>Редактировать</a>
+      </div>
+      <p class="sovet-meet-date" id="meetDate"></p>
+      <p class="res-meta" id="meetPlace"></p>
+      <p class="res-meta" id="meetDuty"></p>
+      <p><button type="button" id="agenda-open" class="sovet-agenda-trigger">Повестка встречи</button></p>
+
+      <dialog id="agenda-dialog" class="sovet-dialog">
+        <h3 class="sovet-h3">Повестка встречи</h3>
+        <div id="agendaBody"></div>
+        <div class="sovet-dialog-actions">
+          <a class="res-btn" href="/sovet/povestka/">Добавить / изменить пункты</a>
+          <form method="dialog" style="display:inline;"><button class="res-btn res-btn--ghost" type="submit">Закрыть</button></form>
+        </div>
+      </dialog>
+    </div>
+
+    <!-- Кнопки-счётчики — порт .sovet-actions из home.php. -->
+    <div class="sovet-actions" id="actions" hidden>
+      <a class="res-btn res-btn--ghost sovet-action" href="/sovet/napravleniya/"><span>Направления</span><span class="sovet-action-n" id="cntDirections"></span></a>
+      <a class="res-btn res-btn--ghost sovet-action" href="/sovet/zadachi/"><span>Задачи в работе</span><span class="sovet-action-n" id="cntTasks"></span></a>
+      <a class="res-btn res-btn--ghost sovet-action sovet-action--wide" href="/sovet/buhgalteriya/"><span>Бюджет Общего дома</span></a>
+    </div>
+
+    <!-- Документы / Протоколы / Состав — аккордеоны home.php (статика CouncilData). -->
+    <details class="res-card sovet-acc" id="docsCard" hidden>
+      <summary><h2>Документы</h2></summary>
+      <ul class="sovet-doclist" id="docsList"></ul>
+    </details>
+
+    <details class="res-card sovet-acc" id="protCard" hidden>
+      <summary><h2>Протоколы встреч</h2></summary>
+      <ul class="sovet-doclist" id="protList"></ul>
+    </details>
+
+    <details class="res-card sovet-acc" id="rosterCard" hidden>
+      <summary><h2>Состав Попечительского совета Общего дома</h2></summary>
+      <ul class="sovet-roster sovet-roster--cols" id="rosterList"></ul>
+    </details>
+  </Shell>
+
+  <!-- Главная /sovet — порт residents/src/templates/council/home.php + PagesController::home.
+       Все данные одним GET /api/council/home; рендер после fetch. -->
+  <script>
+    import { api, esc } from '../../lib/sovet.js';
+
+    const $ = (id: string) => document.getElementById(id);
+    const status = $('homeStatus');
+
+    function show(msg: string) { if (status) status.textContent = msg; }
+
+    api('/api/council/home').then((res) => {
+      if (!res.ok) throw new Error('http ' + res.status);
+      const d: any = res.data;
+
+      // «Вы вошли как …» — порт $me/roleLabel из home.php.
+      const who = $('whoami');
+      if (who) {
+        who.innerHTML = 'Вы вошли как <strong>' + esc(d.me.name) + '</strong> — ' + esc(d.roleLabel);
+        who.hidden = false;
+      }
+
+      // Карточка встречи.
+      const m = d.meeting;
+      const meetDate = $('meetDate');
+      if (meetDate) meetDate.textContent = m.date || '';
+      const place = $('meetPlace');
+      if (place) place.textContent = m.place || '';
+      const duty = $('meetDuty');
+      if (duty) {
+        // Дежурный председатель + отметка принятия дежурства (✅ дежурство принято),
+        // дежурный секретарь — как в home.php.
+        let html =
+          'Дежурный председатель: <strong>' + esc(m.dutyChair) + '</strong>' +
+          (m.dutyAckAt ? ' <span class="sovet-duty-ack" title="Подтвердил через бота">✅ дежурство принято</span>' : '') +
+          '<br>Дежурный секретарь: <strong>' + esc(m.dutySecretary) + '</strong>';
+        duty.innerHTML = html;
+      }
+      const edit = $('meetingEdit');
+      if (edit && !d.canEditMeeting) edit.hidden = true;
+      else if (edit) edit.hidden = false;
+      const card = $('meetingCard');
+      if (card) card.hidden = false;
+
+      // Пункты повестки в модалке (диалог открывает home.php-скрипт).
+      const agendaBox = $('agendaBody');
+      if (agendaBox) {
+        const items = d.agendaItems || [];
+        if (!items.length) {
+          agendaBox.innerHTML = '<p class="res-meta">Повестка пока пуста. Добавьте свои пункты.</p>';
+        } else {
+          agendaBox.className = 'sovet-agenda';
+          agendaBox.innerHTML = items.map((it: any) =>
+            '<p' + (it.discussed ? ' class="is-discussed"' : '') + '>' + esc(it.title) +
+            (it.author ? ' <span class="sovet-agenda-author">— ' + esc(it.author) + '</span>' : '') +
+            (it.carriedOver ? ' <span class="sovet-agenda-carried">с прошлой встречи</span>' : '') +
+            '</p>'
+          ).join('');
+        }
+      }
+
+      // Кнопки-счётчики.
+      const cd = $('cntDirections');
+      if (cd) cd.textContent = String(d.directionsCount || 0);
+      const ct = $('cntTasks');
+      if (ct) ct.textContent = String(d.activeCount || 0);
+      const act = $('actions');
+      if (act) act.hidden = false;
+
+      // Статические списки CouncilData.
+      const fill = (listId: string, cardId: string, rows: any[], fn: (r: any) => string) => {
+        const list = $(listId);
+        const c = $(cardId);
+        if (list) list.innerHTML = rows.map(fn).join('');
+        if (c) c.hidden = false;
+      };
+      fill('docsList', 'docsCard', d.documents || [], (r: any) =>
+        '<li><a href="' + esc(r.href) + '" target="_blank" rel="noopener">' + esc(r.title) + '</a></li>');
+      fill('protList', 'protCard', d.protocols || [], (r: any) =>
+        '<li><a href="' + esc(r.href) + '" target="_blank" rel="noopener">' + esc(r.title) + '</a></li>');
+      fill('rosterList', 'rosterCard', d.roster || [], (r: any) =>
+        '<li><span class="sovet-roster-name">' + esc(r.name) + '</span></li>');
+
+      show('');
+    }).catch(() => show('Не удалось загрузить данные. Обновите страницу.'));
+
+    // Модалка повестки — порт <script> из home.php: showModal + закрытие по фону.
+    (function () {
+      const btn = document.getElementById('agenda-open');
+      const dlg = document.getElementById('agenda-dialog') as HTMLDialogElement | null;
+      if (!btn || !dlg || !dlg.showModal) return;
+      btn.addEventListener('click', () => dlg.showModal());
+      dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    })();
+  </script>
+</Base>

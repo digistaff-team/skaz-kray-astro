@@ -13,6 +13,8 @@ import { councilMeetingRoutes } from './meeting';
 import { councilLedgerRoutes } from './ledger';
 import { councilAdminRoutes } from './admin';
 import { councilTgRoutes } from './tg';
+import { councilWebhookRoutes } from './webhook';
+import { councilCronRoutes } from './cron';
 
 const router = Router();
 
@@ -24,6 +26,8 @@ const router = Router();
  */
 router.use(councilAuthRoutes); // /login, /logout, /forgot, /reset, /password
 router.use(councilTgRoutes); // /tg/login, /tg/claim, /tg/me
+router.use(councilWebhookRoutes); // POST /webhook — кнопки @SkazKray_bot
+router.use(councilCronRoutes); // /cron/duty-advance — Vercel Cron
 router.use(councilAdminRoutes); // /admin/…
 router.use(councilMeetingRoutes); // /meeting, /agenda, /duty/handoff
 router.use(councilTaskRoutes); // /tasks, /subtasks

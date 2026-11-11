@@ -11,6 +11,13 @@
       "maxDuration": 30
     }
   },
+
+  "crons": [
+    {
+      "path": "/api/council/cron/duty-advance",
+      "schedule": "0 18 * * 1"
+    }
+  ],
   "redirects": [
     {
       "source": "/api/(.+)/",

@@ -557,6 +557,8 @@ model CouncilMeeting {
   notifiedFor   DateTime? @map("notified_for") @db.Date
   rotationIndex Int       @default(0) @map("rotation_index")
   dutyAckAt     DateTime? @map("duty_ack_at")
+  dutyAckChatId String?   @map("duty_ack_chat_id") @db.VarChar(32)
+  dutyAckMsgId  Int?      @map("duty_ack_msg_id")
   place         String    @default("") @db.VarChar(200)
   dutyChair     String    @default("") @map("duty_chair") @db.VarChar(160)
   dutySecretary String    @default("") @map("duty_secretary") @db.VarChar(160)

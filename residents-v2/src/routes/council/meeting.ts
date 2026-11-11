@@ -129,7 +129,7 @@ router.post('/meeting', requireCouncil, async (req: AuthRequest, res) => {
 });
 
 /** «7 сентября 2026, 18:00–20:00» — подпись карточки (легаси meetingDate). */
-function formatMeetingDate(startsAt: Date): string {
+export function formatMeetingDate(startsAt: Date): string {
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля',
     'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   const msk = new Date(startsAt.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));

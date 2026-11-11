@@ -12,12 +12,12 @@
  * expenseStatus: none → pending → approved | rejected.
  * Единственная точка записи расхода задачи в бюджет — syncExpense().
  *
- * ОТЛИЧИЕ ОТ ЛЕГАСИ: отправка запроса казначею через Telegram-бота (sendRequest)
- * пока не портирована — нужен bot token и chat казначея в env. Статус pending
- * выставляется, но письмо в Telegram не уходит: кнопки одобрения в боте появятся
- * при подключении webhook'а. Сами статусы, гейты и запись в бюджет работают.
+ * ОТЛИЧИЕ ОТ ЛЕГАСИ: чат казначея берётся не из конфига, а из council_members
+ * (telegram_id того, чьё имя стоит в COUNCIL_EXPENSE_APPROVER) — отдельного
+ * секрета для этого нет.
  */
 import { db } from './db';
+import { TelegramBot } from './telegramBot';
 
 type TaskRow = {
   id: number;
@@ -97,10 +97,16 @@ export async function syncExpense(taskId: number): Promise<void> {
   }
 }
 
+/** Имя казначея — одобряет/отклоняет расходы (легаси Config::council_expense_approver). */
+export function approverName(): string {
+  return process.env.COUNCIL_EXPENSE_APPROVER || 'Сергей Шубин';
+}
+
 /**
- * Пометить pending и «отправить» запрос казначею, если настал момент
- * (порт requestIfNeeded). См. отличие в шапке файла про Telegram.
- * @returns true, если запрос отправлен (в v2 — статус выставлен).
+ * Пометить pending и отправить запрос казначею, если настал момент
+ * (порт requestIfNeeded + sendRequest: статус выставляется ТОЛЬКО когда
+ * сообщение реально ушло — иначе кнопки казначея не будет).
+ * @returns true, если запрос ушёл.
  */
 export async function requestExpenseIfNeeded(taskId: number): Promise<boolean> {
   const task = await db.councilTask.findUnique({ where: { id: taskId } });
@@ -108,11 +114,60 @@ export async function requestExpenseIfNeeded(taskId: number): Promise<boolean> {
   if (!needsRequest(task)) return false;
   if (task.expenseStatus === 'approved' || task.expenseStatus === 'pending') return false;
 
+  const sent = await sendExpenseRequest(task);
+  if (!sent) return false;
+
   await db.councilTask.update({
     where: { id: taskId },
-    data: { expenseStatus: 'pending', expenseMsgChatId: null, expenseMsgId: null },
+    data: { expenseStatus: 'pending', expenseMsgChatId: sent.chatId, expenseMsgId: sent.messageId },
   });
   return true;
+}
+
+/**
+ * Сообщение казначею с кнопками «Одобрить»/«Отклонить» — порт sendRequest.
+ * Токен/чат казначея — env + council_members, сбои не роняют запрос (fail-closed:
+ * pending не выставляется, повторная попытка будет при следующем изменении задачи).
+ */
+async function sendExpenseRequest(
+  task: TaskRow & { expenseTiming: string; status: string },
+): Promise<{ chatId: string; messageId: number } | null> {
+  const token = process.env.SKAZKRAY_BOT_TOKEN || '';
+  if (token === '') return null;
+
+  const approver = await db.councilMember.findFirst({
+    where: { name: approverName(), status: 'active' },
+    select: { telegramId: true },
+  });
+  if (!approver?.telegramId) return null;
+
+  const pre = isPrepaid(task);
+  const amount = Number(task.spent).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
+  const e = (s: string) =>
+    s.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+  const text =
+      (pre ? '💰 Запрос на финансирование (предоплата)' : '💰 Запрос на возмещение расходов (постоплата)') + '\n'
+    + (pre ? 'Создана задача: ' : 'Выполнена задача: ') + e(task.title) + '\n'
+    + 'Сумма: ' + amount + ' ₽\n\n'
+    + 'Подтвердите кнопкой под этим сообщением — расход попадёт в бюджет Общего дома.';
+
+  const keyboard = JSON.stringify({
+    inline_keyboard: [[
+      { text: '✅ Одобрить', callback_data: `x:${task.id}:approve` },
+      { text: '🚫 Отклонить', callback_data: `x:${task.id}:reject` },
+    ]],
+  }, null, 0);
+
+  const chatId = String(approver.telegramId);
+  const sent = await sendMessageTg(token, chatId, text, keyboard);
+  return sent;
+}
+
+/** Обёртка над TelegramBot (вынесена, чтобы тесты могли не тянуть Bot API). */
+async function sendMessageTg(token: string, chatId: string, text: string, replyMarkup: string):
+  Promise<{ chatId: string; messageId: number } | null> {
+  const res = await TelegramBot.sendMessage(token, chatId, text, { replyMarkup });
+  return res ? { chatId: res.chatId, messageId: res.messageId } : null;
 }
 
 /** Одобрить расход задачи — расход попадает в бюджет (порт approve). */

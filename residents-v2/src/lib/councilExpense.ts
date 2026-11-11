@@ -24,6 +24,7 @@ type TaskRow = {
   title: string;
   description: string | null;
   author: string;
+  assignee: string;
   status: string;
   spent: unknown;
   expenseCategoryId: number | null;
@@ -129,6 +130,40 @@ export async function requestExpenseIfNeeded(taskId: number): Promise<boolean> {
  * Токен/чат казначея — env + council_members, сбои не роняют запрос (fail-closed:
  * pending не выставляется, повторная попытка будет при следующем изменении задачи).
  */
+/** Экранирование как htmlspecialchars(…, ENT_QUOTES) в легаси (текст уходит с parse_mode=HTML). */
+function escHtml(s: string): string {
+  // Сущности собираются конкатенацией: цельный '<' в исходнике отдельная
+  // запись декодируется в символ ещё до рантайма (как в lib/sovet.js).
+  const AMP = '&' + 'amp;';
+  const LT = '&' + 'lt;';
+  const GT = '&' + 'gt;';
+  const QUOT = '&' + 'quot;';
+  const APOS = '&' + '#039;';
+  return s
+    .replace(/&/g, AMP)
+    .replace(/</g, LT)
+    .replace(/>/g, GT)
+    .replace(/"/g, QUOT)
+    .replace(/'/g, APOS);
+}
+
+/**
+ * Текст запроса казначею — порт sendRequest из CouncilExpenseApproval.php.
+ * Чистая функция, чтобы тесты гоняли текст без БД и Bot API.
+ */
+export function expenseRequestText(task: TaskRow): string {
+  const pre = isPrepaid(task);
+  // Обычный пробел, как number_format(..., ' ', ...) в легаси: toLocaleString
+  // для ru-RU ставит NBSP, из-за чего строка расходилась с легаси.
+  const amount = Number(task.spent).toLocaleString('ru-RU', { maximumFractionDigits: 0 })
+    .replace(/ /g, ' ');
+  const e = escHtml;
+  return (pre ? '💰 Запрос на финансирование (предоплата)' : '💰 Запрос на возмещение расходов (постоплата)') + '\n'
+    + (pre ? 'Создана задача: ' : 'Выполнена задача: ') + e(task.title) + '\n'
+    + 'Исполнитель: ' + e(task.assignee.trim() || '—') + '\n'
+    + (pre ? 'Предстоящие расходы: ' : 'Расходы: ') + e(amount) + ' руб.';
+}
+
 async function sendExpenseRequest(
   task: TaskRow & { expenseTiming: string; status: string },
 ): Promise<{ chatId: string; messageId: number } | null> {
@@ -141,15 +176,7 @@ async function sendExpenseRequest(
   });
   if (!approver?.telegramId) return null;
 
-  const pre = isPrepaid(task);
-  const amount = Number(task.spent).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
-  const e = (s: string) =>
-    s.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-  const text =
-      (pre ? '💰 Запрос на финансирование (предоплата)' : '💰 Запрос на возмещение расходов (постоплата)') + '\n'
-    + (pre ? 'Создана задача: ' : 'Выполнена задача: ') + e(task.title) + '\n'
-    + 'Сумма: ' + amount + ' ₽\n\n'
-    + 'Подтвердите кнопкой под этим сообщением — расход попадёт в бюджет Общего дома.';
+  const text = expenseRequestText(task);
 
   const keyboard = JSON.stringify({
     inline_keyboard: [[
@@ -170,6 +197,43 @@ async function sendMessageTg(token: string, chatId: string, text: string, replyM
   return res ? { chatId: res.chatId, messageId: res.messageId } : null;
 }
 
+/**
+ * Уведомление исполнителю об отклонении расхода — порт notifyAssigneeRejected.
+ * Чистая функция для тестов; отправка — в rejectExpense.
+ */
+export function expenseRejectedText(task: TaskRow): string {
+  const pre = isPrepaid(task);
+  const e = escHtml;
+  return (pre
+      ? 'Ваш запрос на финансирование предоплаты по Задаче «'
+      : 'Ваш запрос на возмещение расходов по выполнению Задачи «')
+    + e(task.title) + '» отклонён. '
+    + 'Свяжитесь с ' + e(approverName()) + ', чтобы уточнить детали.';
+}
+
+/** Отправить исполнителю сообщение об отклонении (fail-closed, как в легаси). */
+async function notifyAssigneeRejected(task: TaskRow): Promise<void> {
+  try {
+    const token = process.env.SKAZKRAY_BOT_TOKEN || '';
+    if (token === '') return;
+    const assignee = task.assignee.trim();
+    if (assignee === '') return;
+
+    const member = await db.councilMember.findFirst({
+      where: { name: assignee },
+      select: { telegramId: true },
+    });
+    if (!member?.telegramId) return;
+
+    await TelegramBot.sendMessage(token, String(member.telegramId), expenseRejectedText(task), {
+      parseMode: 'HTML',
+    });
+    console.log(`councilExpense: исполнителю «${assignee}» отправлено об отклонении (задача ${task.id})`);
+  } catch (err) {
+    console.error('councilExpense reject notify error:', err instanceof Error ? err.message : String(err));
+  }
+}
+
 /** Одобрить расход задачи — расход попадает в бюджет (порт approve). */
 export async function approveExpense(taskId: number): Promise<boolean> {
   const task = await db.councilTask.findUnique({ where: { id: taskId } });
@@ -182,7 +246,7 @@ export async function approveExpense(taskId: number): Promise<boolean> {
   return true;
 }
 
-/** Отклонить расход: убрать из бюджета (порт reject; уведомление исполнителю — позже). */
+/** Отклонить расход: убрать из бюджета и уведомить исполнителя (порт reject). */
 export async function rejectExpense(taskId: number): Promise<boolean> {
   const task = await db.councilTask.findUnique({ where: { id: taskId } });
   if (!task) return false;
@@ -191,5 +255,6 @@ export async function rejectExpense(taskId: number): Promise<boolean> {
     data: { expenseStatus: 'rejected', expenseMsgChatId: null, expenseMsgId: null },
   });
   await syncExpense(taskId);
+  await notifyAssigneeRejected(task);
   return true;
 }

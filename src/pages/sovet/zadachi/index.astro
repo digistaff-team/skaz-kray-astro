@@ -114,13 +114,20 @@ import Shell from '../../../components/sovet/Shell.astro';
     return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
-  /** Опции «Кто сделает»: я первым (как в легаси), потом остальные. */
+  /** Опции «Кто сделает»: я первым (как в легаси), потом остальные.
+      В форме правки selected — текущий исполнитель задачи (sel), а не я. */
   function assigneeOptions(sel: string): string {
     const names = members.map((m) => m.name);
     if (names.includes(me)) {
       const rest = names.filter((n) => n !== me);
-      return `<option value="${esc(me)}" selected>${esc(me)}</option>` +
-        rest.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+      // sel пуст только в форме создания — там по умолчанию я, как в легаси.
+      const first = sel || me;
+      // Исполнитель ушёл из состава: вариант сохраняем, чтобы сохранение
+      // не переписало его молча (порт «Текущая статья (архив)» из tasks.php).
+      const gone = first !== '' && first !== me && !names.includes(first);
+      return (gone ? `<option value="${esc(first)}" selected>${esc(first)}</option>` : '') +
+        `<option value="${esc(me)}"${first === me ? ' selected' : ''}>${esc(me)}</option>` +
+        rest.map((n) => `<option value="${esc(n)}"${first === n ? ' selected' : ''}>${esc(n)}</option>`).join('');
     }
     return '<option value="" selected>— не назначен —</option>' +
       names.map((n) => `<option value="${esc(n)}"${n === sel ? ' selected' : ''}>${esc(n)}</option>`).join('');

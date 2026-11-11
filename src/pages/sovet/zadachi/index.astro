@@ -197,7 +197,8 @@ import Shell from '../../../components/sovet/Shell.astro';
       ${t.description ? `<p class="sovet-task-desc">${esc(t.description).replace(/\n/g, '<br>')}</p>` : ''}
       ${photos}
 
-      <form class="res-form sovet-edit" data-edit-task="${t.id}">
+      <!-- id обязателен: кнопка «Сохранить» ниже вне формы привязана через form="edit-N". -->
+      <form id="edit-${t.id}" class="res-form sovet-edit" data-edit-task="${t.id}">
         <label>Что сделать<input type="text" name="title" maxlength="300" value="${esc(t.title)}" /></label>
         <label>Кто сделает<select name="assignee">${assigneeOptions(t.assignee || '')}</select></label>
         <div class="sovet-edit-row">

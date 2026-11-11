@@ -467,8 +467,10 @@ import Base from '../../layouts/Base.astro';
 
 <style>
   .app {
-    padding-top: 2rem;
-    padding-bottom: 3rem;
+    /* Верх даёт padding самой шапки (16px): 2rem сверху складывались в двойной
+       зазор под логотипом. Хвост сокращаем — ниже сетки пустого нет. */
+    padding-top: 1.25rem;
+    padding-bottom: 2.5rem;
   }
   /* Шапка лаунчера — построчный порт .app-head / .app-logo / .app-hello
      из residents.css. Размеры и скругления держим те же (48px логотип,
@@ -570,8 +572,14 @@ import Base from '../../layouts/Base.astro';
   .app-status {
     color: var(--muted);
     font-size: var(--step-0, 1rem);
-    margin-top: 1.1rem;
+    /* margin: 0 — глобальный p{margin: 0 0 1em} и margin-top:1.1rem раньше
+       складывались в пустую полосу под шапкой, пока статус был пустым. */
+    margin: 0;
     min-height: 1.4em;
+  }
+  /* Пустой статус (кабинет загружен, show('')) вообще не занимает место. */
+  .app-status:empty {
+    display: none;
   }
 
   /* Полноэкранная карта — порт .map-* из residents.css (кнопка «×» с учётом
@@ -748,7 +756,8 @@ import Base from '../../layouts/Base.astro';
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin-bottom: 14px;
+    /* Между баннерами и сеткой пробел накапливался (14px баннера + 1rem сетки). */
+    margin-bottom: 10px;
     padding: 14px 18px;
     border-radius: 14px;
     background: var(--wheat-soft);
@@ -782,7 +791,7 @@ import Base from '../../layouts/Base.astro';
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 0.8rem;
-    margin-top: 1.2rem;
+    margin-top: 1rem;
   }
   .app-grid[hidden] {
     display: none;

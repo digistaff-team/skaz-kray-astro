@@ -814,7 +814,12 @@ import Base from '../../layouts/Base.astro';
     display: block;
     margin-top: 0.35rem;
     color: var(--muted);
-    font-size: 0.9rem;
+    /* Один шаг вниз по шкале (было 0.9rem между --step--1 и --step-0):
+       подзаголовок вроде «бронирование и отчёт» умещается в одну строку. */
+    font-size: var(--step--2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .app-grid :global(.tile--soon) {
     opacity: 0.75;

@@ -9,9 +9,10 @@
  *  1. +7 дней к дате встречи
  *  2. +1 к rotationIndex
  *  3. Новый дежурный (isDutyChair + подпись в карточке)
- *  4. reset dutyAckAt (новый дежурный ещё не подтвердил)
+ *  4. reset dutyAckAt/dutyAckChatId/dutyAckMsgId (новый дежурный ещё не подтвердил)
  *  5. rollOver повестки (обсуждённое удалить, остальное перенести)
- *  6. Уведомить нового дежурного (если есть telegram_id)
+ *  6. Уведомить нового дежурного (если есть telegram_id) и сохранить
+ *     идентификаторы отправленного сообщения с кнопкой
  */
 import { db } from './db';
 import { dutyNameForIndex, DUTY_ORDER } from './councilData';
@@ -72,7 +73,13 @@ export async function advance(): Promise<{ date: string; chair: string } | null>
   const place = meeting.place;
   const sent = await notifyNewChair(chair, when, place, newIdx);
   if (sent) {
-    console.log(`advance: уведомление отправлено — ${chair}`);
+    // Сохраняем привязку к сообщению с кнопкой «Дежурство принял»: без неё
+    // единственной связкой остаётся callback_data d:ack:<rotationIndex>.
+    await db.councilMeeting.update({
+      where: { id: 1 },
+      data: { dutyAckChatId: sent.chatId, dutyAckMsgId: sent.messageId },
+    });
+    console.log(`advance: уведомление отправлено — ${chair} (msg_id=${sent.messageId})`);
   } else {
     console.log(`advance: уведомление НЕ отправлено — ${chair} (нет telegram_id или ошибка)`);
   }

@@ -1,11 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../../lib/db';
 import { advance } from '../../lib/dutyRotation';
+import { runMeetingNotify } from '../../lib/meetingNotify';
 import { formatMeetingDate } from './meeting';
 
 /**
- * Vercel Cron для ротации Дежурного председателя — порт
- * residents/bin/council-meeting-advance.php (cron понедельник 21:00 МСК).
+ * Vercel Cron раздела Совета — порты двух PHP-скриптов:
+ *  - residents/bin/council-meeting-advance.php (понедельник 21:00 МСК) — ротация;
+ *  - residents/bin/council-meeting-notify.php (ежедневно 06:00 UTC = 09:00 МСК) —
+ *    рассылка членам совета о сегодняшней встрече (см. /cron/meeting-notify).
  *
  * Расписание задано в vercel.json (crons): понедельник 18:00 UTC = 21:00 МСК.
  * Vercel шлёт CRON_SECRET в Authorization: Bearer — им же защищён мануальный
@@ -95,5 +98,32 @@ async function handler(req: Request, res: Response): Promise<void> {
 
 router.get('/cron/duty-advance', handler);
 router.post('/cron/duty-advance', handler);
+
+/**
+ * GET /api/council/cron/meeting-notify
+ * (POST тоже принимаем — на случай ручного вызова из инструментов)
+ *
+ * Ежедневная рассылка о встрече — порт council-meeting-notify.php.
+ * Секрет тот же (CRON_SECRET). Эквиваленты флагов: ?force=1 / ?dry_run=1.
+ */
+async function notifyHandler(req: Request, res: Response): Promise<void> {
+  if (!authorized(req)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  try {
+    const force = 'force' in req.query || 'force' in (req.body ?? {});
+    const dryRun = 'dry_run' in req.query || 'dry_run' in (req.body ?? {});
+    const r = await runMeetingNotify({ force, dryRun });
+    res.json(r);
+  } catch (err) {
+    console.error('Cron meeting-notify error:', err);
+    res.status(500).json({ error: 'Ошибка рассылки' });
+  }
+}
+
+router.get('/cron/meeting-notify', notifyHandler);
+router.post('/cron/meeting-notify', notifyHandler);
 
 export { router as councilCronRoutes };

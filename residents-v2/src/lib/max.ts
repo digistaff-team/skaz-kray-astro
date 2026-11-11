@@ -58,3 +58,41 @@ export async function maxChatMemberStatus(
     return 'error';
   }
 }
+
+/**
+ * Отправить личное сообщение пользователю MAX — порт MaxBot::sendMessage
+ * (используется в рассылке членам совета — council-meeting-notify).
+ *
+ * POST /messages?user_id={id} с телом {"text": "…"}; авторизация — заголовок
+ * «Authorization: <token>». Успех: пришёл объект отправленного сообщения без
+ * error-кода (dialog.not.found, verify.token и т.п. → не ретраим). Сетевой
+ * сбой — ретраим до 3 попыток, как в легаси (curl-сбой на сервере был терпим).
+ */
+export async function sendMaxMessage(botToken: string, userId: string, text: string): Promise<boolean> {
+  if (!botToken || !userId || !text) return false;
+  const url =
+    BASE + '/messages?user_id=' + encodeURIComponent(userId) + '&disable_link_preview=true';
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: botToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      const data = (await res.json().catch(() => null)) as { code?: unknown; message?: unknown } | null;
+      if (data && data.code === undefined && typeof data.message === 'string') return true;
+      // Ответ есть, но с ошибкой — повтор не поможет, бот не поймёт причину.
+      console.error(`sendMaxMessage: не доставлено ${userId}: ${JSON.stringify(data ?? res.status).slice(0, 200)}`);
+      return false;
+    } catch (err) {
+      if (attempt === 3) {
+        console.error('sendMaxMessage error:', err instanceof Error ? err.message : String(err));
+        return false;
+      }
+      await new Promise((r) => setTimeout(r, 2000)); // пауза между попытками
+    }
+  }
+  return false;
+}

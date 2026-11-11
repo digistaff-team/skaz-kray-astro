@@ -126,4 +126,74 @@ async function notifyHandler(req: Request, res: Response): Promise<void> {
 router.get('/cron/meeting-notify', notifyHandler);
 router.post('/cron/meeting-notify', notifyHandler);
 
+/**
+ * GET  /api/council/cron/webhook       — getWebhookInfo (куда шлёт апдейты бот);
+ * POST /api/council/cron/webhook?set=1  — перерегистрировать webhook на BASE_URL.
+ *
+ * Порт scripts/set-webhook.sh. Скрипт недоступен с рабочей машины (Telegram API
+ * блокируется, а старый прокси мёртв), поэтому управление ушло внутрь серверless
+ * функции — там сеть до api.telegram.org открыта (тот же канал, что у отправки
+ * уведомлений). Секрет — CRON_SECRET, как у cron-роутов выше.
+ *
+ * Важно: webhook обязан указывать на URL без редиректа — Telegram не следует
+ * за 308 (skaz-kray.ru → www.skaz-kray.ru), и апдейты теряются молча.
+ */
+async function webhookHandler(req: Request, res: Response): Promise<void> {
+  if (!authorized(req)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const token = process.env.SKAZKRAY_BOT_TOKEN || '';
+  if (token === '') {
+    res.status(500).json({ error: 'SKAZKRAY_BOT_TOKEN не задан' });
+    return;
+  }
+
+  const base = (process.env.BASE_URL || 'https://skaz-kray.ru').replace(/\/+$/, '');
+  // URL можно перекрыть явно: BASE_URL держит канонический домен для ссылок
+  // пользователям, а webhook обязан сидеть на домене БЕЗ редиректа (иначе
+  // Telegram отбрасывает апдейты — 308 на www не преследуется).
+  const raw = typeof req.query.url === 'string' ? req.query.url : '';
+  const override = /^https:\/\/[\w.-]+\/[^\s]*$/.test(raw) ? raw : '';
+  const hook = override || base + '/api/council/webhook/';
+  const call = async (method: string, body?: Record<string, unknown>): Promise<unknown> => {
+    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(15000),
+    });
+    return (await r.json().catch(() => null)) as unknown;
+  };
+
+  try {
+    const info = await call('getWebhookInfo');
+    if (!('set' in req.query)) {
+      res.json({ hook, info });
+      return;
+    }
+
+    const secret = process.env.SKAZKRAY_WEBHOOK_SECRET || '';
+    if (secret === '') {
+      res.status(500).json({ error: 'SKAZKRAY_WEBHOOK_SECRET не задан' });
+      return;
+    }
+    const set = await call('setWebhook', {
+      url: hook,
+      secret_token: secret,
+      allowed_updates: ['callback_query'],
+      drop_pending_updates: true,
+    });
+    const after = await call('getWebhookInfo');
+    res.json({ hook, set, after });
+  } catch (err) {
+    console.error('Cron webhook error:', err);
+    res.status(500).json({ error: 'Ошибка работы с Bot API' });
+  }
+}
+
+router.get('/cron/webhook', webhookHandler);
+router.post('/cron/webhook', webhookHandler);
+
 export { router as councilCronRoutes };

@@ -493,6 +493,12 @@ import Shell from '../../../components/sovet/Shell.astro';
     const editTask = form.getAttribute('data-edit-task');
     if (editTask) {
       e.preventDefault();
+      // Отклик моментальный: карточка сворачивается сразу по клику, не дожидаясь
+      // ответа API (сохранение с уведомлениями бота занимает пару секунд).
+      // Данные подтянутся в load(); при ошибке карточка раскроется обратно.
+      const card = form.closest('details') as HTMLDetailsElement | null;
+      if (card) card.open = false;
+      const reopen = () => { if (card) card.open = true; };
       const g = (n: string) => form.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${n}"]`);
       post(`/api/council/tasks/${editTask}`, {
         title: g('title')!.value,
@@ -506,9 +512,9 @@ import Shell from '../../../components/sovet/Shell.astro';
         expense_category_id: (g('expense_category_id') as HTMLSelectElement).value,
         description: g('description')!.value,
       }).then((res) => {
-        if (!res.ok) { showError(failText(res)); return; }
+        if (!res.ok) { reopen(); showError(failText(res)); return; }
         load();
-      }).catch(() => showError('Ошибка связи.'));
+      }).catch(() => { reopen(); showError('Ошибка связи.'); });
     }
   }, true);
 

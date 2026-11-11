@@ -6,6 +6,7 @@ import {
   pickCategory, pickTiming, parseAmount, EXPENSE_TIMINGS,
 } from '../../lib/councilHelpers';
 import { syncExpense, requestExpenseIfNeeded } from '../../lib/councilExpense';
+import { notifyAssignee, dueDateText } from '../../lib/taskNotify';
 
 const router = Router();
 
@@ -246,6 +247,17 @@ router.post('/tasks', requireCouncil, async (req: AuthRequest, res) => {
     });
 
     await syncExpense(task.id);
+    // Уведомление исполнителю уходит до ответа клиенту: на serverless функция
+    // может быть заморожена сразу после окончания события (в легаси — после,
+    // через fastcgi_finish_request).
+    await notifyAssignee({
+      taskId: task.id,
+      assignee: task.assignee,
+      author,
+      title: task.title,
+      priority: task.priority,
+      dueDate: dueDateText(task.dueDate),
+    });
     await requestExpenseIfNeeded(task.id);
 
     const fresh = await db.councilTask.findUnique({ where: { id: task.id } });
@@ -307,6 +319,23 @@ router.post('/tasks/:id', requireCouncil, async (req: AuthRequest, res) => {
 
     await db.councilTask.update({ where: { id }, data });
     await syncExpense(id);
+
+    // Смена исполнителя при правке — как в легаси: новый исполнитель получает
+    // уведомление (пустой assignee внутри notifyAssignee даёт молчаливый выход).
+    if ('assignee' in data && data.assignee !== task.assignee) {
+      const after = await db.councilTask.findUnique({ where: { id } });
+      if (after) {
+        await notifyAssignee({
+          taskId: id,
+          assignee: after.assignee,
+          author: await councilName(req.council!.memberId),
+          title: after.title,
+          priority: after.priority,
+          dueDate: dueDateText(after.dueDate),
+        });
+      }
+    }
+
     await requestExpenseIfNeeded(id);
 
     const fresh = await db.councilTask.findUnique({ where: { id } });

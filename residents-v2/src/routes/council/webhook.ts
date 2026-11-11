@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../lib/db';
 import { TelegramBot } from '../../lib/telegramBot';
 import { DUTY_ACK_LABEL } from '../../lib/dutyNotify';
+import { tasksDeepLink } from '../../lib/taskNotify';
 import {
   approveExpense,
   rejectExpense,
@@ -209,8 +210,9 @@ async function handleTask(
   if (!task) {
     await TelegramBot.answerCallbackQuery(token, callbackId, 'Задача не найдена');
     if (token && msg.chatId && msg.messageId) {
-      await TelegramBot.editMessageText(
-        token, msg.chatId, msg.messageId, escapeHtml(msg.msgText + '\n\n⚠️ Задача уже удалена.'),
+      // Как в легаси (renderEdit): сообщение переписывается с сохранением ссылки.
+      await editTaskMessage(
+        token, msg.chatId, msg.messageId, msg.msgText + '\n\n⚠️ Задача уже удалена.',
       );
     }
     return;
@@ -226,7 +228,7 @@ async function handleTask(
 
   const edit = (text: string, keyboard?: string) =>
     token && msg.chatId && msg.messageId
-      ? TelegramBot.editMessageText(token, msg.chatId, msg.messageId, escapeHtml(text), 'HTML', keyboard)
+      ? editTaskMessage(token, msg.chatId, msg.messageId, text, keyboard)
       : Promise.resolve(null);
 
   switch (action) {
@@ -260,10 +262,33 @@ async function handleTask(
       await TelegramBot.answerCallbackQuery(token, callbackId, '🎉 Задача выполнена');
       await edit(withStatusLine(msg.msgText, '🎉 Вы выполнили эту задачу, большое спасибо!'));
       // Есть расход — казначею уйдёт запрос на одобрение (порт requestIfNeeded).
-      // Есть расход — казначею уйдёт запрос на одобрение (порт requestIfNeeded).
       await requestExpenseIfNeeded(taskId);
       return;
   }
+}
+
+/**
+ * Переписать сообщение о задаче — порт BotWebhookController::renderEdit.
+ *
+ * Telegram отдаёт msgText уже без тегов (текст в чате он показывает разбитым),
+ * поэтому строку «Подробнее» нужно вернуть как ссылку — иначе после первого
+ * нажатия кнопки диплинк в сообщении пропадает. Остальное экранируем как HTML.
+ */
+async function editTaskMessage(
+  token: string,
+  chatId: string,
+  messageId: number,
+  plainText: string,
+  keyboard?: string,
+): Promise<unknown> {
+  const link = tasksDeepLink();
+  const html = plainText
+    .split('\n')
+    .map((line) => (line.trim() === 'Подробнее'
+      ? `<a href="${escapeHtml(link)}">Подробнее</a>`
+      : escapeHtml(line)))
+    .join('\n');
+  return TelegramBot.editMessageText(token, chatId, messageId, html, 'HTML', keyboard);
 }
 
 /** Клавиатура прогресса, появляется после «Взял в работу» (порт progressKeyboard). */

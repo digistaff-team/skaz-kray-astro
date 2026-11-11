@@ -34,14 +34,14 @@ router.get('/meeting', requireCouncil, async (req: AuthRequest, res) => {
       meeting: meeting
         ? {
             meetingDate: meeting.meetingDate,
-            startsAt: startsAt.toISOString(),
-            endsAt: meeting.endsAt ? meeting.endsAt.toISOString() : null,
+            startsAt: naiveIso(startsAt),
+            endsAt: meeting.endsAt ? naiveIso(meeting.endsAt) : null,
             place: meeting.place,
             dutyChair: meeting.dutyChair,
             dutySecretary: meeting.dutySecretary,
             rotationIndex: meeting.rotationIndex,
           }
-        : { ...defaultMeeting(), startsAt: startsAt.toISOString(), endsAt: null, rotationIndex: 0 },
+        : { ...defaultMeeting(), startsAt: naiveIso(startsAt), endsAt: null, rotationIndex: 0 },
       canEdit,
     });
   } catch (err) {
@@ -50,22 +50,27 @@ router.get('/meeting', requireCouncil, async (req: AuthRequest, res) => {
   }
 });
 
-/** День встречи уже прошёл (по календарю Москвы)? */
-function isPastDay(d: Date): boolean {
-  const msk = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
-  const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
-  return msk.toISOString().slice(0, 10) < today.toISOString().slice(0, 10);
+/** Календарная дата по Москве как 'YYYY-MM-DD' (без зависящих от TZ toLocaleString). */
+function mskDate(now = new Date()): string {
+  return new Date(now.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-/** Ближайший будущий понедельник (UTC+3) — как upcomingMonday в легаси. */
+/** День встречи уже прошёл (по календарю Москвы)? naive-дата = московские стены. */
+function isPastDay(d: Date): boolean {
+  return d.toISOString().slice(0, 10) < mskDate();
+}
+
+/** Ближайший будущий понедельник — как upcomingMonday в легаси (стенное московское время). */
 function upcomingMonday(time: string): Date {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
-  const dow = now.getDay(); // 0=Вс … 1=Пн
+  const now = new Date();
+  // Стенные московские компоненты «сейчас».
+  const wall = new Date(now.getTime() + 3 * 3600 * 1000);
+  const dow = wall.getUTCDay(); // 0=Вс … 1=Пн
   const add = dow === 1 ? 0 : (8 - dow) % 7 || 7;
   const [h, m] = time.split(':').map(Number);
-  const d = new Date(now);
-  if (add > 0) d.setDate(d.getDate() + add);
-  d.setHours(h, m, 0, 0);
+  const d = new Date(wall);
+  if (add > 0) d.setUTCDate(d.getUTCDate() + add);
+  d.setUTCHours(h, m, 0, 0);
   return d;
 }
 
@@ -85,9 +90,10 @@ router.post('/meeting', requireCouncil, async (req: AuthRequest, res) => {
     const place = String(body.place ?? '').trim();
     const dutySecretary = String(body.duty_secretary ?? '').trim();
 
-    const startsAt = startsRaw !== '' ? new Date(startsRaw) : null;
+    // datetime-local без смещения = московское стенное время (легаси parseLocal).
+    const startsAt = parseLocalWall(startsRaw);
     const errors: Record<string, string> = {};
-    if (!startsAt || Number.isNaN(startsAt.getTime())) errors.starts_at = 'Укажите дату и время.';
+    if (!startsAt) errors.starts_at = 'Укажите дату и время.';
     if (place.length < 2 || place.length > 200) errors.place = 'Место: 2–200 символов.';
     if (dutySecretary !== '' && (dutySecretary.length < 2 || dutySecretary.length > 160)) {
       errors.duty_secretary = 'До 160 символов.';
@@ -128,14 +134,42 @@ router.post('/meeting', requireCouncil, async (req: AuthRequest, res) => {
   }
 });
 
-/** «7 сентября 2026, 18:00–20:00» — подпись карточки (легаси meetingDate). */
+/**
+ * «7 сентября 2026, 18:00–20:00» — подпись карточки (легаси meetingDate).
+ *
+ * starts_at в БД — naive datetime = МОСКОВСКОЕ стенное время (легаси-конвенция:
+ * PHP-сервер жил в Europe/Moscow, strtotime/date не делали конверсий). Prisma
+ * отдаёт такой столбец Date'ом, якоренным в UTC (18:00 → 18:00Z), поэтому
+ * подпись собирается из getUTC*-компонентов: БЕЗ конверсии в московский
+ * пояс, иначе к часам прибавлялось бы ещё +3 (тот самый баг «21:00»).
+ */
 export function formatMeetingDate(startsAt: Date): string {
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля',
     'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-  const msk = new Date(startsAt.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
-  const hh = String(msk.getHours()).padStart(2, '0');
-  const mm = String(msk.getMinutes()).padStart(2, '0');
-  return `${msk.getDate()} ${months[msk.getMonth()]} ${msk.getFullYear()}, ${hh}:${mm}`;
+  const hh = String(startsAt.getUTCHours()).padStart(2, '0');
+  const mm = String(startsAt.getUTCMinutes()).padStart(2, '0');
+  return `${startsAt.getUTCDate()} ${months[startsAt.getUTCMonth()]} ${startsAt.getUTCFullYear()}, ${hh}:${mm}`;
+}
+
+/**
+ * Наивный ISO для API: naive-дата не имеет смещения, суффикс Z убираем —
+ * иначе браузер (МСК) в toLocalInput переведёт 18:00 в 21:00 при показе формы.
+ */
+function naiveIso(d: Date): string {
+  return d.toISOString().replace(/\.\d{3}Z$/, '');
+}
+
+/**
+ * Разбор datetime-local формы («2026-11-16T18:00», без смещения) как МОСКОВСКОГО
+ * стенного времени: склеиваем Z, чтобы результат не зависел от TZ процесса
+ * (легаси: strtotime на сервере в Europe/Moscow).
+ */
+function parseLocalWall(raw: string): Date | null {
+  if (raw === '') return null;
+  // Уже со смещением (на случай ручного вызова API) — парсим как есть.
+  const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(raw) ? raw : raw + 'Z';
+  const d = new Date(withZone);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /**
@@ -187,7 +221,7 @@ router.get('/agenda', requireCouncil, async (req: AuthRequest, res) => {
     res.json({
       items,
       meeting: meeting
-        ? { meetingDate: meeting.meetingDate, startsAt: meeting.startsAt, place: meeting.place }
+        ? { meetingDate: meeting.meetingDate, startsAt: meeting.startsAt ? naiveIso(meeting.startsAt) : null, place: meeting.place }
         : defaultMeeting(),
       me: await councilName(req.council!.memberId),
       isEditor: await isCouncilEditor(req.council!),

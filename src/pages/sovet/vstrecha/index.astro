@@ -42,9 +42,12 @@ import Shell from '../../../components/sovet/Shell.astro';
     const $ = (id: string) => document.getElementById(id);
     const status = $('loadStatus');
 
-    /** ISO → value для datetime-local (UTC+3, как показывает карточка). */
+    /** ISO → value для datetime-local. Сервер отдаёт наивную строку («2026-11-16T18:00»,
+     *  московское стенное время) — она уже и есть value, конверсия через Date её
+     *  исказила бы (плюс ещё TZ браузера). Legacy ISO со смещением форматируем сами. */
     function toLocalInput(iso: string): string {
       if (!iso) return '';
+      if (!/(?:Z|[+-]\d{2}:?\d{2})$/.test(iso)) return iso.slice(0, 16);
       const d = new Date(iso);
       if (Number.isNaN(d.getTime())) return '';
       const p = (n: number) => String(n).padStart(2, '0');

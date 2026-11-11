@@ -809,6 +809,10 @@ import Base from '../../layouts/Base.astro';
   .app-grid :global(.tile b) {
     display: block;
     line-height: 1.2;
+    /* Две строки: однострочные заголовки (Книги, Инструменты…) получают
+       пустую строку под словом — плитки равны по высоте с двустрочными
+       «Наши соседи» / «Наше поместье». */
+    min-height: 2.4em;
   }
   .app-grid :global(.tile span) {
     display: block;

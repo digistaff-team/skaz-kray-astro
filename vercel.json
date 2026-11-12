@@ -13,6 +13,10 @@
       "destination": "https://residents-v2.vercel.app/api/$1"
     },
     {
+      "source": "/tg-media/(.*)",
+      "destination": "https://residents-v2.vercel.app/api/tg-media/$1"
+    },
+    {
       "source": "/admin/(.*)",
       "destination": "/admin/index.html"
     },

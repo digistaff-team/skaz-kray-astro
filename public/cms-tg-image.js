@@ -4,17 +4,18 @@
 //   • tggallery — галерея: выбор сразу нескольких файлов (multiple),
 //                 пакетная загрузка с прогрессом, миниатюры, удаление,
 //                 изменение порядка. Значение — массив URL.
-// Каждый файл уходит POST на /tg-media-admin/upload.php (гейт паролем
-// редактора, тем же, что у входа в /editor/) → постоянный URL
-// https://skaz-kray.ru/tg-media/<file_id>.jpg. Подключается из
-// public/{editor,admin}/index.html после decap-cms.js. Серверная часть
-// (upload/serve/канал) — см. память skaz-kray-tg-media-storage, вне git.
+// Каждый файл уходит POST на /api/tg-media/upload (гейт паролем редактора,
+// тем же, что у входа в /editor/) → постоянный URL
+// https://skaz-kray.ru/tg-media/<file_id>.jpg. Оба пути обслуживает API
+// residents-v2 на Vercel: /api/* ревритится на него напрямую, /tg-media/* —
+// тоже (PHP-раздача и /tg-media-admin больше не существуют). Подключается из
+// public/{editor,admin}/index.html после decap-cms.js.
 (function () {
   var h = window.h;
   var createClass = window.createClass;
   if (!window.CMS || !h || !createClass) { return; }
 
-  var UPLOAD_URL = '/tg-media-admin/upload.php';
+  var UPLOAD_URL = '/api/tg-media/upload';
   var PW_KEY = 'tgUploadPw'; // пароль редактора кэшируется на сессию
   var ACCEPT = 'image/jpeg,image/png,image/webp';
 

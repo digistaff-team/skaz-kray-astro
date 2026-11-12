@@ -18,6 +18,7 @@ import { db } from './db';
 import { dutyNameForIndex, DUTY_ORDER } from './councilData';
 import { applyDutyRotation } from './councilDuty';
 import { notifyNewChair } from './dutyNotify';
+import { rollOverAgenda } from '../services/agenda';
 import { formatMeetingDate } from '../routes/council/meeting';
 
 export async function advance(): Promise<{ date: string; chair: string } | null> {
@@ -61,12 +62,9 @@ export async function advance(): Promise<{ date: string; chair: string } | null>
   // sync is_duty_chair flag
   await applyDutyRotation();
 
-  // Повестка: обсуждённое удалить, остальное перенести
-  await db.councilAgendaItem.deleteMany({ where: { discussed: true } });
-  await db.councilAgendaItem.updateMany({
-    where: { discussed: false },
-    data: { carriedOver: true },
-  });
+  // Повестка: обсуждённое удалить, остальное перенести. Постоянные пункты
+  // переживают перенос без пометок и сбрасывают «обсуждено» (легаси rollOver).
+  await rollOverAgenda();
 
   // Уведомить нового дежурного
   const when = formatMeetingDate(dt);

@@ -569,10 +569,14 @@ model CouncilMeeting {
 }
 
 // Пункты повестки (отдельная сущность, не путать с agenda в council_meeting).
+// isFixed — два постоянных пункта («Изменения в составе Совета»,
+// «Статус по текущим задачам»): всегда первые в списке (sort < 0), их нельзя
+// удалить/переместить, при переносе встречи они переживают rollOver.
 model CouncilAgendaItem {
   id          Int      @id @default(autoincrement())
   title       String   @db.VarChar(500)
   author      String   @default("") @db.VarChar(160)
+  isFixed     Boolean  @default(false) @map("is_fixed")
   discussed   Boolean  @default(false)
   carriedOver Boolean  @default(false) @map("carried_over")
   sort        Int      @default(0)

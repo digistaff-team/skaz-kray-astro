@@ -113,6 +113,7 @@ import Shell from '../../components/sovet/Shell.astro';
           agendaBox.className = 'sovet-agenda';
           agendaBox.innerHTML = items.map((it: any) =>
             '<p' + (it.discussed ? ' class="is-discussed"' : '') + '>' + esc(it.title) +
+            (it.isFixed ? ' <span class="sovet-agenda-fixed">постоянный</span>' : '') +
             (it.author ? ' <span class="sovet-agenda-author">— ' + esc(it.author) + '</span>' : '') +
             (it.carriedOver ? ' <span class="sovet-agenda-carried">с прошлой встречи</span>' : '') +
             '</p>'

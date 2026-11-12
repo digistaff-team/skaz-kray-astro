@@ -6,6 +6,7 @@ import {
   roleLabel, defaultMeeting, documents, protocols, directions, dutyNameForIndex, rosterMembers,
 } from '../../lib/councilData';
 import { buildLedgerReport } from '../../services/ledgerReport';
+import { ensureFixedAgenda } from '../../services/agenda';
 
 import { councilAuthRoutes } from './auth';
 import { councilTaskRoutes } from './tasks';
@@ -60,6 +61,8 @@ router.get('/me', requireCouncil, async (req: AuthRequest, res) => {
 router.get('/home', requireCouncil, async (req: AuthRequest, res) => {
   try {
     const council = req.council!;
+    // Постоянные пункты повестки — в начале списка (легаси PagesController::home).
+    await ensureFixedAgenda();
     const [me, meeting, agendaItems, activeCount] = await Promise.all([
       db.councilMember.findUnique({ where: { id: council.memberId } }),
       db.councilMeeting.findUnique({ where: { id: 1 } }),

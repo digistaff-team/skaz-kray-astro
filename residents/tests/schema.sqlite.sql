@@ -369,6 +369,7 @@ CREATE TABLE council_agenda_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     author TEXT NOT NULL DEFAULT '',
+    is_fixed INTEGER NOT NULL DEFAULT 0,
     discussed INTEGER NOT NULL DEFAULT 0,
     carried_over INTEGER NOT NULL DEFAULT 0,
     sort INTEGER NOT NULL DEFAULT 0,

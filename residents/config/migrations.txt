@@ -50,3 +50,4 @@ council-members-block-malinovskaya.sql
 broadcast-veche-chat.sql
 vk-oauth-token.sql
 vk-oauth-token-drop.sql
+council-agenda-fixed.sql

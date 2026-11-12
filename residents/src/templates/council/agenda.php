@@ -16,8 +16,9 @@
     </form>
 </details>
 
-<?php if (!$items): ?>
-    <p class="res-meta sovet-empty">Повестка пока пуста — добавьте первый пункт 👆</p>
+<?php $custom = array_filter($items, static fn (array $it): bool => empty($it['is_fixed'])); ?>
+<?php if (!$custom): ?>
+    <p class="res-meta sovet-empty">Кроме постоянных пунктов в повестке пока ничего нет — добавьте первый 👆</p>
 <?php endif; ?>
 
 <ul class="sovet-agenda-list">
@@ -33,15 +34,16 @@
             <?php endif; ?>
             <div class="sovet-agenda-body">
                 <span class="sovet-agenda-text"><?= View::e($it['title']) ?></span>
+                <?php if (!empty($it['is_fixed'])): ?><span class="sovet-agenda-fixed" title="Постоянный пункт — всегда в начале повестки">постоянный</span><?php endif; ?>
                 <?php if ($it['author'] !== ''): ?><span class="sovet-agenda-author">— <?= View::e($it['author']) ?></span><?php endif; ?>
                 <?php if (!empty($it['carried_over'])): ?><span class="sovet-agenda-carried">с прошлой встречи</span><?php endif; ?>
             </div>
             <div class="sovet-agenda-actions">
-                <?php if ($isEditor): ?>
+                <?php if ($isEditor && empty($it['is_fixed'])): ?>
                     <form method="post" action="/sovet/povestka/peremestit"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><input type="hidden" name="dir" value="up"><button class="res-link-btn" type="submit" title="Выше">↑</button></form>
                     <form method="post" action="/sovet/povestka/peremestit"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><input type="hidden" name="dir" value="down"><button class="res-link-btn" type="submit" title="Ниже">↓</button></form>
                 <?php endif; ?>
-                <?php if ($isEditor || (string) $it['author'] === $me): ?>
+                <?php if (empty($it['is_fixed']) && ($isEditor || (string) $it['author'] === $me)): ?>
                     <form method="post" action="/sovet/povestka/udalit" data-confirm="Удалить пункт повестки?"><?= Csrf::field() ?><input type="hidden" name="id" value="<?= $iid ?>"><button class="res-link-btn sovet-danger sovet-agenda-del" type="submit" title="Удалить" aria-label="Удалить">🗑</button></form>
                 <?php endif; ?>
             </div>

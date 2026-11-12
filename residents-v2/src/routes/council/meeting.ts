@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import { httpError, isCouncilEditor, councilName } from '../../lib/councilHelpers';
 import { applyDutyRotation, setDutyChair } from '../../lib/councilDuty';
 import { defaultMeeting } from '../../lib/councilData';
+import { ensureFixedAgenda, nextCustomAgendaSort, rollOverAgenda } from '../../services/agenda';
 
 const router = Router();
 
@@ -211,9 +212,13 @@ router.post('/duty/handoff', requireCouncil, async (req: AuthRequest, res) => {
  * GET /api/council/agenda — пункты повестки.
  * Пункт может добавить любой член совета (автор фиксируется). Удалять — автор
  * пункта или дежурный/админ; сортировать и отмечать «обсуждено» — дежурный/админ.
+ *
+ * Постоянные пункты гарантируются через ensureFixedAgenda() — всегда первые,
+ * их нельзя удалить/переместить, при переносе встречи они сбрасываются.
  */
 router.get('/agenda', requireCouncil, async (req: AuthRequest, res) => {
   try {
+    await ensureFixedAgenda();
     const [items, meeting] = await Promise.all([
       db.councilAgendaItem.findMany({ orderBy: [{ sort: 'asc' }, { id: 'asc' }] }),
       db.councilMeeting.findUnique({ where: { id: 1 } }),
@@ -239,11 +244,9 @@ router.post('/agenda', requireCouncil, async (req: AuthRequest, res) => {
     if (title.length < 2 || title.length > 500) {
       return httpError(res, 400, 'Пункт повестки: 2–500 символов.');
     }
-    const max = await db.councilAgendaItem.aggregate({ _max: { sort: true } });
-    const sort = (max._max.sort ?? -1) + 1;
-
+    // Обычные пункты — sort >= 0, чтобы постоянные (sort < 0) оставались первыми.
     const item = await db.councilAgendaItem.create({
-      data: { title, author: await councilName(req.council!.memberId), sort },
+      data: { title, author: await councilName(req.council!.memberId), sort: await nextCustomAgendaSort() },
     });
     res.status(201).json(item);
   } catch (err) {
@@ -252,12 +255,13 @@ router.post('/agenda', requireCouncil, async (req: AuthRequest, res) => {
   }
 });
 
-/** DELETE /api/council/agenda/:id — удалить пункт (автор или дежурный/админ). */
+/** DELETE /api/council/agenda/:id — удалить пункт (автор или дежурный/админ). Постоянные удалить нельзя. */
 router.delete('/agenda/:id', requireCouncil, async (req: AuthRequest, res) => {
   try {
     const id = Number(req.params.id);
     const item = await db.councilAgendaItem.findUnique({ where: { id } });
     if (!item) return httpError(res, 404, 'Пункт не найден');
+    if (item.isFixed) return httpError(res, 403, 'Постоянный пункт повестки удалить нельзя.');
 
     const editor = await isCouncilEditor(req.council!);
     const me = await councilName(req.council!.memberId);
@@ -296,6 +300,7 @@ router.post('/agenda/:id/toggle', requireCouncil, async (req: AuthRequest, res) 
 
 /**
  * POST /api/council/agenda/:id/move — поменять порядок с соседом (дежурный/админ).
+ * Постоянные пункты не двигаются; сосед ищется только среди обычных (is_fixed=false).
  * dir: 'up' (вверх) или 'down' (вниз по умолчанию) — как в легаси.
  */
 router.post('/agenda/:id/move', requireCouncil, async (req: AuthRequest, res) => {
@@ -307,10 +312,12 @@ router.post('/agenda/:id/move', requireCouncil, async (req: AuthRequest, res) =>
     const dir = String(req.body?.dir ?? '') === 'up' ? -1 : 1;
     const cur = await db.councilAgendaItem.findUnique({ where: { id } });
     if (!cur) return httpError(res, 404, 'Пункт не найден');
+    if (cur.isFixed) return httpError(res, 403, 'Постоянный пункт повестки переместить нельзя.');
 
-    // Сосед: ближайший по (sort, id) в нужную сторону.
+    // Сосед: ближайший по (sort, id) в нужную сторону среди обычных пунктов.
     const neighbors = await db.councilAgendaItem.findMany({
       where: {
+        isFixed: false,
         OR: [
           { sort: dir < 0 ? { lt: cur.sort } : { gt: cur.sort } },
           { sort: cur.sort, id: dir < 0 ? { lt: id } : { gt: id } },
@@ -345,11 +352,8 @@ router.post('/agenda/rollover', requireCouncil, async (req: AuthRequest, res) =>
     if (!(await isCouncilEditor(req.council!))) {
       return httpError(res, 403, 'Перенести повестку может дежурный или админ.');
     }
-    const [deleted] = await db.$transaction([
-      db.councilAgendaItem.deleteMany({ where: { discussed: true } }),
-      db.councilAgendaItem.updateMany({ data: { carriedOver: true } }),
-    ]);
-    res.json({ ok: true, deleted: deleted.count });
+    const deleted = await rollOverAgenda();
+    res.json({ ok: true, deleted });
   } catch (err) {
     console.error('Council agenda rollover error:', err);
     httpError(res, 500, 'Ошибка');

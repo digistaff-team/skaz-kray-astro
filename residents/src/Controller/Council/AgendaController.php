@@ -23,6 +23,7 @@ final class AgendaController
     public function index(): void
     {
         CouncilAuth::requireLogin();
+        $this->agenda->ensureFixed();
         View::render('council/agenda', [
             'items'    => $this->agenda->all(),
             'meeting'  => $this->meeting->get(),
@@ -48,7 +49,9 @@ final class AgendaController
     {
         $this->guard();
         $item = $this->agenda->findById((int) ($_POST['id'] ?? 0));
-        if ($item && ($this->isEditor() || (string) $item['author'] === CouncilAuth::name())) {
+        if ($item && (int) $item['is_fixed'] === 1) {
+            Flash::set('error', 'Постоянный пункт повестки удалить нельзя.');
+        } elseif ($item && ($this->isEditor() || (string) $item['author'] === CouncilAuth::name())) {
             $this->agenda->delete((int) $item['id']);
             Flash::set('info', 'Пункт удалён.');
         } else {

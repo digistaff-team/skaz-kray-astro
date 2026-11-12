@@ -28,6 +28,7 @@ final class PagesController
         // Править встречу и передавать дежурство может текущий дежурный или админ.
         $canEditMeeting = CouncilAuth::isAdmin() || $iAmDuty;
         $dutyChair = $this->members->findDutyChair();
+        $this->agenda->ensureFixed();   // постоянные пункты повестки — в начале списка
 
         // Кандидаты для передачи дежурства — активные члены совета, кроме текущего дежурного.
         $dutyCandidates = [];

@@ -20,7 +20,7 @@ import Shell from '../../../components/sovet/Shell.astro';
       </form>
     </details>
 
-    <p class="res-meta sovet-empty" id="emptyNote" hidden>Повестка пока пуста — добавьте первый пункт 👆</p>
+    <p class="res-meta sovet-empty" id="emptyNote" hidden>Кроме постоянных пунктов в повестке пока ничего нет — добавьте первый 👆</p>
 
     <ul class="sovet-agenda-list" id="list"></ul>
     <div class="res-flash res-flash--error" id="err" hidden></div>
@@ -46,10 +46,13 @@ import Shell from '../../../components/sovet/Shell.astro';
     // Один рендер списка — после каждой мутации перечитываем GET /agenda.
     function render(items: any[]) {
       if (!list) return;
-      empty!.hidden = items.length > 0;
-      list.innerHTML = items.map((it) => {
-        const canDel = isEditor || it.author === me;
-        return '<li class="sovet-agenda-item' + (it.discussed ? ' is-discussed' : '') + '">' +
+      // «пуста» — только если нет обычных пунктов (постоянные всегда лежат).
+      const hasCustom = items.some((it: any) => !it.isFixed);
+      empty!.hidden = hasCustom;
+      list.innerHTML = items.map((it: any) => {
+        const fixed = !!it.isFixed;
+        const canDel = !fixed && (isEditor || it.author === me);
+        return '<li class="sovet-agenda-item' + (it.discussed ? ' is-discussed' : '') + (fixed ? ' sovet-agenda-item--fixed' : '') + '">' +
           // Чекбокс «обсуждено»: только дежурный/админ (легаси disabled остальным).
           (isEditor
             ? '<form class="sovet-agenda-check" data-toggle="' + it.id + '">' +
@@ -59,11 +62,12 @@ import Shell from '../../../components/sovet/Shell.astro';
                 (it.discussed ? ' checked' : '') + ' title="Обсуждено"></span>') +
           '<div class="sovet-agenda-body">' +
             '<span class="sovet-agenda-text">' + esc(it.title) + '</span>' +
+            (fixed ? ' <span class="sovet-agenda-fixed" title="Постоянный пункт — всегда в начале повестки">постоянный</span>' : '') +
             (it.author ? ' <span class="sovet-agenda-author">— ' + esc(it.author) + '</span>' : '') +
             (it.carriedOver ? ' <span class="sovet-agenda-carried">с прошлой встречи</span>' : '') +
           '</div>' +
           '<div class="sovet-agenda-actions">' +
-            (isEditor
+            (!fixed && isEditor
               ? '<button class="res-link-btn" data-move="up" data-id="' + it.id + '" title="Выше">↑</button>' +
                 '<button class="res-link-btn" data-move="down" data-id="' + it.id + '" title="Ниже">↓</button>'
               : '') +

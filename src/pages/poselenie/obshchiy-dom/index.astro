@@ -281,12 +281,22 @@ import Base from '../../../layouts/Base.astro';
         bookingLink.addEventListener('click', function (e) {
           var url = bookingLink.getAttribute('href');
           // 1) Внутри Telegram — единственный надёжный способ открыть чужой
-          //    мини-апп: openTelegramLink (WebView сам не открывает t.me).
+          //    мини-апп: openTelegramLink. Дефолт гасим СРАЗУ: WebView молча
+          //    отбрасывает т.е.-навигацию, а SDK может ещё грузиться — если
+          //    сделать preventDefault в колбэке, переход уже уйдёт и «кнопка
+          //    ничего не сделает».
           if (inTelegram()) {
+            e.preventDefault();
+            var waNow = currentWa();
+            if (waNow && waNow.openTelegramLink) { waNow.openTelegramLink(url); return; }
+            if (waNow && waNow.openLink) { waNow.openLink(url); return; }
+            // SDK ещё не готов (первая загрузка страницы / сеть): ждём до 8 с,
+            // потом открываем, а если так и не пришёл — deep-link напрямую.
             ensure(function (wa) {
-              if (wa && wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
-              else if (wa && wa.openLink) { e.preventDefault(); wa.openLink(url); }
-              else { window.location.href = url; } // SDK не доехал — как обычный веб
+              if (wa && wa.openTelegramLink) { wa.openTelegramLink(url); return; }
+              if (wa && wa.openLink) { wa.openLink(url); return; }
+              var intent = tgIntentUrl(url);
+              window.location.href = intent || url;
             });
             return;
           }

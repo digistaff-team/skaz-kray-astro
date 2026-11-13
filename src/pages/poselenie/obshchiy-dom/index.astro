@@ -39,7 +39,7 @@ import Base from '../../../layouts/Base.astro';
       <summary>
         <div class="house-summary-text">
           <b>Бюджет Общего дома</b>
-          <span class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</span>
+          <span class="meta">Открытый отчёт о расходовании средств Фонда Общего дома</span>
         </div>
       </summary>
       <div id="budgetReport"></div>
@@ -181,45 +181,43 @@ import Base from '../../../layouts/Base.astro';
       function renderProtocols(list) {
         if (!list || !list.length) {
           protocolsList.innerHTML = '<li class="meta">Протоколов пока нет.</li>';
-          protocolsCard.hidden = false;
           return;
         }
         protocolsList.innerHTML = list.map(function (p) {
           return '<li><a href="' + esc(p.href) + '" target="_blank" rel="noopener">' + esc(p.title) + '</a></li>';
         }).join('');
-        protocolsCard.hidden = false;
       }
 
-      function loadBudget() {
-        var ym = new URLSearchParams(window.location.search).get('mesyac');
-        return api('/api/budget' + (ym ? '?mesyac=' + encodeURIComponent(ym) : ''))
-          .then(function (res) {
-            if (res.status === 403) {
-              budgetCard.hidden = false;
-              budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
-              return null;
-            }
-            if (!res.ok) throw new Error('http ' + res.status);
-            budgetReport.innerHTML = renderReport(res.data);
-            budgetCard.hidden = false;
-            return res.data;
-          });
-      }
-
-      api('/api/house')
-        .then(function (res) {
-          if (!res.ok) throw new Error('http ' + res.status);
-          var d = res.data || {};
+      // Оба запроса идут параллельно, блоки показываются одним залпом:
+      // иначе протоколы появлялись сразу, а бюджет — после второго запроса.
+      Promise.all([
+        api('/api/house'),
+        api('/api/budget' + (function () {
+          var ym = new URLSearchParams(window.location.search).get('mesyac');
+          return ym ? '?mesyac=' + encodeURIComponent(ym) : '';
+        })())
+      ])
+        .then(function (results) {
+          var houseRes = results[0];
+          var budgetRes = results[1];
+          if (!houseRes.ok) throw new Error('http ' + houseRes.status);
+          var d = houseRes.data || {};
           if (d.bookingLink && bookingLink) bookingLink.setAttribute('href', d.bookingLink);
           renderProtocols(d.protocols || []);
-          if (d.budgetOpen === false) {
-            budgetCard.hidden = false;
+
+          // Бюджет: 403 — раздел выключен админом, house.budgetOpen === false —
+          // тот же смысл из /api/house; оба случая показывают заглушку.
+          if (budgetRes.status === 403 || d.budgetOpen === false) {
             budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
-            return null;
+          } else {
+            if (!budgetRes.ok) throw new Error('http ' + budgetRes.status);
+            budgetReport.innerHTML = renderReport(budgetRes.data);
           }
-          return loadBudget();
+
+          budgetCard.hidden = false;
+          protocolsCard.hidden = false;
+          show('');
         })
-        .then(function () { show(''); })
         .catch(function (e) {
           if (e && e.auth) return;
           show('Не удалось загрузить раздел. Проверьте связь и обновите страницу.');

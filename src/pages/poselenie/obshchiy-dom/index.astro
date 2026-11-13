@@ -35,15 +35,17 @@ import Base from '../../../layouts/Base.astro';
          Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
          один — LedgerReport), но формы ввода жителям не показываются.
          Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
-    <details class="res-card house-protocols" id="budgetCard" hidden>
-      <summary><h2>Бюджет Общего дома</h2></summary>
-      <p class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</p>
+    <details class="res-card house-option house-protocols" id="budgetCard" hidden>
+      <summary>
+        <b>Бюджет Общего дома</b>
+        <span class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</span>
+      </summary>
       <div id="budgetReport"></div>
     </details>
 
     <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
-    <details class="res-card house-protocols" id="protocolsCard" hidden>
-      <summary><h2>Протоколы встреч Попечительского совета Общего дома</h2></summary>
+    <details class="res-card house-option house-protocols" id="protocolsCard" hidden>
+      <summary><b>Протоколы встреч Попечительского совета Общего дома</b></summary>
       <ul class="doclist" id="protocolsList"></ul>
     </details>
 
@@ -435,8 +437,19 @@ import Base from '../../../layouts/Base.astro';
   .house-protocols > summary::-webkit-details-marker {
     display: none;
   }
-  .house-protocols > summary h2 {
-    margin: 0;
+  /* Заголовок-аккордеон — тот же кегль, что у «Бронирования помещений»:
+     <b> из .house-option b вместо h2. */
+  .house-protocols > summary b {
+    display: block;
+    font-size: 1.05rem;
+    margin: 0 0 0.2rem;
+    font-weight: 700;
+  }
+  .house-protocols > summary .meta {
+    display: block;
+  }
+  .house-protocols > summary {
+    margin-bottom: 0.2rem;
   }
   .house-protocols > summary::after {
     content: '\25BE';

@@ -216,11 +216,10 @@ import Base from '../../../layouts/Base.astro';
           show('Не удалось загрузить раздел. Проверьте связь и обновите страницу.');
         });
 
-      // Бронирование — отдельное мини-приложение. Когда портал открыт внутри
-      // Telegram, ссылку надо отдавать клиенту через openTelegramLink: обычный
-      // переход внутри WebView либо ничего не делает, либо выкидывает во внешний
-      // браузер, где человек оказывается разлогиненным. Вне Telegram (браузер,
-      // PWA) работает обычная ссылка — поэтому href настоящий, а не «#».
+      // Бронирование — отдельное мини-приложение. Клик обрабатывается
+      // всегда (а не только после загрузки SDK — грузится он до 8 с, а в
+      // заблокированной сети вообще не грузится): в свежей версии обработчик
+      // вешается сразу, а способ открытия выбирается в момент клика.
       (function () {
         var SRC = 'https://telegram.org/js/telegram-web-app.js';
         var TIMEOUT_MS = 8000;
@@ -233,6 +232,14 @@ import Base from '../../../layouts/Base.astro';
             if (window.sessionStorage.getItem('tg-miniapp') === '1') return true;
           } catch (e) {}
           return !!(window.TelegramWebviewProxy || window.TelegramWebviewProxyProto);
+        }
+        // PWA (установленное приложение, standalone): WebView WebAPK на Android
+        // молча отбрасывает навигацию по внешним https-ссылкам — нужно
+        // поднимать intent напрямую, через tg://-схему.
+        function inStandalone() {
+          try {
+            return window.matchMedia('(display-mode: standalone)').matches;
+          } catch (e) { return false; }
         }
         function ensure(cb) {
           var ready = currentWa();
@@ -261,13 +268,44 @@ import Base from '../../../layouts/Base.astro';
           (document.head || document.body || document.documentElement).appendChild(sc);
         }
 
-        ensure(function (wa) {
-          if (!wa) return;
-          bookingLink.addEventListener('click', function (e) {
-            var url = bookingLink.getAttribute('href');
-            if (wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
-            else if (wa.openLink) { e.preventDefault(); wa.openLink(url); }
-          });
+        // tg://resolve — deep-link в бота; startapp повторяет path алиаса,
+        // чтобы бот открыл нужную точку (легаси боты игнорируют лишние).
+        function tgIntentUrl(url) {
+          var m = /^https:\/\/t\.me\/([A-Za-z0-9_]+)(?:\/([A-Za-z0-9_]+))?/.exec(url || '');
+          if (!m) return null;
+          var intent = 'tg://resolve?domain=' + m[1];
+          if (m[2]) intent += '&startapp=' + m[2];
+          return intent;
+        }
+
+        bookingLink.addEventListener('click', function (e) {
+          var url = bookingLink.getAttribute('href');
+          // 1) Внутри Telegram — единственный надёжный способ открыть чужой
+          //    мини-апп: openTelegramLink (WebView сам не открывает t.me).
+          if (inTelegram()) {
+            ensure(function (wa) {
+              if (wa && wa.openTelegramLink) { e.preventDefault(); wa.openTelegramLink(url); }
+              else if (wa && wa.openLink) { e.preventDefault(); wa.openLink(url); }
+              else { window.location.href = url; } // SDK не доехал — как обычный веб
+            });
+            return;
+          }
+          // 2) PWA на Android: tg://-intent пробуем первым, а через 1.5 с —
+          //    https-запасной путь (если Telegram не установлен или intent
+          //    отклонён, браузер откроет t.me нормально).
+          if (inStandalone()) {
+            var intent = tgIntentUrl(url);
+            if (intent) {
+              e.preventDefault();
+              var t = setTimeout(function () { window.location.href = url; }, 1500);
+              try {
+                window.addEventListener('pagehide', function () { clearTimeout(t); });
+              } catch (err) {}
+              window.location.href = intent;
+            }
+            return;
+          }
+          // 3) Обычный браузер — работает обычный <a href>.
         });
       })();
     })();

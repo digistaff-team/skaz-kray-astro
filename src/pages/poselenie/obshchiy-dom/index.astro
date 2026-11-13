@@ -35,24 +35,33 @@ import Base from '../../../layouts/Base.astro';
          Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
          один — LedgerReport), но формы ввода жителям не показываются.
          Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
-    <details class="res-card house-option house-protocols" id="budgetCard" hidden>
+    <details class="res-card house-option house-protocols" id="budgetCard">
       <summary>
         <div class="house-summary-text">
           <b>Бюджет Общего дома</b>
           <span class="meta">Открытый отчёт о расходовании средств Фонда Общего дома</span>
         </div>
       </summary>
-      <div id="budgetReport"></div>
+      <div id="budgetReport" aria-busy="true">
+        <div class="skeleton" style="height:1.1rem;width:60%;margin-bottom:0.6rem"></div>
+        <div class="skeleton" style="height:0.9rem;width:100%;margin-bottom:0.4rem"></div>
+        <div class="skeleton" style="height:0.9rem;width:92%;margin-bottom:0.4rem"></div>
+        <div class="skeleton" style="height:0.9rem;width:85%"></div>
+      </div>
     </details>
 
     <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
-    <details class="res-card house-option house-protocols" id="protocolsCard" hidden>
+    <details class="res-card house-option house-protocols" id="protocolsCard">
       <summary>
         <div class="house-summary-text">
           <b>Протоколы встреч Попечительского совета Общего дома</b>
         </div>
       </summary>
-      <ul class="doclist" id="protocolsList"></ul>
+      <ul class="doclist" id="protocolsList" aria-busy="true">
+        <li class="skeleton" style="height:1rem;width:70%;margin:0.5rem 0"></li>
+        <li class="skeleton" style="height:1rem;width:55%;margin:0.5rem 0"></li>
+        <li class="skeleton" style="height:1rem;width:62%;margin:0.5rem 0"></li>
+      </ul>
     </details>
 
     <p class="foot"><a href="/poselenie/">На главную</a></p>
@@ -188,40 +197,58 @@ import Base from '../../../layouts/Base.astro';
         }).join('');
       }
 
-      // Оба запроса идут параллельно, блоки показываются одним залпом:
-      // иначе протоколы появлялись сразу, а бюджет — после второго запроса.
-      Promise.all([
-        api('/api/house'),
-        api('/api/budget' + (function () {
-          var ym = new URLSearchParams(window.location.search).get('mesyac');
-          return ym ? '?mesyac=' + encodeURIComponent(ym) : '';
-        })())
-      ])
-        .then(function (results) {
-          var houseRes = results[0];
-          var budgetRes = results[1];
-          if (!houseRes.ok) throw new Error('http ' + houseRes.status);
-          var d = houseRes.data || {};
+      // Карточки видны сразу со скелетонами; каждый блок заполняется
+      // независимо по мере прихода своего ответа.
+      var budgetDisabled = false;
+
+      function setBusy(el, busy) {
+        if (!el) return;
+        if (busy) el.setAttribute('aria-busy', 'true');
+        else el.removeAttribute('aria-busy');
+      }
+
+      function loadBudget() {
+        var ym = new URLSearchParams(window.location.search).get('mesyac');
+        return api('/api/budget' + (ym ? '?mesyac=' + encodeURIComponent(ym) : ''))
+          .then(function (res) {
+            setBusy(budgetReport, false);
+            if (budgetDisabled || res.status === 403) {
+              budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
+              return null;
+            }
+            if (!res.ok) throw new Error('http ' + res.status);
+            budgetReport.innerHTML = renderReport(res.data);
+            return res.data;
+          })
+          .catch(function (e) {
+            if (e && e.auth) return;
+            setBusy(budgetReport, false);
+            budgetReport.innerHTML = '<p class="meta">Не удалось загрузить отчёт.</p>';
+          });
+      }
+
+      show('');
+
+      api('/api/house')
+        .then(function (res) {
+          setBusy(protocolsList, false);
+          if (!res.ok) throw new Error('http ' + res.status);
+          var d = res.data || {};
           if (d.bookingLink && bookingLink) bookingLink.setAttribute('href', d.bookingLink);
           renderProtocols(d.protocols || []);
-
-          // Бюджет: 403 — раздел выключен админом, house.budgetOpen === false —
-          // тот же смысл из /api/house; оба случая показывают заглушку.
-          if (budgetRes.status === 403 || d.budgetOpen === false) {
+          if (d.budgetOpen === false) {
+            budgetDisabled = true;
+            setBusy(budgetReport, false);
             budgetReport.innerHTML = '<p class="meta">Раздел «Отчёт о расходах» сейчас отключён в поселении.</p>';
-          } else {
-            if (!budgetRes.ok) throw new Error('http ' + budgetRes.status);
-            budgetReport.innerHTML = renderReport(budgetRes.data);
           }
-
-          budgetCard.hidden = false;
-          protocolsCard.hidden = false;
-          show('');
         })
         .catch(function (e) {
           if (e && e.auth) return;
-          show('Не удалось загрузить раздел. Проверьте связь и обновите страницу.');
+          setBusy(protocolsList, false);
+          protocolsList.innerHTML = '<li class="meta">Не удалось загрузить протоколы.</li>';
         });
+
+      loadBudget();
 
       // Бронирование — отдельное мини-приложение. Клик обрабатывается
       // всегда (а не только после загрузки SDK — грузится он до 8 с, а в
@@ -482,10 +509,25 @@ import Base from '../../../layouts/Base.astro';
     gap: 0.6rem;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--line);
-    flex-wrap: wrap;
   }
-  .doclist li:last-child {
+  .doclist li.skeleton {
+    display: block;
     border-bottom: 0;
+    padding: 0;
+  }
+  .doclist a {
+    flex: 1;
+  }
+  /* Скелетоны — заглушки до загрузки содержимого блоков. */
+  .skeleton {
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--line, #e5e7eb) 25%, #f3f4f6 50%, var(--line, #e5e7eb) 75%);
+    background-size: 200% 100%;
+    animation: house-skel 1.2s ease-in-out infinite;
+  }
+  @keyframes house-skel {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 
   /* Отчёт о расходах — те же блоки, что в residents.css (ledger_*),

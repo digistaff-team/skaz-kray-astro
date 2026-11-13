@@ -33,12 +33,13 @@ import Base from '../../../layouts/Base.astro';
 
     <!-- Отчёт о расходах — порт budget/report.php + partials/ledger_report.php.
          Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
-         один — LedgerReport), но формы ввода жителям не показываются. -->
-    <section class="res-card" id="budgetCard" hidden>
-      <h2>Бюджет Общего дома</h2>
+         один — LedgerReport), но формы ввода жителям не показываются.
+         Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
+    <details class="res-card house-protocols" id="budgetCard" hidden>
+      <summary><h2>Бюджет Общего дома</h2></summary>
       <p class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</p>
       <div id="budgetReport"></div>
-    </section>
+    </details>
 
     <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
     <details class="res-card house-protocols" id="protocolsCard" hidden>

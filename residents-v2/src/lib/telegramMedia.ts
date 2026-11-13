@@ -90,7 +90,16 @@ export function channelConfig(): { botToken: string; chatId: string } | null {
   return { botToken, chatId };
 }
 
-export type UploadResult = { url: string } | { error: string };
+export type UploadResult =
+  | {
+      /**
+       * file_id — путь `tg:<file_id>` в images (фото задач и т.п.);
+       * url — абсолютная ссылка /tg-media/<file_id>.jpg для редактора.
+       */
+      fileId: string;
+      url: string;
+    }
+  | { error: string };
 
 /**
  * sendPhoto в канал и постоянный URL. Ошибку возвращает текстом, готовым к
@@ -136,7 +145,7 @@ export async function uploadToChannel(buf: Uint8Array): Promise<UploadResult> {
   if (!data?.ok) return { error: data?.description || 'Telegram отверг загрузку.' };
   const fileId = chooseLargestFileId(data.result?.photo);
   if (!fileId) return { error: 'Telegram не вернул file_id.' };
-  return { url: mediaUrl(fileId) };
+  return { fileId, url: mediaUrl(fileId) };
 }
 
 // ─────────────────────────── Раздача по file_id ───────────────────────────

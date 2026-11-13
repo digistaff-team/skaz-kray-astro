@@ -44,6 +44,11 @@ import Shell from '../../../components/sovet/Shell.astro';
         <label class="js-expense-money" hidden>Статья расхода (обязательно)
           <select name="expense_category_id" id="cCat"></select>
         </label>
+        <!-- Фото задачи: выбор + клиентское превью (как в дневнике и профиле). -->
+        <label class="sovet-addlink">+ Добавить фото
+          <input type="file" id="taskPhotos" accept="image/*" multiple hidden>
+        </label>
+        <div class="photo-preview"></div>
         <label>Как сделать и что учесть<textarea name="description" id="cDesc"></textarea></label>
         <div class="sovet-form-actions">
           <button class="res-btn" type="submit">Добавить</button>
@@ -234,6 +239,11 @@ import Shell from '../../../components/sovet/Shell.astro';
         <label>Расходы, руб.<input type="number" name="spent" min="0" step="1" class="js-spent" value="${spent || ''}" /></label>
         <label class="js-expense-money"${spent > 0 ? '' : ' hidden'}>Оплата расходов${timingSel}</label>
         <label class="js-expense-money"${spent > 0 ? '' : ' hidden'}>Статья расхода (обязательно)<select name="expense_category_id">${catOptions(Number(t.expenseCategoryId) || 0)}</select></label>
+        <!-- Фото задачи: кнопка видна всегда (не зависит от расходов) — как в форме новой задачи. -->
+        <label class="sovet-addlink">+ Добавить фото
+          <input type="file" id="taskPhotos${t.id}" accept="image/*" multiple hidden>
+        </label>
+        <div class="photo-preview"></div>
         <label>Как сделать и что учесть<textarea name="description">${esc(t.description || '')}</textarea></label>
       </form>
 
@@ -285,6 +295,104 @@ import Shell from '../../../components/sovet/Shell.astro';
       inp.dataset.spentInit = '1';
       syncSpent(inp);
       inp.addEventListener('input', () => syncSpent(inp));
+    });
+  }
+
+  /**
+   * Выбранные, но ещё не отправленные фото по каждому инпуту. Общий реестр,
+   * а не замыкание вокруг DataTransfer: загрузка меняет состав списка снаружи
+   * (частичный успех), и превью должно увидеть именно его.
+   */
+  const photoPending = new Map<string, File[]>();
+
+  /** Перерисовка превью одного инпута из его реестра. */
+  function renderPhotoPreview(inp: HTMLInputElement): void {
+    const label = inp.closest('label');
+    const box = label ? (label.nextElementSibling as HTMLElement | null) : null;
+    if (!box || !box.classList.contains('photo-preview')) return;
+    box.innerHTML = '';
+    (photoPending.get(inp.id) || []).forEach((f, idx) => {
+      const wrap = document.createElement('span');
+      wrap.className = 'photo-uploaded';
+      const img = document.createElement('img');
+      img.className = 'photo-thumb';
+      img.src = URL.createObjectURL(f);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'photo-del';
+      btn.textContent = '×';
+      btn.title = 'Убрать';
+      btn.addEventListener('click', () => {
+        const list = photoPending.get(inp.id) || [];
+        list.splice(idx, 1);
+        photoPending.set(inp.id, list);
+        setFiles(inp, list);
+        renderPhotoPreview(inp);
+      });
+      wrap.appendChild(img);
+      wrap.appendChild(btn);
+      box.appendChild(wrap);
+    });
+  }
+
+  /** Синхронизация FileList инпута с реестром (нужен на submit формы). */
+  function setFiles(inp: HTMLInputElement, files: File[]): void {
+    const dt = new DataTransfer();
+    files.forEach((f) => dt.items.add(f));
+    inp.files = dt.files;
+  }
+
+  /**
+   * Накопительный выбор фото с клиентским превью — порт скрипта из tasks.php.
+   * Один обработчик на все инпуты photo: новая задача и правка каждой карточки
+   * (у каждого своё превью — соседний блок .photo-preview).
+   */
+  function initPhotoInputs(root: ParentNode) {
+    root.querySelectorAll<HTMLInputElement>('input[id^="taskPhotos"]').forEach((inp) => {
+      if (inp.dataset.photoInit) return;
+      inp.dataset.photoInit = '1';
+      inp.addEventListener('change', () => {
+        // Накопление: выбор в пикере ЗАМЕНЯЕТ inp.files, реестр — переживает
+        // загрузку и перерисовку, поэтому складываем реестр с новым выбором.
+        const list = photoPending.get(inp.id) || [];
+        Array.from(inp.files || []).forEach((f) => {
+          if (/^image\//.test(f.type)) list.push(f);
+        });
+        photoPending.set(inp.id, list);
+        setFiles(inp, list);
+        renderPhotoPreview(inp);
+      });
+      // render() перерисовал карточку: input новый, а незагруженные фото
+      // лежат в реестре под тем же id — показываем их снова, а не теряем.
+      const pending = photoPending.get(inp.id) || [];
+      if (pending.length > 0) {
+        setFiles(inp, pending);
+        renderPhotoPreview(inp);
+      }
+    });
+  }
+
+  /**
+   * Загрузка накопленных в форме фото — POST /api/council/tasks/:id/photos.
+   * Ответ {added, skipped, error?}: сервер берёт файлы по порядку, поэтому при
+   * частичном успехе уже загруженные убираем из списка — повторная отправка
+   * не создаст дублей, а в превью остаются только ещё не ушедшие.
+   */
+  function uploadPhotos(taskId: string, inp: HTMLInputElement | null): Promise<void> {
+    if (!inp) return Promise.resolve();
+    const list = photoPending.get(inp.id) || [];
+    if (list.length === 0 || taskId === '') return Promise.resolve();
+    const fd = new FormData();
+    list.forEach((f) => fd.append('photo', f));
+    return api(`/api/council/tasks/${taskId}/photos`, { method: 'POST', body: fd }).then((res) => {
+      const added: Array<{ id: number; path: string }> = (res.data && res.data.added) || [];
+      const rest = list.slice(added.length);
+      photoPending.set(inp.id, rest);
+      setFiles(inp, rest);
+      renderPhotoPreview(inp);
+      if (!res.ok || res.data.error || rest.length > 0) {
+        throw new Error((res.data && res.data.error) || failText(res));
+      }
     });
   }
 
@@ -401,6 +509,7 @@ import Shell from '../../../components/sovet/Shell.astro';
 
     bindSpent(document);
     initSubs(document);
+    initPhotoInputs(document);
   }
 
   function load() {
@@ -441,6 +550,13 @@ import Shell from '../../../components/sovet/Shell.astro';
       const d = $('newTask') as HTMLDetailsElement;
       d.removeAttribute('open');
       load();
+      // Фото грузятся после создания (задача должна получить id) и не держат
+      // форму: загрузка в Telegram занимает секунды, список уже отрисован.
+      const photoInput = $('taskPhotos') as HTMLInputElement | null;
+      uploadPhotos(String((res.data && res.data.id) || ''), photoInput).then(load).catch((e) => {
+        showError(String(e && e.message ? e.message : 'Не удалось загрузить фото.'));
+        load(); // фото могли загрузиться частично — перечитываем карточку
+      });
     }).catch(() => showError('Ошибка связи.'));
   });
 
@@ -514,6 +630,13 @@ import Shell from '../../../components/sovet/Shell.astro';
       }).then((res) => {
         if (!res.ok) { reopen(); showError(failText(res)); return; }
         load();
+        // Фото из формы правки — после сохранения (легаси грузил их внутри
+        // update через handleUploads). Ошибка не отменяет сохранение.
+        const photoInput = form.querySelector<HTMLInputElement>('input[id^="taskPhotos"]');
+        uploadPhotos(editTask, photoInput).then(load).catch((e) => {
+          showError(String(e && e.message ? e.message : 'Не удалось загрузить фото.'));
+          load();
+        });
       }).catch(() => { reopen(); showError('Ошибка связи.'); });
     }
   }, true);

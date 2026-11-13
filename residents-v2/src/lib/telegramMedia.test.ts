@@ -154,7 +154,11 @@ test('uploadToChannel: успех — sendPhoto, берёт наибольшую
     });
     try {
       const res = await uploadToChannel(JPEG);
-      assert.deepEqual(res, { url: 'https://skaz-kray.ru/tg-media/LARGE_ID_123.jpg' });
+      assert.ok('url' in res, 'загрузка должна пройти, а не вернуть ошибку');
+      if (!('url' in res)) return;
+      assert.equal(res.url, 'https://skaz-kray.ru/tg-media/LARGE_ID_123.jpg');
+      // fileId нужен роуту загрузки фото задач — из него строится путь tg:<id>.
+      assert.equal(res.fileId, 'LARGE_ID_123');
       assert.match(seenUrl, /\/bot123:TEST-TOKEN\/sendPhoto$/);
     } finally {
       restore();

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { AuthRequest, requireCouncil } from '../../middleware/auth';
 import { db } from '../../lib/db';
 import {
@@ -7,6 +8,7 @@ import {
 } from '../../lib/councilHelpers';
 import { syncExpense, requestExpenseIfNeeded } from '../../lib/councilExpense';
 import { notifyAssignee, dueDateText } from '../../lib/taskNotify';
+import { uploadToChannel, MAX_BYTES } from '../../lib/telegramMedia';
 
 const router = Router();
 
@@ -16,14 +18,27 @@ const router = Router();
  * Совместная модель: любой вошедший член совета может добавить задачу, взять её,
  * отметить выполненной, править и удалять (как в эталоне-портале).
  *
- * Фото задач (легаси TaskController::handleUploads) не портированы: в v2 загрузка
- * файлов отсутствует во всех разделах (дневник, ярмарка, закупки) — это общий
- * непорченный кусок, и решать его надо одним механизмом хранения, а не здесь.
- * Удаление уже загруженных фото работает: DELETE /tasks/:id/photos/:imgId.
+ * Фото задач (легаси TaskController::handleUploads) — POST /tasks/:id/photos:
+ * файлы уходят в Telegram-канал (как в редакторе и в раздаче /tg-media/),
+ * в images пишется путь `tg:<file_id>`. Локального фолбэка в uploads_dir нет:
+ * на Vercel нет постоянного диска — при недоступности Telegram файл не
+ * сохраняется, и об этом честно сообщается в ответе.
  */
 
 const PHOTO_OWNER = 'task';
 const MAX_PHOTOS = 10;
+
+/**
+ * Фото грузятся в память: на serverless нет диска, а байты всё равно уходят
+ * в Telegram. Лимит на файл — потолок Bot API sendPhoto (MAX_BYTES), но
+ * запрос к функции Vercel обрывается раньше (4.5 МБ на всё тело), поэтому
+ * принимаем не больше, чем платформа пропускает в принципе.
+ */
+const UPLOAD_FILE_MAX = Math.min(MAX_BYTES, Math.floor(4.5 * 1024 * 1024));
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: UPLOAD_FILE_MAX, files: MAX_PHOTOS },
+});
 
 /** Задача с подзадачами и счётчиками — как listWithSubtasks в легаси. */
 type TaskWithSubs = Awaited<ReturnType<typeof db.councilTask.findFirst>> & {
@@ -505,6 +520,81 @@ router.delete('/subtasks/:id', requireCouncil, async (req: AuthRequest, res) => 
 });
 
 // ─────────────────────────── Фото задач ───────────────────────────
+
+/**
+ * POST /api/council/tasks/:id/photos — добавить фото к задаче (multipart,
+ * поле photo; допускается несколько файлов сразу — форма шлёт photos[]).
+ * Порт TaskController::handleUploads: файлы по очереди уходят в канал,
+ * в images пишется `tg:<file_id>` с нарастающим sort.
+ *
+ * Ответ: {added: [...], skipped: N, error?: string}. Частичный успех — не
+ * ошибка: часть файлов могла уйти, а часть отвалиться по размеру/формату,
+ * и терять уже загруженное из-за одного плохого файла нельзя.
+ */
+router.post('/tasks/:id/photos', requireCouncil, (req, res) => {
+  // Ошибки multer (лимит размера/числа) уходят в колбэк: глобальный
+  // обработчик ответил бы им 500, а редактору нужна понятная причина.
+  photoUpload.array('photo', MAX_PHOTOS)(req, res, (err: unknown) => {
+    if (err) {
+      const code = (err as { code?: string }).code;
+      httpError(
+        res,
+        code === 'LIMIT_FILE_SIZE' ? 413 : 400,
+        code === 'LIMIT_FILE_SIZE'
+          ? `Файл больше ${Math.round(UPLOAD_FILE_MAX / 1024 / 1024)} МБ — сожмите перед загрузкой.`
+          : 'Не удалось прочитать файл.',
+      );
+      return;
+    }
+    void uploadPhotos(req, res);
+  });
+});
+
+/** Сама загрузка — отдельно, чтобы выше читался только обёртка multer. */
+async function uploadPhotos(req: AuthRequest, res: import('express').Response): Promise<void> {
+    try {
+      const taskId = Number(req.params.id);
+      if (!(await db.councilTask.findUnique({ where: { id: taskId }, select: { id: true } }))) {
+        httpError(res, 404, 'Задача не найдена');
+        return;
+      }
+
+      const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+      if (files.length === 0) { httpError(res, 400, 'Не передан файл.'); return; }
+
+      // Считаем занятые места один раз: в цикле пересчёт дал бы каждой копии
+      // sort, равный уже существующему (легаси считал так же, до цикла).
+      let sort = await db.image.count({ where: { ownerType: PHOTO_OWNER, ownerId: taskId } });
+
+      const added: Array<{ id: number; path: string; sort: number }> = [];
+      let error: string | undefined;
+
+      for (const file of files) {
+        if (sort >= MAX_PHOTOS) {
+          error = `На задачу не более ${MAX_PHOTOS} фото.`;
+          break;
+        }
+        const uploaded = await uploadToChannel(new Uint8Array(file.buffer));
+        if ('error' in uploaded) {
+          // Telegram недоступен — локального фолбэка на Vercel нет, поэтому
+          // сообщаем причину и прекращаем: остальные файлы ждёт та же судьба.
+          error = uploaded.error;
+          break;
+        }
+        const img = await db.image.create({
+          data: { ownerType: PHOTO_OWNER, ownerId: taskId, path: 'tg:' + uploaded.fileId, sort },
+        });
+        added.push({ id: img.id, path: img.path, sort: img.sort });
+        sort += 1;
+      }
+
+      const skipped = files.length - added.length;
+      res.status(added.length > 0 ? 201 : 502).json({ added, skipped, ...(error ? { error } : {}) });
+    } catch (err) {
+      console.error('Council task photo add error:', err);
+      httpError(res, 500, 'Ошибка');
+    }
+}
 
 /**
  * DELETE /api/council/tasks/:id/photos/:imgId — убрать одно фото.

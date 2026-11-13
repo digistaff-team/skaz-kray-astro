@@ -281,9 +281,6 @@ import Base from '../../../layouts/Base.astro';
 
         bookingLink.addEventListener('click', function (e) {
           var url = bookingLink.getAttribute('href');
-          // Отладка: пока кнопка гоняется, причина отказа пишется в статус
-          // страницы — пришлите строку, что появилось после клика.
-          function dbg(msg) { show('DEBUG: ' + msg); }
           // 1) Внутри Telegram — единственный надёжный способ открыть чужой
           //    мини-апп: openTelegramLink. Дефолт гасим СРАЗУ: WebView молча
           //    отбрасывает т.е.-навигацию, а SDK может ещё грузиться — если
@@ -292,12 +289,10 @@ import Base from '../../../layouts/Base.astro';
           if (inTelegram()) {
             e.preventDefault();
             var waNow = currentWa();
-            dbg('inTelegram, wa=' + (waNow ? 'ready' : 'loading'));
             if (waNow && waNow.openTelegramLink) {
-              dbg('openTelegramLink()');
               // openTelegramLink может молча не сработать (политика безопасности
               // Telegram для ссылок на других ботов). Проверяем через 1.5 сек:
-              // если страница всё ещё видна — пробуем fallback.
+              // если страница всё ещё видна — переходим сами.
               var opened = false;
               function onVisChange() {
                 if (document.hidden) {
@@ -310,30 +305,25 @@ import Base from '../../../layouts/Base.astro';
                 waNow.openTelegramLink(url);
                 setTimeout(function() {
                   if (!opened && !document.hidden) {
-                    dbg('openTelegramLink() не сработал, fallback');
                     document.removeEventListener('visibilitychange', onVisChange);
                     // Вложенный WebView: tg://-схему iOS/Desktop блокируют,
                     // openLink() уводит во внешний браузер. Работающая схема —
                     // навигация самого WebView на t.me-ссылку: Telegram
                     // перехватывает её и открывает нужного бота.
-                    dbg('fallback->location ' + url);
                     window.location.replace(url);
                   }
                 }, 1500);
               } catch (err) {
-                dbg('openTelegramLink() ошибка: ' + err.message);
                 document.removeEventListener('visibilitychange', onVisChange);
-                dbg('catch->location ' + url);
                 window.location.replace(url);
               }
               return;
             }
-            if (waNow && waNow.openLink) { dbg('openLink()'); waNow.openLink(url); return; }
+            if (waNow && waNow.openLink) { waNow.openLink(url); return; }
             // SDK ещё не готов (первая загрузка страницы / сеть): ждём до 8 с,
             // потом открываем, а если так и не пришёл — deep-link напрямую.
             ensure(function (wa) {
               if (wa && wa.openTelegramLink) {
-                dbg('ensure->openTelegramLink()');
                 var opened2 = false;
                 function onVisChange2() {
                   if (document.hidden) {
@@ -346,23 +336,18 @@ import Base from '../../../layouts/Base.astro';
                   wa.openTelegramLink(url);
                   setTimeout(function() {
                     if (!opened2 && !document.hidden) {
-                      dbg('ensure->openTelegramLink() не сработал, fallback');
                       document.removeEventListener('visibilitychange', onVisChange2);
-                      dbg('ensure->location ' + url);
                       window.location.replace(url);
                     }
                   }, 1500);
                 } catch (err) {
-                  dbg('ensure->openTelegramLink() ошибка: ' + err.message);
                   document.removeEventListener('visibilitychange', onVisChange2);
-                  dbg('ensure->catch->location ' + url);
                   window.location.replace(url);
                 }
                 return;
               }
-              if (wa && wa.openLink) { dbg('ensure->openLink()'); wa.openLink(url); return; }
+              if (wa && wa.openLink) { wa.openLink(url); return; }
               var intent = tgIntentUrl(url);
-              dbg('ensure->wa=null, goto ' + (intent || url));
               window.location.href = intent || url;
             });
             return;
@@ -372,7 +357,6 @@ import Base from '../../../layouts/Base.astro';
           //    отклонён, браузер откроет t.me нормально).
           if (inStandalone()) {
             var intent = tgIntentUrl(url);
-            dbg('standalone, intent=' + (intent || 'null'));
             if (intent) {
               e.preventDefault();
               var t = setTimeout(function () { window.location.href = url; }, 1500);
@@ -383,7 +367,6 @@ import Base from '../../../layouts/Base.astro';
             }
             return;
           }
-          dbg('обычный веб — обычный href');
           // 3) Обычный браузер — работает обычный <a href>.
         });
       })();

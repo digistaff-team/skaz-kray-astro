@@ -7,7 +7,7 @@ import Base from '../../layouts/Base.astro';
   noindex
 >
   <div class="wrap">
-    <div class="tg-entry">
+    <div class="tg-entry" id="tgEntry">
       <h1>Вход жителя</h1>
       <p id="tg-status" class="tg-status">Проверяем доступ через Telegram…</p>
       <noscript>
@@ -30,7 +30,20 @@ import Base from '../../layouts/Base.astro';
       var SDK_TIMEOUT_MS = 8000;
 
       var statusEl = document.getElementById('tg-status');
-      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      var entryEl = document.getElementById('tgEntry');
+      // «Проверяем доступ…» показываем только если проверка затянулась:
+      // мгновенный вход не должен мигать промежуточным экраном.
+      var slowTimer = window.setTimeout(function () {
+        if (entryEl) { entryEl.classList.add('is-visible'); }
+      }, 400);
+      function revealEntry() {
+        window.clearTimeout(slowTimer);
+        if (entryEl) { entryEl.classList.add('is-visible'); }
+      }
+      function show(msg) {
+        revealEntry();
+        if (statusEl) { statusEl.textContent = msg; }
+      }
 
       // initData из параметров запуска Mini App — без участия SDK.
       // Декодируем вручную через decodeURIComponent, а НЕ URLSearchParams:
@@ -256,6 +269,12 @@ import Base from '../../layouts/Base.astro';
   .tg-entry {
     padding: 3rem 0;
     max-width: 48ch;
+    /* Скрыт, пока вход не подтвердился: при успехе страница сразу уводит на
+       главную, и «Вход жителя / Проверяем доступ» не должно мигать. */
+    display: none;
+  }
+  .tg-entry.is-visible {
+    display: block;
   }
   .tg-status {
     color: var(--muted);

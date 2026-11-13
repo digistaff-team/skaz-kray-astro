@@ -280,6 +280,9 @@ import Base from '../../../layouts/Base.astro';
 
         bookingLink.addEventListener('click', function (e) {
           var url = bookingLink.getAttribute('href');
+          // Отладка: пока кнопка гоняется, причина отказа пишется в статус
+          // страницы — пришлите строку, что появилось после клика.
+          function dbg(msg) { show('DEBUG: ' + msg); }
           // 1) Внутри Telegram — единственный надёжный способ открыть чужой
           //    мини-апп: openTelegramLink. Дефолт гасим СРАЗУ: WebView молча
           //    отбрасывает т.е.-навигацию, а SDK может ещё грузиться — если
@@ -288,14 +291,16 @@ import Base from '../../../layouts/Base.astro';
           if (inTelegram()) {
             e.preventDefault();
             var waNow = currentWa();
-            if (waNow && waNow.openTelegramLink) { waNow.openTelegramLink(url); return; }
-            if (waNow && waNow.openLink) { waNow.openLink(url); return; }
+            dbg('inTelegram, wa=' + (waNow ? 'ready' : 'loading'));
+            if (waNow && waNow.openTelegramLink) { dbg('openTelegramLink()'); waNow.openTelegramLink(url); return; }
+            if (waNow && waNow.openLink) { dbg('openLink()'); waNow.openLink(url); return; }
             // SDK ещё не готов (первая загрузка страницы / сеть): ждём до 8 с,
             // потом открываем, а если так и не пришёл — deep-link напрямую.
             ensure(function (wa) {
-              if (wa && wa.openTelegramLink) { wa.openTelegramLink(url); return; }
-              if (wa && wa.openLink) { wa.openLink(url); return; }
+              if (wa && wa.openTelegramLink) { dbg('ensure->openTelegramLink()'); wa.openTelegramLink(url); return; }
+              if (wa && wa.openLink) { dbg('ensure->openLink()'); wa.openLink(url); return; }
               var intent = tgIntentUrl(url);
+              dbg('ensure->wa=null, goto ' + (intent || url));
               window.location.href = intent || url;
             });
             return;
@@ -305,6 +310,7 @@ import Base from '../../../layouts/Base.astro';
           //    отклонён, браузер откроет t.me нормально).
           if (inStandalone()) {
             var intent = tgIntentUrl(url);
+            dbg('standalone, intent=' + (intent || 'null'));
             if (intent) {
               e.preventDefault();
               var t = setTimeout(function () { window.location.href = url; }, 1500);
@@ -315,6 +321,7 @@ import Base from '../../../layouts/Base.astro';
             }
             return;
           }
+          dbg('обычный веб — обычный href');
           // 3) Обычный браузер — работает обычный <a href>.
         });
       })();

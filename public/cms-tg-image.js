@@ -19,6 +19,59 @@
   var PW_KEY = 'tgUploadPw'; // пароль редактора кэшируется на сессию
   var ACCEPT = 'image/jpeg,image/png,image/webp';
 
+  // ── Клиентское сжатие ─────────────────────────────────────────────────────
+  // Снимок с телефона (12 Мп, HDR) весит 3–8 МБ и упирается в потолок тела
+  // запроса Vercel (4.5 МБ): редактор получал бы 413 или сетевую ошибку.
+  // canvas → JPEG q0.85, длинная сторона до 2000px: тот же снимок — 200–700 КБ,
+  // на глаз для веба неотличимо.
+  var MAX_EDGE = 2000;
+  var QUALITY = 0.85;
+  var TARGET_BYTES = 4 * 1024 * 1024; // с запасом под платформенные 4.5 МБ
+
+  function compress(file) {
+    if (!/^image\//.test(file.type)) {
+      return Promise.resolve(file);
+    }
+    var url = URL.createObjectURL(file);
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('decode')); };
+      img.src = url;
+    }).then(function (img) {
+      var w = img.naturalWidth || img.width;
+      var h = img.naturalHeight || img.height;
+      var scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * scale));
+      var ch = Math.max(1, Math.round(h * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = cw;
+      canvas.height = ch;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) { return null; }
+      // JPEG не хранит прозрачность — белая подложка, иначе PNG с альфой
+      // получит чёрный фон.
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+      return new Promise(function (resolve) {
+        canvas.toBlob(function (b) { resolve(b); }, 'image/jpeg', QUALITY);
+      });
+    }).then(function (blob) {
+      // Сжатие не всегда выгодно (скриншоты уже оптимизированы): берём
+      // результат, только если он реально меньше исходника.
+      if (!blob || blob.size >= file.size) { return file; }
+      return new File([blob], String(file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+    }).catch(function () {
+      // Сжатие не должно ломать загрузку: не смогли — отдаём исходник,
+      // о размере и формате отчитается сервер.
+      return file;
+    }).then(function (out) {
+      URL.revokeObjectURL(url);
+      return out;
+    });
+  }
+
   // Пароль редактора: из кэша сессии, иначе спрашиваем один раз.
   function getPassword() {
     var pw = window.sessionStorage.getItem(PW_KEY);
@@ -32,10 +85,17 @@
   // Загрузка одного файла. resolve({url}) | reject(Error). При неверном
   // пароле сбрасываем кэш, чтобы спросить заново на следующей попытке.
   function uploadOne(file, pw) {
-    var fd = new FormData();
-    fd.append('photo', file);
-    fd.append('password', pw);
-    return fetch(UPLOAD_URL, { method: 'POST', body: fd })
+    return compress(file).then(function (small) {
+      // Остаток сверх лимита обрезать нельзя, а запрос к Vercel оборвётся
+      // невнятной сетевой ошибкой — честнее сказать это до отправки.
+      if (small.size > TARGET_BYTES) {
+        throw new Error('Файл больше 4 МБ даже после сжатия — уменьшите фото перед загрузкой.');
+      }
+      var fd = new FormData();
+      fd.append('photo', small);
+      fd.append('password', pw);
+      return fetch(UPLOAD_URL, { method: 'POST', body: fd });
+    })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
       .then(function (res) {
         if (!res.ok || !res.data || res.data.error) {

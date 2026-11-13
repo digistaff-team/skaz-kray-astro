@@ -312,37 +312,19 @@ import Base from '../../../layouts/Base.astro';
                   if (!opened && !document.hidden) {
                     dbg('openTelegramLink() не сработал, fallback');
                     document.removeEventListener('visibilitychange', onVisChange);
-                    // Сначала deep-link: openLink() в WebView не запускает
-                    // мини-приложение другого бота.
-                    var intent = tgIntentUrl(url);
-                    if (intent) {
-                      dbg('fallback->intent ' + intent);
-                      window.location.href = intent;
-                      return;
-                    }
-                    if (waNow.openLink) {
-                      dbg('fallback->openLink()');
-                      waNow.openLink(url);
-                    } else {
-                      dbg('fallback->href ' + url);
-                      window.location.href = url;
-                    }
+                    // Вложенный WebView: tg://-схему iOS/Desktop блокируют,
+                    // openLink() уводит во внешний браузер. Работающая схема —
+                    // навигация самого WebView на t.me-ссылку: Telegram
+                    // перехватывает её и открывает нужного бота.
+                    dbg('fallback->location ' + url);
+                    window.location.replace(url);
                   }
                 }, 1500);
               } catch (err) {
                 dbg('openTelegramLink() ошибка: ' + err.message);
                 document.removeEventListener('visibilitychange', onVisChange);
-                var intent2 = tgIntentUrl(url);
-                if (intent2) {
-                  dbg('catch->intent ' + intent2);
-                  window.location.href = intent2;
-                } else if (waNow.openLink) {
-                  dbg('catch->openLink()');
-                  waNow.openLink(url);
-                } else {
-                  dbg('catch->href ' + url);
-                  window.location.href = url;
-                }
+                dbg('catch->location ' + url);
+                window.location.replace(url);
               }
               return;
             }
@@ -366,23 +348,15 @@ import Base from '../../../layouts/Base.astro';
                     if (!opened2 && !document.hidden) {
                       dbg('ensure->openTelegramLink() не сработал, fallback');
                       document.removeEventListener('visibilitychange', onVisChange2);
-                      var intent = tgIntentUrl(url);
-                      if (intent) {
-                        window.location.href = intent;
-                        return;
-                      }
-                      if (wa.openLink) wa.openLink(url);
-                      else window.location.href = url;
+                      dbg('ensure->location ' + url);
+                      window.location.replace(url);
                     }
                   }, 1500);
                 } catch (err) {
                   dbg('ensure->openTelegramLink() ошибка: ' + err.message);
                   document.removeEventListener('visibilitychange', onVisChange2);
-                  if (wa.openLink) wa.openLink(url);
-                  else {
-                    var intent = tgIntentUrl(url);
-                    window.location.href = intent || url;
-                  }
+                  dbg('ensure->catch->location ' + url);
+                  window.location.replace(url);
                 }
                 return;
               }

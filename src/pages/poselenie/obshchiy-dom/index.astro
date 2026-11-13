@@ -355,11 +355,13 @@ import Base from '../../../layouts/Base.astro';
                     if (!opened2 && !document.hidden) {
                       dbg('ensure->openTelegramLink() не сработал, fallback');
                       document.removeEventListener('visibilitychange', onVisChange2);
-                      if (wa.openLink) wa.openLink(url);
-                      else {
-                        var intent = tgIntentUrl(url);
-                        window.location.href = intent || url;
+                      var intent = tgIntentUrl(url);
+                      if (intent) {
+                        window.location.href = intent;
+                        return;
                       }
+                      if (wa.openLink) wa.openLink(url);
+                      else window.location.href = url;
                     }
                   }, 1500);
                 } catch (err) {

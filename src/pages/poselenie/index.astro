@@ -67,11 +67,28 @@ import Base from '../../layouts/Base.astro';
     <p id="appStatus" class="app-status" role="status">Проверяем доступ…</p>
 
     <!-- Баннер дневников над сеткой — порт home.php (широкий .app-diary;
-         плитки dnevniki в сетке нет намеренно). Скрывается, пока нет данных
-         или раздел выключен. -->
-    <div id="diaryBanner" class="diary-wrap" hidden></div>
+         плитки dnevniki в сетке нет намеренно). Виден сразу со скелетоном,
+         содержимое подставляется по ответу /api/diary/dashboard. -->
+    <div id="diaryBanner" class="diary-wrap">
+      <div class="diary diary--skeleton">
+        <span class="skeleton" style="height:0.9rem;width:55%"></span>
+        <span class="skeleton" style="height:0.8rem;width:80%"></span>
+      </div>
+    </div>
 
-    <div id="appGrid" class="app-grid" hidden></div>
+    <!-- Плитки разделов видны сразу: сервер отдаёт только список включённых
+         разделов, поэтому до ответа /api/cabinet показываем скелетон-сетку
+         фиксированного размера, а затем заменяем её реальными плитками. -->
+    <div id="appGrid" class="app-grid" aria-busy="true">
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:70%"></span><span class="skeleton" style="height:0.8rem;width:90%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:60%"></span><span class="skeleton" style="height:0.8rem;width:85%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:65%"></span><span class="skeleton" style="height:0.8rem;width:75%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:70%"></span><span class="skeleton" style="height:0.8rem;width:80%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:60%"></span><span class="skeleton" style="height:0.8rem;width:88%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:68%"></span><span class="skeleton" style="height:0.8rem;width:78%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:62%"></span><span class="skeleton" style="height:0.8rem;width:82%;margin-top:0.5rem"></span></div>
+      <div class="tile tile--skeleton"><span class="skeleton" style="height:1rem;width:66%"></span><span class="skeleton" style="height:0.8rem;width:74%;margin-top:0.5rem"></span></div>
+    </div>
 
     <noscript>
       <p class="app-status">Нужен включённый JavaScript. Откройте портал через бота @SkazKray_bot.</p>
@@ -195,8 +212,15 @@ import Base from '../../layouts/Base.astro';
             if (!r.ok) return null;
             return r.json();
           })
-          .then(function (d) { if (d) renderDiaryBanner(d); })
-          .catch(function () {});
+          .then(function (d) {
+            if (!d) { bannerEl.innerHTML = ''; bannerEl.hidden = true; return; }
+            renderDiaryBanner(d);
+          })
+          .catch(function () {
+            // Сеть недоступна — не держим вечный скелетон.
+            bannerEl.innerHTML = '';
+            bannerEl.hidden = true;
+          });
       }
 
       function render(sections) {
@@ -213,7 +237,7 @@ import Base from '../../layouts/Base.astro';
           }
         });
         gridEl.innerHTML = html;
-        gridEl.hidden = false;
+        gridEl.removeAttribute('aria-busy');
       }
 
       fetch('/api/cabinet', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
@@ -839,6 +863,26 @@ import Base from '../../layouts/Base.astro';
     border: 1px solid var(--line);
     border-radius: 999px;
     padding: 0.05rem 0.45rem;
+  }
+  /* Скелетоны главной — плитки и баннер дневников видны сразу, содержимое
+     подменяется по ответам API. */
+  .app-grid :global(.tile--skeleton) {
+    pointer-events: none;
+  }
+  .skeleton {
+    display: block;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--line, #e5e7eb) 25%, #f3f4f6 50%, var(--line, #e5e7eb) 75%);
+    background-size: 200% 100%;
+    animation: app-skel 1.2s ease-in-out infinite;
+  }
+  @keyframes app-skel {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .diary-wrap :global(.diary--skeleton) {
+    pointer-events: none;
+    gap: 8px;
   }
 </style>
 

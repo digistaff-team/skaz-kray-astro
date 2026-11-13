@@ -268,13 +268,14 @@ import Base from '../../../layouts/Base.astro';
           (document.head || document.body || document.documentElement).appendChild(sc);
         }
 
-        // tg://resolve — deep-link в бота; startapp повторяет path алиаса,
-        // чтобы бот открыл нужную точку (легаси боты игнорируют лишние).
+        // tg://resolve — deep-link в бота/мини-приложение.
+        // Для ссылок вида t.me/Bot/appname (Direct Link на Mini App) нужен
+        // параметр appname, иначе Telegram откроет чат с ботом, а не мини-апп.
         function tgIntentUrl(url) {
           var m = /^https:\/\/t\.me\/([A-Za-z0-9_]+)(?:\/([A-Za-z0-9_]+))?/.exec(url || '');
           if (!m) return null;
           var intent = 'tg://resolve?domain=' + m[1];
-          if (m[2]) intent += '&startapp=' + m[2];
+          if (m[2]) intent += '&appname=' + encodeURIComponent(m[2]);
           return intent;
         }
 
@@ -311,26 +312,36 @@ import Base from '../../../layouts/Base.astro';
                   if (!opened && !document.hidden) {
                     dbg('openTelegramLink() не сработал, fallback');
                     document.removeEventListener('visibilitychange', onVisChange);
+                    // Сначала deep-link: openLink() в WebView не запускает
+                    // мини-приложение другого бота.
+                    var intent = tgIntentUrl(url);
+                    if (intent) {
+                      dbg('fallback->intent ' + intent);
+                      window.location.href = intent;
+                      return;
+                    }
                     if (waNow.openLink) {
                       dbg('fallback->openLink()');
                       waNow.openLink(url);
                     } else {
-                      var intent = tgIntentUrl(url);
-                      dbg('fallback->intent ' + (intent || url));
-                      window.location.href = intent || url;
+                      dbg('fallback->href ' + url);
+                      window.location.href = url;
                     }
                   }
                 }, 1500);
               } catch (err) {
                 dbg('openTelegramLink() ошибка: ' + err.message);
                 document.removeEventListener('visibilitychange', onVisChange);
-                if (waNow.openLink) {
+                var intent2 = tgIntentUrl(url);
+                if (intent2) {
+                  dbg('catch->intent ' + intent2);
+                  window.location.href = intent2;
+                } else if (waNow.openLink) {
                   dbg('catch->openLink()');
                   waNow.openLink(url);
                 } else {
-                  var intent = tgIntentUrl(url);
-                  dbg('catch->intent ' + (intent || url));
-                  window.location.href = intent || url;
+                  dbg('catch->href ' + url);
+                  window.location.href = url;
                 }
               }
               return;

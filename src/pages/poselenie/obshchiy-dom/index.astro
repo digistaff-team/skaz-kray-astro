@@ -37,15 +37,21 @@ import Base from '../../../layouts/Base.astro';
          Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
     <details class="res-card house-option house-protocols" id="budgetCard" hidden>
       <summary>
-        <b>Бюджет Общего дома</b>
-        <span class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</span>
+        <div class="house-summary-text">
+          <b>Бюджет Общего дома</b>
+          <span class="meta">Открытый помесячный отчёт о расходовании средств Фонда Общего дома</span>
+        </div>
       </summary>
       <div id="budgetReport"></div>
     </details>
 
     <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
     <details class="res-card house-option house-protocols" id="protocolsCard" hidden>
-      <summary><b>Протоколы встреч Попечительского совета Общего дома</b></summary>
+      <summary>
+        <div class="house-summary-text">
+          <b>Протоколы встреч Попечительского совета Общего дома</b>
+        </div>
+      </summary>
       <ul class="doclist" id="protocolsList"></ul>
     </details>
 
@@ -437,15 +443,20 @@ import Base from '../../../layouts/Base.astro';
   .house-protocols > summary::-webkit-details-marker {
     display: none;
   }
-  /* Заголовок-аккордеон — тот же кегль, что у «Бронирования помещений»:
-     <b> из .house-option b вместо h2. */
-  .house-protocols > summary b {
+  /* Заголовок-аккордеон повторяет раскладку «Бронирования помещений»:
+     <b> в одну строку, под ним .meta. Обёртка нужна, потому что summary —
+     flex-контейнер (заголовок слева, стрелка справа). */
+  .house-summary-text {
+    display: block;
+    min-width: 0;
+  }
+  .house-summary-text b {
     display: block;
     font-size: 1.05rem;
     margin: 0 0 0.2rem;
     font-weight: 700;
   }
-  .house-protocols > summary .meta {
+  .house-summary-text .meta {
     display: block;
   }
   .house-protocols > summary {

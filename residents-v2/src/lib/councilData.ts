@@ -62,6 +62,7 @@ export function documents(): CouncilDoc[] {
 /** Протоколы собраний (свежие сверху). Источник — CouncilData::protocols(). */
 export function protocols(): Array<{ title: string; href: string }> {
   return [
+    { title: 'Протокол встречи Совета 09.11.2026', href: 'https://docs.google.com/document/d/1jRwAv8z8y9ov8NQJP2Rtc6bImcZVFMTSTTHoItzps7o/edit?usp=sharing' },
     { title: 'Протокол встречи Совета 26.10.2026', href: 'https://docs.google.com/document/d/1BjloWpwXtNBBiesfSSrT5J9D6YPpj23HwG_VtxJDfek/edit?usp=sharing' },
     { title: 'Протокол встречи Совета 19.10.2026', href: 'https://docs.google.com/document/d/1QzV0iC0oDMnBvLdLqFfpqLPbrqQzXnYj/edit?usp=sharing' },
     { title: 'Протокол встречи Совета 12.10.2026', href: 'https://docs.google.com/document/d/1oDpTvUHFTKQHhFW9ElSW3PRQmXQvLJvq/edit?usp=sharing' },

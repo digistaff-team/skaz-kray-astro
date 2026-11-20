@@ -91,12 +91,12 @@ final class WaterAlertTest extends TestCase
 
     public function test_alarms_when_water_is_at_the_bridge(): void
     {
-        $this->measure('2026-09-18 10:00:00', 30.0, 90.0);
+        $this->measure('2026-09-18 10:00:00', 29.0, 90.0);
 
         $text = $this->alert()->check('2026-09-18 10:05:00');
 
         $this->assertStringContainsString('Вода у моста', $text);
-        $this->assertStringContainsString('30 см', $text);
+        $this->assertStringContainsString('29 см', $text);
         $this->assertSame('alert', $this->state->state()['status']);
     }
 
@@ -110,6 +110,19 @@ final class WaterAlertTest extends TestCase
 
         $this->assertNotNull($text);
         $this->assertStringContainsString('Вода у моста', $text);
+        $this->assertStringNotContainsString('Мост под водой', $text);
+    }
+
+    public function test_reports_bridge_in_water_when_bridge_is_touched(): void
+    {
+        // Вода на кромке моста (gap = 0), но полотно дороги выше: roadGap = 100 см.
+        // Должно быть «Мост в воде».
+        $this->measure('2026-09-18 10:00:00', -300.0, 50.0);
+
+        $text = $this->alert()->check('2026-09-18 10:05:00');
+
+        $this->assertNotNull($text);
+        $this->assertStringContainsString('Мост в воде', $text);
         $this->assertStringNotContainsString('Мост под водой', $text);
     }
 

@@ -129,7 +129,10 @@ final class WaterAlert
             return "\u{1F6A8} Мост под водой: уровень выше полотна дороги на {$roadGapText}. {$tail}";
         }
         if ($gap <= 0) {
-            return "\u{1F4A7} Вода у моста: до нижней кромки {$gapText}. {$tail}";
+            return "\u{1F6A8} Мост в воде: до нижней кромки {$gapText}. {$tail}";
+        }
+        if ($gap <= 30) {
+            return "\u{1F6A8} Вода у моста: до нижней кромки {$gapText}. {$tail}";
         }
         return match ($status) {
             'alert' => "\u{26A0}\u{FE0F} Вода у моста: до нижней кромки {$gapText}. {$tail}",

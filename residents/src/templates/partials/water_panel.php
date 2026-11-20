@@ -25,8 +25,9 @@ use SkazResidents\View;
             <polygon class="water-chart-area" points="<?= View::e($c['area']) ?>"/>
             <polyline class="water-chart-line" points="<?= View::e($c['poly']) ?>"/>
             <?php foreach ($c['marks'] as $m): ?>
-                <line class="water-chart-mark" x1="0" y1="<?= $m['y'] ?>" x2="<?= (int) $c['w'] ?>" y2="<?= $m['y'] ?>"/>
-                <text class="water-chart-mark-label" x="2" y="<?= $m['y'] - 3 ?>"><?= View::e($m['label']) ?></text>
+                <?php $isRoad = $m['label'] === 'полотно дороги'; ?>
+                <line class="water-chart-mark" x1="0" y1="<?= $m['y'] ?>" x2="<?= (int) $c['w'] ?>" y2="<?= $m['y'] ?>"<?= $isRoad ? ' style="stroke:#c0392b"' : ' style="stroke:#e67e22"' ?>/>
+                <text class="water-chart-mark-label" x="2" y="<?= $m['y'] - 4 ?>" style="<?= $isRoad ? 'fill:#c0392b' : 'fill:#e67e22' ?>;font-weight:700;"><?= View::e($m['label']) ?></text>
             <?php endforeach; ?>
         </svg>
         <div class="water-axis">

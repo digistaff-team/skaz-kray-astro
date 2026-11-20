@@ -175,9 +175,27 @@ final class WaterLevel
             $coords[] = $x($i) . ',' . $y((float) $p['level_cm']);
         }
 
+        // Всегда включаем отметки моста и полотна дороги в диапазон диаграммы,
+        // чтобы обе горизонтальные линии были видны вне зависимости от уровня воды.
+        foreach ([self::BRIDGE_CM, self::HIGH_FLOOD_CM] as $mark) {
+            if ($mark > $max) { $max = $mark; }
+            if ($mark < $min) { $min = $mark; }
+        }
+
+        // Пересчитать Y-функцию с учётом расширенного диапазона.
+        $y = static function (float $cm) use ($min, $max, $h, $pad): float {
+            $k = ($cm - $min) / ($max - $min);
+            return round($h - $pad - $k * ($h - 2 * $pad), 1);
+        };
+
+        $coords = [];
+        foreach ($points as $i => $p) {
+            $coords[] = $x($i) . ',' . $y((float) $p['level_cm']);
+        }
+
         $marks = [];
         foreach ([['cm' => self::BRIDGE_CM, 'label' => 'кромка моста'],
-                  ['cm' => self::HIGH_FLOOD_CM, 'label' => 'опасный уровень']] as $m) {
+                  ['cm' => self::HIGH_FLOOD_CM, 'label' => 'полотно дороги']] as $m) {
             if ($m['cm'] >= $min && $m['cm'] <= $max) {
                 $marks[] = ['y' => $y((float) $m['cm']), 'label' => $m['label']];
             }

@@ -137,9 +137,9 @@ final class WaterAlert
         return match ($status) {
             'alert' => "\u{26A0}\u{FE0F} Вода у моста: до нижней кромки {$gapText}. {$tail}",
             'watch' => $improving
-                ? "\u{1F30A} Вода отходит от моста: до нижней кромки {$gapText}. {$tail}"
+                ? "\u{1F30A} Вода уходит: до нижней кромки {$gapText}. {$tail}"
                 : "\u{26A0}\u{FE0F} Шебш поднимается: до нижней кромки моста {$gapText}. {$tail}",
-            default => "\u{2705} Вода отступила: до нижней кромки моста {$gapText}. {$tail}",
+            default => "\u{2705} Вода спала: до нижней кромки моста {$gapText}. {$tail}",
         };
     }
 

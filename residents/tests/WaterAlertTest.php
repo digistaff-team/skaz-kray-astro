@@ -179,13 +179,13 @@ final class WaterAlertTest extends TestCase
         // Вода уходит постепенно: сначала отпустило до «внимания»...
         $this->measure('2026-09-18 12:00:00', 250.0, -210.0);
         $easing = $this->alert()->check('2026-09-18 12:05:00');
-        $this->assertStringContainsString('Вода отходит от моста', $easing, 'на спаде не пишем «поднимается»');
+        $this->assertStringContainsString('Вода уходит', $easing, 'на спаде не пишем «поднимается»');
 
         // ...а потом обстановка стала спокойной.
         $this->measure('2026-09-18 14:00:00', 450.0, -200.0);
         $text = $this->alert()->check('2026-09-18 14:05:00');
 
-        $this->assertStringContainsString('Вода отступила', $text);
+        $this->assertStringContainsString('Вода спала', $text);
         $this->assertSame('calm', $this->state->state()['status']);
     }
 

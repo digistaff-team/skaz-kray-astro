@@ -154,10 +154,10 @@ function message(
       return `⚠️ Вода у моста: до нижней кромки ${gapText}. ${tail}`;
     case 'watch':
       return improving
-        ? `🌊 Вода отходит от моста: до нижней кромки ${gapText}. ${tail}`
+        ? `🌊 Вода уходит: до нижней кромки ${gapText}. ${tail}`
         : `⚠️ Шебш поднимается: до нижней кромки моста ${gapText}. ${tail}`;
     default:
-      return `✅ Вода отступила: до нижней кромки моста ${gapText}. ${tail}`;
+      return `✅ Вода спала: до нижней кромки моста ${gapText}. ${tail}`;
   }
 }
 

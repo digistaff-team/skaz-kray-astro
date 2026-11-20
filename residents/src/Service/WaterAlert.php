@@ -54,7 +54,9 @@ final class WaterAlert
         if (!$row) { return null; }
 
         $level  = (float) $row['level_cm'];
-        $status = $this->water->status($this->water->bridgeGapCm($level));
+        $gap    = $this->water->bridgeGapCm($level);
+        $roadGap = $this->water->roadGapCm($level);
+        $status = $this->water->status($gap, $roadGap);
         $prev   = $this->state->state();
 
         $jumped = $prev !== null && abs($level - (float) $prev['level_cm']) > self::JUMP_GUARD_CM;
@@ -77,7 +79,7 @@ final class WaterAlert
             return null;
         }
 
-        $text = $this->message($status, $level, (float) $row['change_24h'], $jumped, $this->isImproving($status, $prev));
+        $text = $this->message($status, $level, (float) $row['change_24h'], $jumped, $this->isImproving($status, $prev), $roadGap);
         $this->send($text);
         $this->state->remember($status, $level, $now);
         return $text;
@@ -109,7 +111,7 @@ final class WaterAlert
         return true;   // и ухудшение, и отбой достойны сообщения
     }
 
-    private function message(string $status, float $levelCm, float $changeCm, bool $suspect = false, bool $improving = false): string
+    private function message(string $status, float $levelCm, float $changeCm, bool $suspect = false, bool $improving = false, ?float $roadGapCm = null): string
     {
         $gap = $this->water->bridgeGapCm($levelCm);
         $gapText = $this->water->formatDistance(abs($gap));
@@ -121,12 +123,16 @@ final class WaterAlert
             $tail .= ' Уровень изменился скачком — проверьте обстановку лично.';
         }
 
+        // «Мост под водой» — только когда вода превысила полотно дороги (36,16 м БСВ).
+        if ($roadGapCm !== null && $roadGapCm <= 0) {
+            $roadGapText = $this->water->formatDistance(abs($roadGapCm));
+            return "\u{1F6A8} Мост под водой: уровень выше полотна дороги на {$roadGapText}. {$tail}";
+        }
         if ($gap <= 0) {
-            return "\u{1F6A8} Мост под водой: уровень выше нижней кромки на {$gapText}. {$tail}";
+            return "\u{1F4A7} Вода у моста: до нижней кромки {$gapText}. {$tail}";
         }
         return match ($status) {
-            'alert' => "\u{1F6A8} Вода у моста: до нижней кромки {$gapText}. {$tail}",
-            // Тот же уровень «внимание» достигается и на подъёме, и на спаде — говорим, что происходит.
+            'alert' => "\u{26A0}\u{FE0F} Вода у моста: до нижней кромки {$gapText}. {$tail}",
             'watch' => $improving
                 ? "\u{1F30A} Вода отходит от моста: до нижней кромки {$gapText}. {$tail}"
                 : "\u{26A0}\u{FE0F} Шебш поднимается: до нижней кромки моста {$gapText}. {$tail}",

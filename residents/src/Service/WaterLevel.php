@@ -69,6 +69,7 @@ final class WaterLevel
         $level  = (float) $row['level_cm'];
         $change = (float) $row['change_24h'];
         $gap    = $this->bridgeGapCm($level);
+        $roadGap = $this->roadGapCm($level);
 
         return [
             'level'       => $level,
@@ -77,7 +78,7 @@ final class WaterLevel
             'gap'         => $gap,
             'gapLabel'    => $this->formatDistance(abs($gap)),
             'flooded'     => $gap <= 0,
-            'status'      => $this->status($gap),
+            'status'      => $this->status($gap, $roadGap),
             'change'      => $change,
             'changeLabel' => $this->changeLabel($change),
             'measuredAt'  => $this->mskTime((string) $row['measured_at']),
@@ -113,9 +114,17 @@ final class WaterLevel
         return self::BRIDGE_CM - $levelCm;
     }
 
-    /** 'calm' | 'watch' | 'alert' по запасу до моста. */
-    public function status(float $gapCm): string
+    /** Запас до полотна дороги, см: больше нуля — вода ниже, ≤ 0 — вода выше полотна. */
+    public function roadGapCm(float $levelCm): float
     {
+        return self::HIGH_FLOOD_CM - $levelCm;
+    }
+
+    /** 'calm' | 'watch' | 'alert' по запасу до моста; alert — только при затоплении полотна дороги. */
+    public function status(float $gapCm, ?float $roadGapCm = null): string
+    {
+        // Если известен запас до полотна дороги и он ≤ 0 — это «Мост под водой» (alert).
+        if ($roadGapCm !== null && $roadGapCm <= 0) { return 'alert'; }
         if ($gapCm <= self::WATCH_GAP_CM) { return 'alert'; }
         if ($gapCm < self::CALM_GAP_CM)   { return 'watch'; }
         return 'calm';

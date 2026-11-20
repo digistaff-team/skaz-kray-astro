@@ -100,9 +100,23 @@ final class WaterAlertTest extends TestCase
         $this->assertSame('alert', $this->state->state()['status']);
     }
 
+    public function test_no_flooded_bridge_when_only_bridge_is_touched(): void
+    {
+        // Вода на кромке моста (gap = 0), но полотно дороги выше: roadGap = -100 см.
+        // Должно быть «Вода у моста», а не «Мост под водой».
+        $this->measure('2026-09-18 10:00:00', -300.0, 50.0);
+
+        $text = $this->alert()->check('2026-09-18 10:05:00');
+
+        $this->assertNotNull($text);
+        $this->assertStringContainsString('Вода у моста', $text);
+        $this->assertStringNotContainsString('Мост под водой', $text);
+    }
+
     public function test_reports_flooded_bridge(): void
     {
-        $this->measure('2026-09-18 10:00:00', -20.0, 120.0);
+        // Уровень выше полотна дороги: roadGap = -20 см, то есть level = HIGH_FLOOD_CM - (-20) = -200 + 20 = -180
+        $this->measure('2026-09-18 10:00:00', -180.0, 120.0);
 
         $text = $this->alert()->check('2026-09-18 10:05:00');
 

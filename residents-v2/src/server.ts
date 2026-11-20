@@ -31,6 +31,7 @@ import { houseRoutes } from './routes/house';
 import { budgetRoutes } from './routes/budget';
 import { tasksRoutes } from './routes/tasks';
 import { waterLevelRoutes } from './routes/water-level';
+import { waterAlertRoutes } from './routes/waterAlert';
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/house', houseRoutes);
 app.use('/api/budget', budgetRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/water', waterLevelRoutes);
+app.use('/api/water', waterAlertRoutes);
 
 // Health check
 app.get('/api/health', (_req: any, res: any) => {

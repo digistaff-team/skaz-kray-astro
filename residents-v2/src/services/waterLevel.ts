@@ -84,8 +84,15 @@ export function bridgeGapCm(levelCm: number): number {
   return BRIDGE_CM - levelCm;
 }
 
-/** 'calm' | 'watch' | 'alert' по запасу до моста. */
-export function statusFor(gapCm: number): WaterStatus {
+/** Запас до полотна дороги, см: больше нуля — вода ниже, ≤ 0 — вода выше полотна. */
+export function roadGapCm(levelCm: number): number {
+  return HIGH_FLOOD_CM - levelCm;
+}
+
+/** 'calm' | 'watch' | 'alert' по запасу до моста; alert — только при затоплении полотна дороги. */
+export function statusFor(gapCm: number, roadGapCm?: number): WaterStatus {
+  // Если известен запас до полотна дороги и он ≤ 0 — это «Мост под водой» (alert).
+  if (roadGapCm !== undefined && roadGapCm <= 0) { return 'alert'; }
   if (gapCm <= WATCH_GAP_CM) { return 'alert'; }
   if (gapCm < CALM_GAP_CM) { return 'watch'; }
   return 'calm';
@@ -149,6 +156,13 @@ export function buildChart(points: ChartPoint[], w = 300, h = 110): ChartGeometr
   let max = Math.max(...levels);
   if (max - min < 1) { min -= 1; max += 1; }   // штиль — ломаная по центру
 
+  // Всегда включаем отметки моста и полотна дороги в диапазон диаграммы,
+  // чтобы обе горизонтальные линии были видны вне зависимости от уровня воды.
+  for (const mark of [BRIDGE_CM, HIGH_FLOOD_CM]) {
+    if (mark > max) { max = mark; }
+    if (mark < min) { min = mark; }
+  }
+
   const pad = 8;
   const y = (cm: number): number => {
     const k = (cm - min) / (max - min);
@@ -162,7 +176,7 @@ export function buildChart(points: ChartPoint[], w = 300, h = 110): ChartGeometr
   }
 
   const marks: Array<{ y: number; label: string }> = [];
-  for (const m of [{ cm: BRIDGE_CM, label: 'кромка моста' }, { cm: HIGH_FLOOD_CM, label: 'опасный уровень' }]) {
+  for (const m of [{ cm: BRIDGE_CM, label: 'кромка моста' }, { cm: HIGH_FLOOD_CM, label: 'полотно дороги' }]) {
     if (m.cm >= min && m.cm <= max) { marks.push({ y: y(m.cm), label: m.label }); }
   }
 
@@ -266,6 +280,7 @@ export async function panel(now: Date = new Date()): Promise<WaterPanel> {
   const level = Number(row.levelCm);
   const change = Number(row.change24h);
   const gap = bridgeGapCm(level);
+  const roadGap = roadGapCm(level);
 
   return {
     level,
@@ -274,7 +289,7 @@ export async function panel(now: Date = new Date()): Promise<WaterPanel> {
     gap,
     gapLabel: formatDistance(Math.abs(gap)),
     flooded: gap <= 0,
-    status: statusFor(gap),
+    status: statusFor(gap, roadGap),
     change,
     changeLabel: changeLabel(change),
     measuredAt: mskTime(row.measuredAt.toISOString().replace('T', ' ').slice(0, 19)),

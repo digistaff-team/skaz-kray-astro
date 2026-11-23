@@ -164,13 +164,22 @@ export async function buildLedgerReport(selectedYm: string | null = null): Promi
 
     const expTotal = expRows.reduce((s, r) => s + toNum(r.amount), 0);
     const iMax = PALETTE.length;
-    breakdown = expRows.map((r, i) => ({
-      name: r.category?.name ?? 'Без категории',
-      sum: toNum(r.amount),
-      pct: expTotal > 0 ? Math.round(toNum(r.amount) / expTotal * 100) : 0,
-      share: expTotal > 0 ? toNum(r.amount) / expTotal * 100 : 0,
-      color: PALETTE[i % iMax],
-    }));
+    // Суммируем по названию статьи: одинаковые названия (в т.ч. архивная
+    // категория с тем же именем) дают одну строку в легенде и на диаграмме.
+    const byName = new Map<string, number>();
+    for (const r of expRows) {
+      const name = r.category?.name ?? 'Без категории';
+      byName.set(name, (byName.get(name) ?? 0) + toNum(r.amount));
+    }
+    breakdown = [...byName.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, sum], i) => ({
+        name,
+        sum,
+        pct: expTotal > 0 ? Math.round(sum / expTotal * 100) : 0,
+        share: expTotal > 0 ? sum / expTotal * 100 : 0,
+        color: PALETTE[i % iMax],
+      }));
 
     // Операции месяца
     const opsRaw = await db.councilLedgerEntry.findMany({

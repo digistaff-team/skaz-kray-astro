@@ -10,6 +10,7 @@
  */
 import { TelegramBot } from './telegramBot';
 import { db } from './db';
+import { councilAppLink } from './councilLinks';
 
 export const DUTY_ACK_LABEL = 'Дежурство принял';
 
@@ -59,8 +60,10 @@ export async function notifyNewChair(
     return null;
   }
 
-  const base = (process.env.BASE_URL || 'https://skaz-kray.ru').replace(/\/+$/, '');
-  const link = base + '/sovet';
+  // Диплинк мини-приложения Совета (COUNCIL_APP_LINK), как в легаси
+  // CouncilDutyNotify::link(base('tg')): ссылка сразу открывает приложение
+  // на /sovet, а не веб-страницу с запросом пароля.
+  const link = councilAppLink('tg');
 
   const member = await db.councilMember.findFirst({
     where: { name: chair },

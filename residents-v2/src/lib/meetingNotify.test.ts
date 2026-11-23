@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { meetingNotifyText } from './meetingNotify';
+import { meetingNotifyText, meetingNotifyTextHtml } from './meetingNotify';
 
 test('meetingNotifyText повторяет текст council-meeting-notify.php', () => {
   const text = meetingNotifyText(
@@ -30,4 +30,26 @@ test('meetingNotifyText переносит пустые поля без «undefi
   const text = meetingNotifyText('', '', '', '', 'https://t.me/x');
   assert.ok(!text.includes('undefined'));
   assert.match(text, /Дежурный председатель: $/m);
+});
+
+test('meetingNotifyTextHtml делает «Повестка встречи в приложении» ссылкой', () => {
+  const text = meetingNotifyTextHtml(
+    '16 ноября 2026, 18:00',
+    'Сказочный Терем, 1-й этаж',
+    'Елена Моисеенко',
+    'Александр Бобков',
+    'https://t.me/SkazKray_bot/sovet?startapp=c292ZXQ',
+  );
+  const lines = text.split('\n');
+  assert.equal(lines[0], '🗓 Сегодня встреча Попечительского совета');
+  assert.equal(
+    lines[8],
+    '<a href="https://t.me/SkazKray_bot/sovet?startapp=c292ZXQ">Повестка встречи в приложении</a>',
+  );
+  assert.ok(!text.includes('https://t.me/SkazKray_bot/sovet?startapp=c292ZXQ\n'));
+});
+
+test('meetingNotifyTextHtml экранирует HTML в полях', () => {
+  const text = meetingNotifyTextHtml('a<b & c', '', '', '', 'https://t.me/x');
+  assert.ok(text.includes('a&lt;b &amp; c'));
 });

@@ -16,6 +16,7 @@ import { db } from './db';
 import { TelegramBot } from './telegramBot';
 import { sendMaxMessage } from './max';
 import { applyDutyRotation } from './councilDuty';
+import { councilAppLink } from './councilLinks';
 
 /** Текст уведомления — порт $makeText из council-meeting-notify.php. */
 export function meetingNotifyText(
@@ -39,27 +40,33 @@ export function meetingNotifyText(
   ].join('\n');
 }
 
-/** base64url(путь) без padding — порт BotNotify::deepLink. */
-function deepLink(base: string, path: string): string {
-  const code = Buffer.from(path, 'utf8').toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-  // MAX отдаёт base с уже вшитым '?startapp' — параметр дописываем через '='.
-  return base.endsWith('?startapp')
-    ? base + '=' + code
-    : base.replace(/\/+$/, '') + '?startapp=' + code;
+/** Экранирование HTML в интерполируемых полях (parse_mode: 'HTML'). */
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-/** Диплинк мини-приложения Совета: Telegram и MAX (порты CouncilDutyNotify::link/base). */
-function tgLink(): string {
-  const base = process.env.COUNCIL_APP_LINK || 'https://t.me/SkazKray_bot/sovet';
-  return deepLink(base, '/sovet');
-}
-
-function maxLink(): string {
-  const base = process.env.COUNCIL_MAX_APP_LINK || 'https://max.ru/id643900558807_2_bot?startapp';
-  return deepLink(base, '/sovet');
+/**
+ * HTML-вариант для Telegram: слова «Повестка встречи в приложении» —
+ * гиперссылка на диплинк мини-приложения (parse_mode: 'HTML').
+ */
+export function meetingNotifyTextHtml(
+  meetingDate: string,
+  place: string,
+  dutyChair: string,
+  dutySecretary: string,
+  link: string,
+): string {
+  return [
+    '🗓 Сегодня встреча Попечительского совета',
+    '',
+    esc(meetingDate),
+    esc(place),
+    '',
+    'Дежурный председатель: ' + esc(dutyChair),
+    'Дежурный секретарь: ' + esc(dutySecretary),
+    '',
+    `<a href="${esc(link)}">Повестка встречи в приложении</a>`,
+  ].join('\n');
 }
 
 export interface NotifyRecipients {
@@ -126,11 +133,13 @@ export async function runMeetingNotify(
   }
 
   const recipients = await notifyRecipients();
-  const textTg = meetingNotifyText(
-    meeting.meetingDate, meeting.place, meeting.dutyChair, meeting.dutySecretary, tgLink(),
-  );
   const textMax = meetingNotifyText(
-    meeting.meetingDate, meeting.place, meeting.dutyChair, meeting.dutySecretary, maxLink(),
+    meeting.meetingDate, meeting.place, meeting.dutyChair, meeting.dutySecretary, councilAppLink('max'),
+  );
+  // В Telegram «Повестка встречи в приложении» — гиперссылка (parse_mode: HTML);
+  // MAX разметку не поддерживает — там обычный текст со ссылкой отдельной строкой.
+  const textTg = meetingNotifyTextHtml(
+    meeting.meetingDate, meeting.place, meeting.dutyChair, meeting.dutySecretary, councilAppLink('tg'),
   );
 
   if (opts.dryRun) {
@@ -152,7 +161,9 @@ export async function runMeetingNotify(
 
   for (const r of recipients.tg) {
     if (tgToken === '') break;
-    const ok = await TelegramBot.sendMessage(tgToken, String(r.telegramId), textTg);
+    const ok = (await TelegramBot.sendMessage(tgToken, String(r.telegramId), textTg, {
+      parseMode: 'HTML',
+    })) !== null;
     if (ok) sent++;
     else {
       failed++;

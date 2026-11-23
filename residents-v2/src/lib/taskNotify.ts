@@ -19,22 +19,13 @@
  */
 import { db } from './db';
 import { TelegramBot } from './telegramBot';
+import { councilAppLink } from './councilLinks';
 
 const TASKS_PATH = '/sovet/zadachi';
 
-/** base64url(путь) без padding — тот же deepLink, что в meetingNotify.ts. */
-function deepLink(base: string, path: string): string {
-  const code = Buffer.from(path, 'utf8').toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-  return base.replace(/\/+$/, '') + '?startapp=' + code;
-}
-
 /** Прямая ссылка на раздел «Текущие задачи» в мини-приложении Совета. */
 export function tasksDeepLink(): string {
-  const base = process.env.COUNCIL_APP_LINK || 'https://t.me/SkazKray_bot/sovet';
-  return deepLink(base, TASKS_PATH);
+  return councilAppLink('tg', TASKS_PATH);
 }
 
 /** «14 ноября 2026» — порт ru_date() из helpers.php (легаси писал срок по-русски). */

@@ -539,171 +539,209 @@ import Base from '../../../layouts/Base.astro';
     100% { background-position: -200% 0; }
   }
 
-  /* Отчёт о расходах — те же блоки, что в residents.css (ledger_*),
-     но в стилях сайта: страница живёт в разделе жителей, а не совета. */
-  .ledger-tiles {
+  /* Карточки отчёта вставляются через innerHTML — им нужны те же правила,
+     что и у статичной разметки страницы, но без скоупинга. */
+  .budgetReport :global(.res-card) {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem;
+    margin-top: 1.2rem;
+  }
+  .budgetReport :global(.res-card h2) {
+    font-family: var(--font-head);
+    color: var(--green);
+  }
+  .budgetReport :global(.res-meta) {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* Отчёт о расходах — те же блоки, что в residents.css (ledger_*), но в
+     стилях сайта. Весь HTML отчёта вставляется через innerHTML, поэтому
+     Astro-скоупинг ([data-astro-cid-*]) к нему не применяется — селекторы
+     оборачиваем в :global(), как на /sosedi и других страницах с innerHTML. */
+  .budgetReport :global(.ledger-tiles) {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin: 1.1rem 0;
   }
   @media (max-width: 640px) {
-    .ledger-tiles {
+    .budgetReport :global(.ledger-tiles) {
       grid-template-columns: 1fr;
     }
   }
-  .ledger-tile {
+  .budgetReport :global(.ledger-tile) {
     background: var(--ground-2);
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 0.9rem 1.1rem;
   }
-  .ledger-tile .label {
+  .budgetReport :global(.ledger-tile .label) {
     font-size: 0.8rem;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .ledger-tile .val {
+  .budgetReport :global(.ledger-tile .val) {
     font-family: var(--font-head);
     font-size: 1.5rem;
     font-weight: 700;
     margin-top: 0.2rem;
   }
-  .ledger-tile--in .val {
+  .budgetReport :global(.ledger-tile--in .val) {
     color: var(--green);
   }
-  .ledger-tile--out .val {
+  .budgetReport :global(.ledger-tile--out .val) {
     color: var(--wheat);
   }
-  .ledger-tile--bal {
+  .budgetReport :global(.ledger-tile--bal) {
     background: var(--green-soft);
     border-color: #d7e8dd;
   }
-  .ledger-tile--bal.neg .val {
+  .budgetReport :global(.ledger-tile--bal.neg .val) {
     color: #c0392b;
   }
-  .months-scroll {
+  .budgetReport :global(.months-scroll) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .months {
+  .budgetReport :global(.months) {
     width: 100%;
     border-collapse: collapse;
   }
-  .months th,
-  .months td {
+  .budgetReport :global(.months th),
+  .budgetReport :global(.months td) {
     text-align: right;
     padding: 0.5rem 0.45rem;
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
   }
-  .months th {
+  .budgetReport :global(.months th) {
     font-size: 0.76rem;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
-  .months th:first-child,
-  .months td:first-child {
+  .budgetReport :global(.months th:first-child),
+  .budgetReport :global(.months td:first-child) {
     text-align: left;
   }
-  .months tr:last-child td {
+  .budgetReport :global(.months tr:last-child td) {
     border-bottom: 0;
   }
-  .months tfoot td {
+  .budgetReport :global(.months tfoot td) {
     border-top: 2px solid var(--line);
     font-weight: 700;
   }
-  .months .m-name a.active {
+  .budgetReport :global(.months .m-name a.active) {
     font-weight: 700;
     color: var(--green-deep);
   }
-  .months .m-bal.pos {
+  .budgetReport :global(.months .m-in) {
     color: var(--green);
   }
-  .months .m-bal.neg {
+  .budgetReport :global(.months .m-out) {
+    color: var(--wheat);
+  }
+  .budgetReport :global(.months .m-bal) {
+    font-weight: 700;
+  }
+  .budgetReport :global(.months .m-bal.pos) {
+    color: var(--green);
+  }
+  .budgetReport :global(.months .m-bal.neg) {
     color: #c0392b;
   }
-  .ledger-pie-wrap {
+  .budgetReport :global(.ledger-hint) {
+    background: var(--wheat-soft);
+    border: 1px solid #f0e2c2;
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    color: #7a5a1e;
+    margin: 0.2rem 0 1rem;
+  }
+  .budgetReport :global(.ledger-pie-wrap) {
     display: flex;
     align-items: center;
     gap: 1.2rem;
     flex-wrap: wrap;
     margin-top: 0.6rem;
   }
-  .ledger-pie {
+  .budgetReport :global(.ledger-pie) {
     flex: none;
     width: 150px;
     height: 150px;
     border-radius: 50%;
   }
-  .ledger-legend {
+  .budgetReport :global(.ledger-legend) {
     list-style: none;
     margin: 0;
     padding: 0;
     flex: 1;
     min-width: 12rem;
   }
-  .ledger-legend li {
+  .budgetReport :global(.ledger-legend li) {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.35rem 0;
     border-bottom: 1px solid var(--line);
   }
-  .ledger-legend li:last-child {
+  .budgetReport :global(.ledger-legend li:last-child) {
     border-bottom: 0;
   }
-  .lg-dot {
+  .budgetReport :global(.lg-dot) {
     flex: none;
     width: 12px;
     height: 12px;
     border-radius: 3px;
   }
-  .lg-name {
+  .budgetReport :global(.lg-name) {
     flex: 1;
     font-weight: 600;
     font-size: 0.9rem;
   }
-  .lg-sum {
+  .budgetReport :global(.lg-sum) {
     white-space: nowrap;
     color: var(--muted);
     font-size: 0.85rem;
   }
-  .ops {
+  .budgetReport :global(.ops) {
     list-style: none;
     margin: 0.4rem 0 0;
     padding: 0;
   }
-  .ops > li {
+  .budgetReport :global(.ops > li) {
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--line);
   }
-  .ops > li:last-child {
+  .budgetReport :global(.ops > li:last-child) {
     border-bottom: 0;
   }
-  .op-row {
+  .budgetReport :global(.op-row) {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
   }
-  .op-head {
+  .budgetReport :global(.op-head) {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
-  .op-date {
+  .budgetReport :global(.op-date) {
     color: var(--muted);
     font-size: 0.85rem;
     white-space: nowrap;
   }
-  .op-note {
+  .budgetReport :global(.op-note) {
     font-size: 0.85rem;
     overflow-wrap: anywhere;
   }
-  .op-cat {
+  .budgetReport :global(.op-cat) {
     font-size: 0.72rem;
     padding: 0.1rem 0.55rem;
     border-radius: 999px;
@@ -711,21 +749,21 @@ import Base from '../../../layouts/Base.astro';
     color: var(--green);
     white-space: nowrap;
   }
-  .op-sum {
+  .budgetReport :global(.op-sum) {
     font-weight: 700;
     overflow-wrap: anywhere;
   }
-  .op-sum--out {
+  .budgetReport :global(.op-sum--out) {
     color: var(--wheat);
   }
-  .op-sum--in {
+  .budgetReport :global(.op-sum--in) {
     color: var(--green);
   }
-  .op-doc {
+  .budgetReport :global(.op-doc) {
     font-size: 0.8rem;
     margin-left: 0.4rem;
   }
-  .ledger-empty {
+  .budgetReport :global(.ledger-empty) {
     padding: 1.2rem 0;
   }
   .foot {

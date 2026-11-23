@@ -114,7 +114,7 @@ import Base from '../../../layouts/Base.astro';
       /** Отчёт — порт partials/ledger_report.php: плитки, помесячно, диаграмма, операции. */
       function renderReport(r) {
         if (!r || !r.months || !r.months.length) {
-          return '<p class="meta ledger-empty">Пока нет ни одной операции. Данные появятся здесь, ' +
+          return '<p class="res-meta ledger-empty">Пока нет ни одной операции. Данные появятся здесь, ' +
             'как только совет внесёт первые приходы и расходы.</p>';
         }
         var bal = Number(r.monthBalance) || 0;
@@ -126,7 +126,12 @@ import Base from '../../../layouts/Base.astro';
               '<div class="val">' + money(r.monthExpense) + '</div></div>' +
             '<div class="ledger-tile ledger-tile--bal' + (bal < 0 ? ' neg' : '') + '">' +
               '<div class="label">Остаток месяца</div><div class="val">' + sign(bal) + '</div></div>' +
-          '</div>' +
+          '</div>';
+
+        // Помесячная таблица — карточка с подсказкой, как в /sovet.
+        html += '<div class="res-card">' +
+          '<h2 style="font-size:1.1rem;margin:0 0 .4rem">Помесячно</h2>' +
+          '<p class="ledger-hint">Доход поступает ежемесячно. В отдельные месяцы крупные траты превышают доход — остаток месяца уходит в минус, это нормально.</p>' +
           '<div class="months-scroll"><table class="months"><thead><tr><th>Месяц</th><th>Доход</th>' +
             '<th>Расходы</th><th>Остаток месяца</th></tr></thead><tbody>' +
           r.months.map(function (m) {
@@ -140,12 +145,13 @@ import Base from '../../../layouts/Base.astro';
             '<td class="m-in">' + money(r.totalIncome) + '</td>' +
             '<td class="m-out">' + money(r.totalExpense) + '</td>' +
             '<td class="m-bal ' + (r.totalBalance < 0 ? 'neg' : 'pos') + '">' + sign(r.totalBalance) + '</td></tr>' +
-          '</tfoot></table></div>';
+          '</tfoot></table></div></div>';
 
         // Расходы по статьям — круговая диаграмма (conic-gradient).
-        html += '<h3>Расходы по статьям — ' + esc(r.selectedLabel) + '</h3>';
+        html += '<div class="res-card"><h2 style="font-size:1.1rem;margin:0 0 .2rem">Расходы по статьям — ' +
+          esc(r.selectedLabel) + '</h2>';
         if (!r.breakdown || !r.breakdown.length) {
-          html += '<p class="meta">В этом месяце расходов не было.</p>';
+          html += '<p class="res-meta">В этом месяце расходов не было.</p>';
         } else {
           var stops = [];
           var acc = 0;
@@ -164,11 +170,13 @@ import Base from '../../../layouts/Base.astro';
                 '<span class="lg-sum">' + money(b.sum) + ' · ' + b.pct + '%</span></li>';
             }).join('') + '</ul></div>';
         }
+        html += '</div>';
 
         // Операции месяца — только просмотр (житель не правит чужой учёт).
-        html += '<h3>Операции — ' + esc(r.selectedLabel) + '</h3>';
+        html += '<div class="res-card"><h2 style="font-size:1.1rem;margin:0 0 .2rem">Операции — ' +
+          esc(r.selectedLabel) + '</h2>';
         if (!r.operations || !r.operations.length) {
-          html += '<p class="meta">Операций за этот месяц нет.</p>';
+          html += '<p class="res-meta">Операций за этот месяц нет.</p>';
         } else {
           html += '<ul class="ops">' + r.operations.map(function (op) {
             var out = op.kind === 'expense';
@@ -184,6 +192,7 @@ import Base from '../../../layouts/Base.astro';
               '</div></div></li>';
           }).join('') + '</ul>';
         }
+        html += '</div>';
         return html;
       }
 

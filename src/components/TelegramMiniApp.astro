@@ -100,11 +100,18 @@
       // запуска (?startapp / ?tgWebAppStartParam), поэтому переход в нужный
       // раздел должен работать, даже если telegram.org недоступен.
       var early = startParamPath(wa);
-      // Страницы входа /poselenie/tg/ и gate живут вне диплинка: глобальный
-      // редирект увёл бы жителя со страницы входа ДО логина (startapp там —
-      // цель после входа). Guard детерминированный, на тайминги не полагаемся.
+      // Страницы входа живут вне диплинка: глобальный редирект увёл бы человека
+      // со страницы входа ДО логина (startapp там — цель ПОСЛЕ входа, её
+      // разбирает сама страница). Детерминированный guard, без опоры на тайминги:
+      //  - жители: /poselenie/tg и вложенный /poselenie/tg/gate;
+      //  - совет: /sovet/tg и вложенная форма привязки /sovet/tg/familiya.
+      // Без /sovet/tg в списке Direct Mini App ссылка совета (startapp='/sovet')
+      // уводила на портал без сессии — человек видел форму входа.
+      var ENTRY_PATHS = ["/poselenie/tg", "/sovet/tg"];
       var p = window.location.pathname.replace(/\/+$/, "");
-      var isEntryPage = p === "/poselenie/tg" || p === "/poselenie/tg/gate";
+      var isEntryPage = ENTRY_PATHS.some(function (base) {
+        return p === base || p.indexOf(base + "/") === 0;
+      });
       if (early && !isEntryPage && early !== window.location.pathname) {
         window.location.replace(early);
         return;

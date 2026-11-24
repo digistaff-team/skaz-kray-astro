@@ -565,7 +565,7 @@ import Base from '../../../layouts/Base.astro';
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    margin: 1.1rem 0;
+    margin: 1.2rem 0;
   }
   @media (max-width: 640px) {
     .budgetReport :global(.ledger-tiles) {
@@ -573,10 +573,10 @@ import Base from '../../../layouts/Base.astro';
     }
   }
   .budgetReport :global(.ledger-tile) {
-    background: var(--ground-2);
-    border: 1px solid var(--line);
+    background: #fff;
+    border: 1px solid #eee;
     border-radius: 10px;
-    padding: 0.9rem 1.1rem;
+    padding: 1rem 1.2rem;
   }
   .budgetReport :global(.ledger-tile .label) {
     font-size: 0.8rem;
@@ -586,7 +586,7 @@ import Base from '../../../layouts/Base.astro';
   }
   .budgetReport :global(.ledger-tile .val) {
     font-family: var(--font-head);
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
     margin-top: 0.2rem;
   }
@@ -597,8 +597,11 @@ import Base from '../../../layouts/Base.astro';
     color: var(--wheat);
   }
   .budgetReport :global(.ledger-tile--bal) {
-    background: var(--green-soft);
+    background: #eef4ef;
     border-color: #d7e8dd;
+  }
+  .budgetReport :global(.ledger-tile--bal .val) {
+    color: var(--green);
   }
   .budgetReport :global(.ledger-tile--bal.neg .val) {
     color: #c0392b;
@@ -607,6 +610,14 @@ import Base from '../../../layouts/Base.astro';
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+  /* Столбец «Месяц» закреплен слева при горизонтальной прокрутки — как в /sovet. */
+  .budgetReport :global(.months th:first-child),
+  .budgetReport :global(.months td:first-child) {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 1;
+  }
   .budgetReport :global(.months) {
     width: 100%;
     border-collapse: collapse;
@@ -614,8 +625,8 @@ import Base from '../../../layouts/Base.astro';
   .budgetReport :global(.months th),
   .budgetReport :global(.months td) {
     text-align: right;
-    padding: 0.5rem 0.45rem;
-    border-bottom: 1px solid var(--line);
+    padding: 0.55rem 0.5rem;
+    border-bottom: 1px solid #f0efe9;
     white-space: nowrap;
   }
   .budgetReport :global(.months th) {
@@ -632,12 +643,21 @@ import Base from '../../../layouts/Base.astro';
     border-bottom: 0;
   }
   .budgetReport :global(.months tfoot td) {
-    border-top: 2px solid var(--line);
+    border-top: 2px solid #e5e5de;
     font-weight: 700;
   }
+  /* Ссылки месяцев — как в /sovet: обычный текст-ссылка, активный месяц
+     подчёркнут цветом текста, а не жирным зелёным. */
+  .budgetReport :global(.months .m-name a) {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 400;
+    text-decoration: none;
+    color: var(--green);
+  }
   .budgetReport :global(.months .m-name a.active) {
-    font-weight: 700;
-    color: var(--green-deep);
+    color: var(--ink, #2b2b2b);
+    text-decoration: underline;
   }
   .budgetReport :global(.months .m-in) {
     color: var(--green);
@@ -655,7 +675,7 @@ import Base from '../../../layouts/Base.astro';
     color: #c0392b;
   }
   .budgetReport :global(.ledger-hint) {
-    background: var(--wheat-soft);
+    background: #fff6e5;
     border: 1px solid #f0e2c2;
     border-radius: 8px;
     padding: 0.6rem 0.9rem;
@@ -675,6 +695,14 @@ import Base from '../../../layouts/Base.astro';
     width: 150px;
     height: 150px;
     border-radius: 50%;
+    /* Кольцо вместо сплошного круга — маска как в /sovet (residents.css). */
+    -webkit-mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%);
+            mask: radial-gradient(circle 42px at 50% 50%, transparent 98%, #000 100%);
+  }
+  @media (max-width: 640px) {
+    .budgetReport :global(.ledger-pie-wrap) {
+      justify-content: center;
+    }
   }
   .budgetReport :global(.ledger-legend) {
     list-style: none;
@@ -688,7 +716,7 @@ import Base from '../../../layouts/Base.astro';
     align-items: center;
     gap: 0.5rem;
     padding: 0.35rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid #f0efe9;
   }
   .budgetReport :global(.ledger-legend li:last-child) {
     border-bottom: 0;
@@ -716,7 +744,7 @@ import Base from '../../../layouts/Base.astro';
   }
   .budgetReport :global(.ops > li) {
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid #f0efe9;
   }
   .budgetReport :global(.ops > li:last-child) {
     border-bottom: 0;
@@ -745,7 +773,7 @@ import Base from '../../../layouts/Base.astro';
     font-size: 0.72rem;
     padding: 0.1rem 0.55rem;
     border-radius: 999px;
-    background: var(--green-soft);
+    background: #eef4ef;
     color: var(--green);
     white-space: nowrap;
   }
@@ -761,10 +789,12 @@ import Base from '../../../layouts/Base.astro';
   }
   .budgetReport :global(.op-doc) {
     font-size: 0.8rem;
+    color: var(--green);
     margin-left: 0.4rem;
   }
   .budgetReport :global(.ledger-empty) {
-    padding: 1.2rem 0;
+    padding: 1.5rem 0;
+    color: var(--muted);
   }
   .foot {
     margin-top: 2.2rem;

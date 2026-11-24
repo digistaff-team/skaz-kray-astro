@@ -14,12 +14,16 @@ import TelegramMiniApp from '../components/TelegramMiniApp.astro';
 // легаси. Дефолт — по префиксу пути, чтобы правило держалось на всех
 // страницах разделов (и будущих тоже); можно переопределить пропом.
 // sovet — экраны Попечительского совета: свой манифест (manifest-sovet,
-// scope '/sovet/'), подпись в iOS и residents.css — общий стиль разделов.
+// scope '/sovet/'), подпись в iOS. residents.css подключается и для совета,
+// и для жителей — это общий стиль разделов (легаси app/layout.php грузил его
+// на всех страницах /poselenie/*); без него бюджеты/карточки жителей
+// выглядят не как в /sovet.
 const {
   title, description, image, type = 'website', noindex = false,
   bare = Astro.url.pathname.startsWith('/poselenie') || Astro.url.pathname.startsWith('/sovet'),
   sovet = Astro.url.pathname.startsWith('/sovet'),
 } = Astro.props;
+const sectionCss = Astro.url.pathname.startsWith('/poselenie') || Astro.url.pathname.startsWith('/sovet');
 const fullTitle = title ? `${title} — Сказочный Край` : 'Сказочный Край — поселение родовых поместий в Краснодарском крае';
 const desc = description || 'Поселение родовых поместий Сказочный Край в Северском районе Краснодарского края. Жизнь в гармонии с природой, свободные участки, дневники поместий.';
 // og:image — абсолютный URL (соцсети/мессенджеры не принимают относительные).
@@ -122,7 +126,7 @@ const ogDesc = clip(desc, 120);
       после всех бандлов и применяется последним, как в легаси.
       ?v= нужен из-за immutable-кэша в vercel.json: при обновлении файла просто
       меняется версия (в легаси её считал asset_ver по mtime). */}
-  {sovet && <link rel="stylesheet" href="/poselenie/assets/residents.css?v=20261112" />}
+  {sectionCss && <link rel="stylesheet" href="/poselenie/assets/residents.css?v=20261112" />}
   <a href="#main" class="skip">Перейти к содержанию</a>
   {/* bare — экран приложения (лаунчер жителей): без сайтового хедера/футера.
       TelegramMiniApp остаётся — он нужен внутри. */}

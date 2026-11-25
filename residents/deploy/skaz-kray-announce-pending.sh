@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
 #
-# Анонс свежих статей в «ОБЩИЙ чат СК» от @SkazKray_bot.
-# Вызывается из /usr/local/bin/skaz-kray-autodeploy.sh после успешной выкладки.
+# Анонс свежих статей сайта skaz-kray.ru в «ОБЩИЙ чат СК» от @SkazKray_bot.
 #
-# Дедуп: scripts/announce-post.mjs пишет context='post-announce:<slug>' в
-# таблицу telegram_messages и перед отправкой проверяет журнал. Поэтому
-# повторные запуски (каждые 10 минут, если деплой ничего не изменил, скрипт
-# вообще не зовётся) ничего не постят повторно.
+# Запускается cron'ом (см. crontab root). Каждый прогон:
+#   1. обновляет shallow-клон репозитория в /opt/skaz-announce;
+#   2. зовёт scripts/announce-post.mjs --pending --since 7 --local:
+#      статья анонсируется, только если её нет в журнале telegram_messages
+#      (context='post-announce:<slug>') — повторные прогоны ничего не постят.
 #
-# Окно --since 7: анонсируются статьи с датой за последние 7 дней, у которых
-# анонса ещё не было. Статьи старше окна не трогаются задним числом.
+# Сайт собирается и публикуется на Vercel по push в main; серверный
+# skaz-kray-autodeploy.sh к сайту отношения не имеет и не используется
+# (падает на astro build из-за Node 20 < 22.12). Этот скрипт от него
+# независим: ему нужны только исходники статей + php8.3 + доступ к БД.
 #
-# Запуск вручную:
-#   /usr/local/bin/skaz-kray-announce-pending.sh            # боевой
-#   /usr/local/bin/skaz-kray-announce-pending.sh --dry-run  # только план
+# Ручной запуск:
+#   /usr/local/bin/skaz-kray-announce-pending.sh              # боевой
+#   /usr/local/bin/skaz-kray-announce-pending.sh --dry-run    # только план
 
 set -uo pipefail
 
 export HOME=/root
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/sbin:/usr/bin:/bin
 
-BUILD_DIR="/opt/skaz-kray-astro-build"
+REPO="git@github-skaz-kray:digistaff-team/skaz-kray-astro.git"
+DIR="/opt/skaz-announce"
 LOG="/var/log/skaz-kray-announce.log"
 LOCK="/var/lock/skaz-kray-announce.lock"
 
@@ -32,25 +35,41 @@ if ! flock -n 9; then
 fi
 
 exec >>"$LOG" 2>&1
-
-if [ ! -f "$BUILD_DIR/scripts/announce-post.mjs" ]; then
-  log "skip: нет $BUILD_DIR/scripts/announce-post.mjs"
-  exit 0
-fi
-if [ ! -d "$BUILD_DIR/node_modules/gray-matter" ]; then
-  log "skip: в $BUILD_DIR нет node_modules/gray-matter"
-  exit 0
-fi
-
 log "=== announce start ==="
-cd "$BUILD_DIR" || { log "skip: нет $BUILD_DIR"; exit 0; }
 
-# --local: серверная PHP-часть выполняется здесь же, без ssh.
-# Неудача анонса не должна ломать деплой: логируем и выходим с 0.
+if [ ! -d "$DIR/.git" ]; then
+  log "нет клона $DIR — клонирую"
+  if ! git clone --depth 1 "$REPO" "$DIR"; then
+    log "FAILED: не удалось клонировать $REPO"
+    exit 0
+  fi
+fi
+
+cd "$DIR" || { log "FAILED: нет $DIR"; exit 0; }
+
+if ! git fetch --depth 1 origin main; then
+  log "WARN: git fetch не удался — работаем на прошлой версии"
+fi
+git reset --hard origin/main >/dev/null 2>&1 || log "WARN: git reset не удался"
+
+if [ ! -d "$DIR/node_modules/gray-matter" ]; then
+  log "ставлю зависимость gray-matter"
+  npm install --no-save --no-package-lock --no-audit --no-fund gray-matter >/dev/null 2>&1 \
+    || log "WARN: npm install не удался"
+fi
+
+if [ ! -f "$DIR/scripts/announce-post.mjs" ]; then
+  log "FAILED: нет scripts/announce-post.mjs"
+  exit 0
+fi
+
+# --local: PHP-часть выполняется здесь же, без ssh.
+# Неудача не должна валить cron-задачу — только лог.
 if node scripts/announce-post.mjs --pending --since 7 --local "$@"; then
   log "announce ok"
 else
   log "announce FAILED (rc=$?)"
 fi
+
 log "=== announce end ==="
 exit 0

@@ -23,7 +23,7 @@ import { postSlug } from '../src/lib/utils.js';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const POSTS_DIR = path.join(ROOT, 'src', 'content', 'posts');
 const SITE = 'https://skaz-kray.ru';
-const SSH_HOST = 'abconsult';
+const SSH_HOST = 'ABConsult';
 const REMOTE_PHP = '/tmp/skaz-announce-post.php';
 // «Общий чат СК» — как group_chat_id в прод-конфиге; предупреждаем, если не он.
 const EXPECTED_CHAT = '-1001831453321';
@@ -33,16 +33,22 @@ const HEADER = '📰 Новая статья на сайте';   // формат
 // ---------- CLI ----------
 
 const args = process.argv.slice(2);
-const opts = { slug: null, url: null, dryRun: false, force: false, help: false };
+const opts = { slug: null, url: null, dryRun: false, force: false, help: false, local: false, pending: false, since: null };
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--dry-run') opts.dryRun = true;
   else if (a === '--force') opts.force = true;
+  else if (a === '--local') opts.local = true;
+  else if (a === '--pending') opts.pending = true;
   else if (a === '--help' || a === '-h') opts.help = true;
   else if (a === '--slug' || a === '--url') {
     const v = args[++i];
     if (!v) fail(`после ${a} нужен аргумент`);
     if (a === '--slug') opts.slug = v; else opts.url = v;
+  } else if (a === '--since') {
+    const v = args[++i];
+    if (!v || !/^\d+$/.test(v)) fail('после --since нужно число дней');
+    opts.since = Number(v);
   } else fail(`неизвестный аргумент: ${a} (см. --help)`);
 }
 
@@ -55,6 +61,11 @@ if (opts.help) {
 Options:
   --slug <slug>   анонсировать конкретную статью (слаг из URL)
   --url <url>     то же, но полный URL: https://skaz-kray.ru/<slug>/
+  --pending       анонсировать статьи за последние N дней, по которым в журнале
+                  нет анонса (режим автодеплоя); окно задаёт --since, по умолчанию 7
+  --since <дни>   окно для --pending, по умолчанию 7
+  --local         выполнить серверную часть здесь же (php8.3), без ssh —
+                  для запуска на самом сервере из autodeploy
   --dry-run       ничего не отправлять: план + проверка дублей в журнале
   --force         отправить, даже если анонс уже публиковался
   --help          эта справка
@@ -204,7 +215,7 @@ if ($dryRun) {
 }
 
 $markup = (string) json_encode(
-    ['inline_keyboard' => [['text' => ${phpStr(BUTTON_TEXT)}, 'url' => $url]]],
+    ['inline_keyboard' => [[['text' => ${phpStr(BUTTON_TEXT)}, 'url' => $url]]]],
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 );
 $id = TelegramBot::sendMessage($token, $chat, $text, null, $markup);
@@ -225,41 +236,81 @@ function fail(msg) {
 }
 
 const posts = loadPosts();
-const post = pickPost(posts);
-const desc = descriptionOf(post);
-const text = `${HEADER}\n\n${desc.text}`;
-const url = `${SITE}/${post.slug}/`;
-const context = `post-announce:${post.slug}`;
 
-if (text.length > 4000) {
-  fail(`текст анонса слишком длинный (${text.length} > 4000 символов) — укоротите seoDescription`);
+/**
+ * Режим автодеплоя: статьи, у которых анонса нет в журнале Telegram.
+ * Проверка дедупа — в серверной PHP-части (журнал живёт в БД), поэтому здесь
+ * берём кандидатов по окну дат: свежие статьи + явно заданная. Повторные
+ * деплои ничего не постят — PHP вернёт SKIP по context.
+ */
+function pickPending() {
+  const sinceDays = opts.since ?? 7;
+  const now = Date.now();
+  const from = new Date(now - sinceDays * 86400000);
+  const p = (n) => String(n).padStart(2, '0');
+  const fromStr = `${from.getFullYear()}-${p(from.getMonth() + 1)}-${p(from.getDate())} 00:00:00`;
+  return posts
+    .filter((x) => x.date && x.date >= fromStr)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+const targets = opts.pending ? pickPending() : [pickPost(posts)];
+
+if (targets.length === 0) {
+  console.log(`Нет статей за последние ${opts.since ?? 7} дн. — анонсировать нечего.`);
+  process.exit(0);
+}
+if (!opts.pending && targets.length > 1) fail('внутренняя ошибка: несколько целей без --pending');
+
+function runRemote(php, flags) {
+  if (opts.local) {
+    const tmp = `/tmp/skaz-announce-post-${process.pid}.php`;
+    fs.writeFileSync(tmp, php, 'utf8');
+    try {
+      const r = spawnSync('php8.3', [tmp, ...flags], { encoding: 'utf8', timeout: 60000 });
+      if (r.error) fail(`php8.3 не запустился: ${r.error.message}`);
+      if (r.stdout) process.stdout.write(r.stdout);
+      if (r.stderr) process.stderr.write(r.stderr);
+      return r.status === 0;
+    } finally {
+      try { fs.unlinkSync(tmp); } catch { /* уже удалён */ }
+    }
+  }
+  const b64 = Buffer.from(php, 'utf8').toString('base64');
+  const remoteCmd = `echo '${b64}' | base64 -d > ${REMOTE_PHP}`
+    + ` && php8.3 ${REMOTE_PHP}${flags.length ? ' ' + flags.join(' ') : ''}; rc=$?; rm -f ${REMOTE_PHP}; exit $rc`;
+  const res = spawnSync('ssh', [SSH_HOST, remoteCmd], { encoding: 'utf8', timeout: 120000 });
+  if (res.error) fail(`не удалось запустить ssh: ${res.error.message}`);
+  if (res.stdout) process.stdout.write(res.stdout);
+  if (res.stderr) process.stderr.write(res.stderr);
+  return res.status === 0;
 }
 
-console.log('Статья:   ' + post.title);
-console.log('Дата:     ' + post.date);
-console.log('URL:      ' + url);
-console.log('Описание: ' + desc.src);
-console.log('Текст анонса:');
-console.log('---');
-console.log(text);
-console.log('---');
-console.log(`Режим:    ${opts.dryRun ? 'dry-run (без отправки)' : 'боевой'}${opts.force ? ' + force' : ''}`);
-console.log(`SSH:      ${SSH_HOST} (${REMOTE_PHP}, удалится после запуска)`);
-console.log('');
+const flags = [opts.dryRun && '--dry-run', opts.force && '--force'].filter(Boolean);
+let failed = 0;
 
-const php = buildPhp({ text, url, context });
-const b64 = Buffer.from(php, 'utf8').toString('base64');
-const flags = [opts.dryRun && '--dry-run', opts.force && '--force'].filter(Boolean).join(' ');
-const remoteCmd = `echo '${b64}' | base64 -d > ${REMOTE_PHP}`
-  + ` && php8.3 ${REMOTE_PHP}${flags ? ' ' + flags : ''}; rc=$?; rm -f ${REMOTE_PHP}; exit $rc`;
+for (const post of targets) {
+  const desc = descriptionOf(post);
+  const text = `${HEADER}\n\n${desc.text}`;
+  const url = `${SITE}/${post.slug}/`;
+  const context = `post-announce:${post.slug}`;
 
-const res = spawnSync('ssh', [SSH_HOST, remoteCmd], { encoding: 'utf8', timeout: 60000 });
-if (res.error) fail(`не удалось запустить ssh: ${res.error.message}`);
-if (res.stdout) process.stdout.write(res.stdout);
-if (res.stderr) process.stderr.write(res.stderr);
-if (res.status !== 0) {
-  fail(`серверная часть завершилась с кодом ${res.status}${res.signal ? ` (сигнал ${res.signal})` : ''}`);
+  if (text.length > 4000) {
+    console.error(`ПРОПУСК: текст анонса «${post.title}» слишком длинный (${text.length} > 4000)`);
+    failed++;
+    continue;
+  }
+
+  console.log(`\n=== ${post.title} ===`);
+  console.log('Дата:     ' + post.date);
+  console.log('URL:      ' + url);
+  console.log('Описание: ' + desc.src);
+  console.log(`Режим:    ${opts.dryRun ? 'dry-run' : 'боевой'}${opts.force ? ' + force' : ''}${opts.pending ? ' + pending' : ''}`);
+  console.log(opts.local ? 'Запуск:   локально (php8.3)' : `Запуск:   ${SSH_HOST} (${REMOTE_PHP})`);
+
+  if (!runRemote(buildPhp({ text, url, context }), flags)) failed++;
 }
+
+if (failed > 0) fail(`не удалось обработать ${failed} из ${targets.length}`);
 process.exit(0);
 
 

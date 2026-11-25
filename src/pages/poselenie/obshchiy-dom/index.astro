@@ -31,7 +31,7 @@ import Base from '../../../layouts/Base.astro';
       </p>
     </section>
 
-    <!-- Отчёт о расходах — порт budget/report.php + partials/ledger_report.php.
+    <!-- Отчёт о расходах — порт partials/ledger_report.php + partials/ledger_report.php.
          Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
          один — LedgerReport), но формы ввода жителям не показываются.
          Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
@@ -50,14 +50,12 @@ import Base from '../../../layouts/Base.astro';
       </div>
     </details>
 
-    <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols). -->
-    <details class="res-card house-option house-protocols" id="protocolsCard">
-      <summary>
-        <div class="house-summary-text">
-          <b>Протоколы встреч Попечительского совета Общего дома</b>
-        </div>
-      </summary>
-      <ul class="doclist" id="protocolsList" aria-busy="true">
+    <!-- Протоколы встреч — тот же список, что у совета (councilData::protocols).
+         Разметка и классы как в /sovet (home.php): аккордеон sovet-acc,
+         список sovet-doclist из residents.css — оформление идентично. -->
+    <details class="res-card sovet-acc house-protocols" id="protocolsCard">
+      <summary><h2>Протоколы встреч Попечительского совета Общего дома</h2></summary>
+      <ul class="sovet-doclist" id="protocolsList" aria-busy="true">
         <li class="skeleton" style="height:1rem;width:70%;margin:0.5rem 0"></li>
         <li class="skeleton" style="height:1rem;width:55%;margin:0.5rem 0"></li>
         <li class="skeleton" style="height:1rem;width:62%;margin:0.5rem 0"></li>
@@ -465,67 +463,13 @@ import Base from '../../../layouts/Base.astro';
     display: inline-block;
     margin: 0;
   }
-  /* Протоколы — аккордеон на нативном <details>. */
-  .house-protocols > summary {
-    list-style: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-  .house-protocols > summary::-webkit-details-marker {
-    display: none;
-  }
-  /* Заголовок-аккордеон повторяет раскладку «Бронирования помещений»:
-     <b> в одну строку, под ним .meta. Обёртка нужна, потому что summary —
-     flex-контейнер (заголовок слева, стрелка справа). */
-  .house-summary-text {
-    display: block;
-    min-width: 0;
-  }
-  .house-summary-text b {
-    display: block;
-    font-size: 1.05rem;
-    margin: 0 0 0.2rem;
-    font-weight: 700;
-  }
-  .house-summary-text .meta {
-    display: block;
-  }
-  .house-protocols > summary {
-    margin-bottom: 0.2rem;
-  }
-  .house-protocols > summary::after {
-    content: '\25BE';
-    color: var(--muted);
-    transition: transform 0.15s ease;
-  }
-  .house-protocols[open] > summary {
-    margin-bottom: 0.8rem;
-  }
-  .house-protocols[open] > summary::after {
-    transform: rotate(180deg);
-  }
-  .doclist {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .doclist li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .doclist li.skeleton {
+  /* Протоколы встреч — как в /sovet: базовое оформление даёт sovet-acc и
+     sovet-doclist из residents.css (он подключается после этого бандла).
+     Здесь только адаптация скелетонов-заглушек под li-раскладку sovet-doclist. */
+  .sovet-doclist li.skeleton {
     display: block;
     border-bottom: 0;
     padding: 0;
-  }
-  .doclist a {
-    flex: 1;
   }
   /* Скелетоны — заглушки до загрузки содержимого блоков. */
   .skeleton {

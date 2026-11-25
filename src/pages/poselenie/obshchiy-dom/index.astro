@@ -34,11 +34,13 @@ import Base from '../../../layouts/Base.astro';
     <!-- Отчёт о расходах — порт partials/ledger_report.php + partials/ledger_report.php.
          Только просмотр: цифры те же, что в /sovet/buhgalteriya (источник
          один — LedgerReport), но формы ввода жителям не показываются.
-         Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику. -->
-    <details class="res-card house-option house-protocols" id="budgetCard">
+         Свёрнут по умолчанию: отчёт тяжёлый, раскрывается по клику.
+         Оформление — как у карточки протоколов: аккордеон sovet-acc (стрелка
+         раскрытия с правого края) с подзаголовком .meta под заголовком. -->
+    <details class="res-card sovet-acc house-protocols" id="budgetCard">
       <summary>
         <div class="house-summary-text">
-          <b>Бюджет Общего дома</b>
+          <h2>Бюджет Общего дома</h2>
           <span class="meta">Открытый отчёт о расходовании средств Фонда Общего дома</span>
         </div>
       </summary>
@@ -462,6 +464,19 @@ import Base from '../../../layouts/Base.astro';
   .house-actions .btn {
     display: inline-block;
     margin: 0;
+  }
+  /* Заголовок-аккордеон «Бюджет Общего дома»: summary — flex-контейнер
+     sovet-acc (заголовок слева, стрелка справа), поэтому текстовый блок
+     оборачиваем в .house-summary-text — h2 в одну строку, под ним .meta. */
+  .house-summary-text {
+    display: block;
+    min-width: 0;
+  }
+  .house-summary-text h2 {
+    margin: 0 0 0.2rem;
+  }
+  .house-summary-text .meta {
+    display: block;
   }
   /* Протоколы встреч — как в /sovet: базовое оформление даёт sovet-acc и
      sovet-doclist из residents.css (он подключается после этого бандла).

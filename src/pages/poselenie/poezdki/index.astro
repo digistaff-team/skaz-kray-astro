@@ -1,0 +1,361 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+
+<Base
+  title="Совместные поездки"
+  description="Попутчики и доставка в поселении «Сказочный Край»."
+  noindex
+>
+  <div class="wrap sec">
+    <div class="head">
+      <h1>Поездки</h1>
+      <a class="btn btn--solid" href="/poselenie/poezdki/novaya/">+ Предложить поездку</a>
+    </div>
+    <p class="meta">
+      Соседи подвозят соседей. Водитель публикует поездку и число свободных
+      мест, вы бронируете место — водитель подтверждает.
+    </p>
+
+    <nav class="tabs">
+      <button type="button" id="tabBoard" class="tab tab--on">Доска</button>
+      <button type="button" id="tabMine" class="tab">Мои поездки</button>
+    </nav>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="secStatus" class="meta" role="status">Загружаем…</p>
+
+    <div id="viewBoard">
+      <form class="filters" id="filters" onsubmit="return false">
+        <input type="search" id="fq" placeholder="Поиск по маршруту (откуда/куда)" aria-label="Поиск по маршруту" autocomplete="off" />
+        <input type="date" id="fd" aria-label="Дата поездки" />
+        <button type="button" id="freset" class="btn btn--solid">Найти</button>
+      </form>
+      <div id="list" class="list"></div>
+    </div>
+
+    <div id="viewMine" hidden>
+      <h2 class="sub">Я водитель</h2>
+      <div id="asDriver" class="list"></div>
+      <h2 class="sub">Я пассажир</h2>
+      <div id="asPassenger" class="list"></div>
+    </div>
+
+    <p class="foot">
+      <a href="/poselenie/">На главную</a>
+      · <a href="/poselenie/dostavka/">Доставка</a>
+    </p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var BASE = '/api/trips';
+      var statusEl = document.getElementById('secStatus');
+      var flashEl = document.getElementById('flash');
+      var listEl = document.getElementById('list');
+      var fq = document.getElementById('fq');
+      var fd = document.getElementById('fd');
+      var freset = document.getElementById('freset');
+      var asDriverEl = document.getElementById('asDriver');
+      var asPassengerEl = document.getElementById('asPassenger');
+      var viewBoard = document.getElementById('viewBoard');
+      var viewMine = document.getElementById('viewMine');
+      var tabBoard = document.getElementById('tabBoard');
+      var tabMine = document.getElementById('tabMine');
+      var data = [];
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function api(url, opts) {
+        var o = opts || {};
+        var opt = {
+          method: o.method || 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({}, authHeaders())
+        };
+        if (o.body) {
+          opt.headers['Content-Type'] = 'application/json';
+          opt.body = JSON.stringify(o.body);
+        }
+        return fetch(url, opt).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+          return r.json().catch(function () { return {}; }).then(function (d) {
+            return { ok: r.ok, status: r.status, data: d };
+          });
+        });
+      }
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function flash(msg, kind) {
+        if (!flashEl) return;
+        flashEl.textContent = msg;
+        flashEl.className = 'flash' + (kind === 'error' ? ' flash--error' : '');
+        flashEl.hidden = false;
+        setTimeout(function () { flashEl.hidden = true; }, 4000);
+      }
+      function ruDate(s) {
+        if (!s) return '';
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+        if (!m) return s;
+        var months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        return parseInt(m[3], 10) + ' ' + months[parseInt(m[2], 10) - 1] + ' ' + m[1];
+      }
+      function fmtMoney(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+      }
+
+      function renderBoard() {
+        if (!data.length) {
+          listEl.innerHTML = '<p class="meta">Пока нет предстоящих поездок. <a href="/poselenie/poezdki/novaya/">Предложите свою</a>.</p>';
+          return;
+        }
+        listEl.innerHTML = data.map(function (t) {
+          return '<a class="card trip-card" href="/poselenie/poezdki/?poezdka=' + t.id + '">' +
+            '<div class="trip-route">' + esc(t.origin) + ' <span class="trip-arrow">→</span> ' + esc(t.destination) + '</div>' +
+            '<div class="trip-meta">' +
+              '<span class="trip-when">' + esc(ruDate(t.tripDate)) + (t.tripTime ? ', ' + esc(t.tripTime) : '') + '</span>' +
+              '<span class="trip-seats">' + t.seatsFree + ' из ' + t.seatsTotal + ' мест</span>' +
+            '</div>' +
+            '<div class="meta">Водитель: ' + esc(t.driverName) + (t.note ? ' · ' + esc(t.note) : '') + '</div>' +
+          '</a>';
+        }).join('');
+      }
+
+      function renderMine(d) {
+        var asDriverHtml = '';
+        if (!d.asDriver || !d.asDriver.length) {
+          asDriverHtml = '<p class="meta">Вы не предлагали поездок.</p>';
+        } else {
+          asDriverHtml = d.asDriver.map(function (t) {
+            var st = t.status === 'active' ? 'активна' : t.status === 'done' ? 'состоялась' : t.status;
+            var bHtml = '';
+            if (t.bookings && t.bookings.length) {
+              bHtml = '<div class="trip-bookings"><div class="meta">Заявки:</div>' +
+                t.bookings.map(function (b) {
+                  var btns = '';
+                  if (b.status === 'requested') {
+                    btns = '<button type="button" class="btn btn--sm b-ok" data-bid="' + b.id + '">Подтвердить</button> ' +
+                      '<button type="button" class="btn btn--ghost btn--sm b-no" data-bid="' + b.id + '">Отклонить</button>';
+                  } else if (b.status === 'confirmed') {
+                    btns = '<span class="st st--ok">подтверждена</span>';
+                  } else if (b.status === 'declined') {
+                    btns = '<span class="st st--off">отклонена</span>';
+                  } else {
+                    btns = '<span class="st st--off">' + esc(b.status) + '</span>';
+                  }
+                  return '<div class="trip-booking">' + esc(b.passengerName) +
+                    ' · ' + b.seats + ' мест · ' + btns + '</div>';
+                }).join('') + '</div>';
+            }
+            var ctrl = '';
+            if (t.status === 'active') {
+              ctrl = '<div class="trip-actions">' +
+                '<a class="btn btn--ghost btn--sm" href="/poselenie/poezdki/?poezdka=' + t.id + '">Открыть</a> ' +
+                '<button type="button" class="btn btn--sm t-done" data-id="' + t.id + '">Состоялась</button> ' +
+                '<button type="button" class="btn btn--ghost btn--sm t-cancel" data-id="' + t.id + '">Отменить</button> ' +
+                '<button type="button" class="btn btn--danger btn--sm t-del" data-id="' + t.id + '">Удалить</button>' +
+              '</div>';
+            }
+            return '<div class="card">' +
+              '<div class="trip-route">' + esc(t.origin) + ' <span class="trip-arrow">→</span> ' + esc(t.destination) + '</div>' +
+              '<div class="meta">' + esc(ruDate(t.tripDate)) + (t.tripTime ? ', ' + esc(t.tripTime) : '') +
+                ' · ' + t.seatsFree + ' из ' + t.seatsTotal + ' мест · <span class="st">' + esc(st) + '</span></div>' +
+              bHtml + ctrl +
+            '</div>';
+          }).join('');
+        }
+        asDriverEl.innerHTML = asDriverHtml;
+
+        var asPaxHtml = '';
+        if (!d.asPassenger || !d.asPassenger.length) {
+          asPaxHtml = '<p class="meta">Вы пока не бронировали мест. <a href="#">Посмотрите доску</a>.</p>';
+        } else {
+          asPaxHtml = d.asPassenger.map(function (b) {
+            var t = b.trip;
+            if (!t) return '';
+            var stMap = { requested: 'ожидает ответа', confirmed: 'подтверждена', declined: 'отклонена', cancelled: 'отменена' };
+            var btns = '';
+            if (b.status === 'requested' || b.status === 'confirmed') {
+              btns = '<button type="button" class="btn btn--ghost btn--sm p-cancel" data-bid="' + b.id + '">Отменить</button>';
+            }
+            return '<div class="card">' +
+              '<div class="trip-route">' + esc(t.origin) + ' <span class="trip-arrow">→</span> ' + esc(t.destination) + '</div>' +
+              '<div class="meta">' + esc(ruDate(t.tripDate)) + (t.tripTime ? ', ' + esc(t.tripTime) : '') +
+                ' · водитель ' + esc(t.driverName) + '</div>' +
+              '<div class="meta">' + b.seats + ' мест · <span class="st">' + esc(stMap[b.status] || b.status) + '</span> ' + btns + '</div>' +
+            '</div>';
+          }).join('');
+        }
+        asPassengerEl.innerHTML = asPaxHtml;
+      }
+
+      function loadBoard() {
+        show('Загружаем…');
+        var qs = [];
+        if (fq.value.trim()) qs.push('q=' + encodeURIComponent(fq.value.trim()));
+        if (fd.value) qs.push('date=' + encodeURIComponent(fd.value));
+        var url = BASE + '/board' + (qs.length ? '?' + qs.join('&') : '');
+        api(url).then(function (r) {
+          if (!r.ok) { show('Не удалось загрузить поездки.'); return; }
+          data = r.data || [];
+          renderBoard();
+          show('');
+        }).catch(function (e) {
+          if (e && e.auth) return;
+          show('Не удалось загрузить поездки.');
+        });
+      }
+
+      function loadMine() {
+        show('Загружаем…');
+        api(BASE + '/mine').then(function (r) {
+          if (!r.ok) { show('Не удалось загрузить ваши поездки.'); return; }
+          renderMine(r.data || {});
+          show('');
+        }).catch(function (e) {
+          if (e && e.auth) return;
+          show('Не удалось загрузить ваши поездки.');
+        });
+      }
+
+      function switchTab(which) {
+        if (which === 'mine') {
+          tabBoard.classList.remove('tab--on');
+          tabMine.classList.add('tab--on');
+          viewBoard.hidden = true;
+          viewMine.hidden = false;
+          loadMine();
+        } else {
+          tabMine.classList.remove('tab--on');
+          tabBoard.classList.add('tab--on');
+          viewMine.hidden = true;
+          viewBoard.hidden = false;
+          loadBoard();
+        }
+      }
+
+      tabBoard.addEventListener('click', function () { switchTab('board'); });
+      tabMine.addEventListener('click', function () { switchTab('mine'); });
+      freset.addEventListener('click', loadBoard);
+      fq.addEventListener('keydown', function (e) { if (e.key === 'Enter') loadBoard(); });
+
+      // Действия водителя (делегирование на контейнере «Мои поездки»).
+      viewMine.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        var id;
+        if (btn.classList.contains('t-done')) {
+          id = btn.getAttribute('data-id');
+          api(BASE + '/zavershit/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Поездка отмечена состоявшейся'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('t-cancel')) {
+          id = btn.getAttribute('data-id');
+          if (!confirm('Отменить поездку?')) return;
+          api(BASE + '/otmenit/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Поездка отменена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('t-del')) {
+          id = btn.getAttribute('data-id');
+          if (!confirm('Удалить поездку?')) return;
+          api(BASE + '/udalit/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Поездка удалена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('b-ok')) {
+          api(BASE + '/bookings/confirm/' + btn.getAttribute('data-bid'), { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Бронь подтверждена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('b-no')) {
+          api(BASE + '/bookings/decline/' + btn.getAttribute('data-bid'), { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Бронь отклонена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('p-cancel')) {
+          if (!confirm('Отменить бронь?')) return;
+          api(BASE + '/bookings/cancel/' + btn.getAttribute('data-bid'), { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Бронь отменена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        }
+      });
+
+      loadBoard();
+    })();
+  </script>
+
+  <style>
+    .sec { padding-top: 2rem; padding-bottom: 3rem; }
+    .head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .head h1 { font-size: var(--step-3); margin: 0; }
+    .meta { color: var(--muted); font-size: 0.95rem; }
+    .sub { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; }
+    .tabs { display: flex; gap: 0.4rem; margin: 1.2rem 0 0.6rem; }
+    .tab {
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+    }
+    .tab--on { background: var(--green, #008757); color: #fff; border-color: var(--green, #008757); }
+    .filters { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 1rem 0; }
+    .filters input { flex: 1; min-width: 10rem; padding: 0.5rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius, 8px); }
+    .list { display: flex; flex-direction: column; gap: 0.8rem; }
+    .card {
+      display: block;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      padding: 1rem 1.1rem;
+    }
+    .trip-card { text-decoration: none; color: inherit; }
+    .trip-route { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .trip-arrow { color: var(--green, #008757); }
+    .trip-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.92rem; margin-bottom: 0.3rem; color: var(--muted); }
+    .trip-bookings { margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+    .trip-booking { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; padding: 0.3rem 0; }
+    .trip-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.7rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      background: var(--card);
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn--solid { background: var(--green, #008757); border-color: var(--green, #008757); color: #fff; }
+    .btn--ghost { background: transparent; }
+    .btn--danger { background: #fdecec; border-color: #f1b4b4; color: #a11; }
+    .btn--sm { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+    .st { font-size: 0.78rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: #eef4ef; color: var(--green, #008757); }
+    .st--ok { background: #e6f5ec; color: #00724a; }
+    .st--off { background: #f3f3f0; color: var(--muted); }
+    .flash { padding: 0.5rem 0.8rem; border-radius: var(--radius, 8px); background: #eef4ef; color: #00724a; margin: 0.6rem 0; }
+    .flash--error { background: #fdecec; color: #a11; }
+    .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+  </style>
+</Base>

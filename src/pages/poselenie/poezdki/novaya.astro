@@ -1,0 +1,134 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+
+<Base title="Новая поездка" description="Предложить поездку соседям." noindex>
+  <div class="wrap sec">
+    <a class="back" href="/poselenie/poezdki/">← К поездкам</a>
+    <h1>Предложить поездку</h1>
+    <p class="meta">
+      Публикуйте маршрут и число свободных мест. Соседи пришлют заявки,
+      а вы их подтвердите в разделе «Мои поездки».
+    </p>
+
+    <p id="flash" class="flash" hidden></p>
+
+    <form class="form" id="createForm">
+      <label>Откуда <input type="text" id="origin" maxlength="160" required placeholder="например Краснодар" /></label>
+      <label>Куда <input type="text" id="destination" maxlength="160" required placeholder="например Сказочный Край" /></label>
+      <label>Дата поездки <input type="date" id="tripDate" required /></label>
+      <label>Время (необязательно) <input type="text" id="tripTime" maxlength="40" placeholder="например 18:30" /></label>
+      <label>Свободных мест <input type="number" id="seatsTotal" min="1" max="8" value="1" required /></label>
+      <label>Заметка (необязательно) <textarea id="note" rows="3" maxlength="500" placeholder="багажник свободен, забираю у вокзала…"></textarea></label>
+      <div class="actions">
+        <button type="submit" class="btn btn--solid" id="submit" disabled>Опубликовать</button>
+        <a class="btn btn--ghost" href="/poselenie/poezdki/">Отмена</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var statusEl = document.getElementById('flash');
+      var form = document.getElementById('createForm');
+      var submit = document.getElementById('submit');
+      var fields = {
+        origin: document.getElementById('origin'),
+        destination: document.getElementById('destination'),
+        tripDate: document.getElementById('tripDate'),
+        tripTime: document.getElementById('tripTime'),
+        seatsTotal: document.getElementById('seatsTotal'),
+        note: document.getElementById('note')
+      };
+
+      // Минимальная дата — сегодня (не даём выбрать прошлое).
+      var today = new Date();
+      var iso = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+      fields.tripDate.min = iso;
+      fields.tripDate.value = iso;
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function flash(msg) {
+        statusEl.textContent = msg;
+        statusEl.hidden = false;
+      }
+
+      submit.disabled = false;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        statusEl.hidden = true;
+        var body = {
+          origin: fields.origin.value.trim(),
+          destination: fields.destination.value.trim(),
+          tripDate: fields.tripDate.value,
+          tripTime: fields.tripTime.value.trim() || null,
+          seatsTotal: Number(fields.seatsTotal.value) || 1,
+          note: fields.note.value.trim() || null
+        };
+        if (!body.origin || !body.destination) { flash('Укажите откуда и куда'); return; }
+        submit.disabled = true;
+        fetch('/api/trips/create', {
+          method: 'POST',
+          credentials: 'include',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify(body)
+        })
+          .then(function (r) {
+            if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+            return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, data: d }; });
+          })
+          .then(function (res) {
+            if (!res) return;
+            if (!res.ok) { flash(res.data.error || 'Не удалось опубликовать'); submit.disabled = false; return; }
+            window.location.replace('/poselenie/poezdki/');
+          })
+          .catch(function () { flash('Ошибка сети. Попробуйте ещё раз.'); submit.disabled = false; });
+      });
+    })();
+  </script>
+
+  <style>
+    .sec { padding-top: 2rem; padding-bottom: 3rem; }
+    .back { display: inline-block; margin-bottom: 0.5rem; font-size: 0.9rem; }
+    h1 { font-size: var(--step-3); margin: 0 0 0.4rem; }
+    .meta { color: var(--muted); font-size: 0.95rem; }
+    .form { max-width: 34rem; margin-top: 1.2rem; }
+    .form label { display: block; margin-bottom: 0.8rem; font-size: 0.95rem; }
+    .form input, .form textarea {
+      display: block;
+      width: 100%;
+      margin-top: 0.3rem;
+      padding: 0.5rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      font: inherit;
+    }
+    .actions { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      background: var(--card);
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn--solid { background: var(--green, #008757); border-color: var(--green, #008757); color: #fff; }
+    .btn--ghost { background: transparent; }
+    .btn:disabled { opacity: 0.6; cursor: default; }
+    .flash { padding: 0.5rem 0.8rem; border-radius: var(--radius, 8px); background: #fdecec; color: #a11; margin: 0.6rem 0; }
+    .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+  </style>
+</Base>

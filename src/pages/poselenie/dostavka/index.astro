@@ -1,0 +1,346 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+
+<Base
+  title="Доставка"
+  description="Просьбы привезти: купить или забрать. Соседи помогают друг другу."
+  noindex
+>
+  <div class="wrap sec">
+    <div class="head">
+      <h1>Доставка</h1>
+      <a class="btn btn--solid" href="/poselenie/dostavka/novaya/">+ Попросить привезти</a>
+    </div>
+    <p class="meta">
+      Попросите соседа купить или забрать что-то по дороге. Оформляется
+      заявкой — исполнитель берёт в работу, после получения рассчитываетесь.
+    </p>
+
+    <nav class="tabs">
+      <button type="button" id="tabBoard" class="tab tab--on">Доска</button>
+      <button type="button" id="tabMine" class="tab">Мои доставки</button>
+    </nav>
+
+    <p id="flash" class="flash" hidden></p>
+    <p id="secStatus" class="meta" role="status">Загружаем…</p>
+
+    <div id="viewBoard">
+      <div class="filters">
+        <button type="button" class="btn btn--solid f-kind f-kind--on" data-kind="">Все</button>
+        <button type="button" class="btn f-kind" data-kind="buy">Купить</button>
+        <button type="button" class="btn f-kind" data-kind="pickup">Забрать</button>
+      </div>
+      <div id="list" class="list"></div>
+    </div>
+
+    <div id="viewMine" hidden>
+      <h2 class="sub">Я заказываю</h2>
+      <div id="asRequester" class="list"></div>
+      <h2 class="sub">Я везу</h2>
+      <div id="asCarrier" class="list"></div>
+    </div>
+
+    <p class="foot">
+      <a href="/poselenie/">На главную</a>
+      · <a href="/poselenie/poezdki/">Поездки</a>
+    </p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var BASE = '/api/deliveries';
+      var statusEl = document.getElementById('secStatus');
+      var flashEl = document.getElementById('flash');
+      var listEl = document.getElementById('list');
+      var asReqEl = document.getElementById('asRequester');
+      var asCarEl = document.getElementById('asCarrier');
+      var viewBoard = document.getElementById('viewBoard');
+      var viewMine = document.getElementById('viewMine');
+      var tabBoard = document.getElementById('tabBoard');
+      var tabMine = document.getElementById('tabMine');
+      var data = [];
+      var currentKind = '';
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function api(url, opts) {
+        var o = opts || {};
+        var opt = {
+          method: o.method || 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+          headers: Object.assign({}, authHeaders())
+        };
+        if (o.body) {
+          opt.headers['Content-Type'] = 'application/json';
+          opt.body = JSON.stringify(o.body);
+        }
+        return fetch(url, opt).then(function (r) {
+          if (r.status === 401) { window.location.replace('/poselenie/tg/'); return Promise.reject({ auth: true }); }
+          return r.json().catch(function () { return {}; }).then(function (d) {
+            return { ok: r.ok, status: r.status, data: d };
+          });
+        });
+      }
+      function show(msg) { if (statusEl) statusEl.textContent = msg; }
+      function flash(msg, kind) {
+        if (!flashEl) return;
+        flashEl.textContent = msg;
+        flashEl.className = 'flash' + (kind === 'error' ? ' flash--error' : '');
+        flashEl.hidden = false;
+        setTimeout(function () { flashEl.hidden = true; }, 4000);
+      }
+      function ruDate(s) {
+        if (!s) return '';
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+        if (!m) return s;
+        var months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        return parseInt(m[3], 10) + ' ' + months[parseInt(m[2], 10) - 1] + ' ' + m[1];
+      }
+      function fmtMoney(n) {
+        return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
+      }
+
+      function renderBoard() {
+        if (!data.length) {
+          listEl.innerHTML = '<p class="meta">Сейчас никто ничего не просит. <a href="/poselenie/dostavka/novaya/">Попросите сами</a>.</p>';
+          return;
+        }
+        listEl.innerHTML = data.map(function (d) {
+          var trip = d.trip
+            ? '<div class="meta">Поездка: ' + esc(d.trip.origin) + ' → ' + esc(d.trip.destination) +
+              ', ' + esc(ruDate(d.trip.tripDate)) + '</div>'
+            : '';
+          var need = d.needBy ? 'нужно до ' + esc(ruDate(d.needBy)) : 'без срока';
+          var bud = d.budget ? ' · бюджет ' + fmtMoney(d.budget) : '';
+          return '<div class="card">' +
+            '<div class="d-head"><span class="d-kind">' + esc(d.kindLabel) + '</span> <strong>' + esc(d.what) + '</strong></div>' +
+            '<div class="meta">' + esc(d.place) + ' · ' + need + bud + '</div>' +
+            trip +
+            '<div class="meta">Проситель: ' + esc(d.reqName) + (d.note ? ' · ' + esc(d.note) : '') + '</div>' +
+            '<div class="d-actions">' +
+              '<button type="button" class="btn btn--solid btn--sm d-take" data-id="' + d.id + '">Возьму</button> ' +
+              '<a class="btn btn--ghost btn--sm" href="/poselenie/dostavka/?zayavka=' + d.id + '">Подробнее</a>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      function renderMine(d) {
+        var stMap = { open: 'на доске', requested: 'ждёт водителя', accepted: 'в пути',
+          delivered: 'привезено', settled: 'закрыто', declined: 'отклонено', cancelled: 'отменено' };
+
+        var reqHtml = '';
+        if (!d.asRequester || !d.asRequester.length) {
+          reqHtml = '<p class="meta">Вы пока ничего не просили. <a href="/poselenie/dostavka/novaya/">Попросите соседа</a>.</p>';
+        } else {
+          reqHtml = d.asRequester.map(function (x) {
+            var btns = '';
+            if (x.status === 'open' || x.status === 'requested') {
+              btns = '<button type="button" class="btn btn--ghost btn--sm r-cancel" data-id="' + x.id + '">Отменить</button>';
+            } else if (x.status === 'delivered') {
+              btns = '<button type="button" class="btn btn--solid btn--sm r-settle" data-id="' + x.id + '">Получил, рассчитались</button>';
+            }
+            return '<div class="card">' +
+              '<div class="d-head"><span class="d-kind">' + esc(x.kindLabel) + '</span> <strong>' + esc(x.what) + '</strong></div>' +
+              '<div class="meta">' + esc(x.place) + ' · ' + esc(stMap[x.status] || x.status) +
+                (x.carrier ? ' · везёт ' + esc(x.carrier) : '') + '</div>' +
+              (x.receiptSum ? '<div class="meta">Чек: ' + fmtMoney(x.receiptSum) + '</div>' : '') +
+              '<div class="d-actions">' + btns + '</div>' +
+            '</div>';
+          }).join('');
+        }
+        asReqEl.innerHTML = reqHtml;
+
+        var carHtml = '';
+        if (!d.asCarrier || !d.asCarrier.length) {
+          carHtml = '<p class="meta">Вы пока ничего не взяли. <a href="#">Посмотрите доску</a>.</p>';
+        } else {
+          carHtml = d.asCarrier.map(function (x) {
+            var btns = '';
+            if (x.status === 'accepted') {
+              btns = '<button type="button" class="btn btn--solid btn--sm c-deliver" data-id="' + x.id + '">Привёз</button> ' +
+                '<button type="button" class="btn btn--ghost btn--sm c-drop" data-id="' + x.id + '">Не смогу</button>';
+            } else if (x.status === 'delivered' && x.kind === 'buy') {
+              btns = '<button type="button" class="btn btn--sm c-receipt" data-id="' + x.id + '">Указать сумму чека</button>';
+            }
+            return '<div class="card">' +
+              '<div class="d-head"><span class="d-kind">' + esc(x.kindLabel) + '</span> <strong>' + esc(x.what) + '</strong></div>' +
+              '<div class="meta">' + esc(x.place) + ' · ' + esc(stMap[x.status] || x.status) +
+                (x.reqName ? ' · заказал(а) ' + esc(x.reqName) : '') + '</div>' +
+              (x.receiptSum ? '<div class="meta">Чек: ' + fmtMoney(x.receiptSum) + '</div>' : '') +
+              '<div class="d-actions">' + btns + '</div>' +
+            '</div>';
+          }).join('');
+        }
+        asCarEl.innerHTML = carHtml;
+      }
+
+      function loadBoard() {
+        show('Загружаем…');
+        var url = BASE + '/board' + (currentKind ? '?kind=' + currentKind : '');
+        api(url).then(function (r) {
+          if (!r.ok) { show('Не удалось загрузить заявки.'); return; }
+          data = r.data || [];
+          renderBoard();
+          show('');
+        }).catch(function (e) {
+          if (e && e.auth) return;
+          show('Не удалось загрузить заявки.');
+        });
+      }
+
+      function loadMine() {
+        show('Загружаем…');
+        api(BASE + '/mine').then(function (r) {
+          if (!r.ok) { show('Не удалось загрузить ваши доставки.'); return; }
+          renderMine(r.data || {});
+          show('');
+        }).catch(function (e) {
+          if (e && e.auth) return;
+          show('Не удалось загрузить ваши доставки.');
+        });
+      }
+
+      function switchTab(which) {
+        if (which === 'mine') {
+          tabBoard.classList.remove('tab--on');
+          tabMine.classList.add('tab--on');
+          viewBoard.hidden = true;
+          viewMine.hidden = false;
+          loadMine();
+        } else {
+          tabMine.classList.remove('tab--on');
+          tabBoard.classList.add('tab--on');
+          viewMine.hidden = true;
+          viewBoard.hidden = false;
+          loadBoard();
+        }
+      }
+
+      tabBoard.addEventListener('click', function () { switchTab('board'); });
+      tabMine.addEventListener('click', function () { switchTab('mine'); });
+
+      document.querySelectorAll('.f-kind').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.f-kind').forEach(function (b) { b.classList.remove('f-kind--on'); });
+          btn.classList.add('f-kind--on');
+          currentKind = btn.getAttribute('data-kind') || '';
+          loadBoard();
+        });
+      });
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        var id = btn.getAttribute('data-id');
+        if (btn.classList.contains('d-take')) {
+          api(BASE + '/vzyat/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось взять заявку', 'error'); if (r.status === 400) loadBoard(); return; }
+            flash('Вы взяли заявку в работу'); loadBoard();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('r-cancel')) {
+          if (!confirm('Отменить заявку?')) return;
+          api(BASE + '/otmenit/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Заявка отменена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('r-settle')) {
+          api(BASE + '/rasschitalis/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Спасибо! Заявка закрыта'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('c-deliver')) {
+          api(BASE + '/privez/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Отметили доставку — сообщите заказчику'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('c-drop')) {
+          if (!confirm('Вернуть заявку на доску?')) return;
+          api(BASE + '/ne-smogu/' + id, { method: 'POST' }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Заявка вернулась на доску'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        } else if (btn.classList.contains('c-receipt')) {
+          var sum = prompt('Сумма чека в рублях:');
+          if (sum === null) return;
+          var n = Number(String(sum).replace(/\s/g, ''));
+          if (!isFinite(n) || n < 0) { flash('Неверная сумма', 'error'); return; }
+          api(BASE + '/chek/' + id, { method: 'POST', body: { receiptSum: n } }).then(function (r) {
+            if (!r.ok) { flash(r.data.error || 'Не удалось', 'error'); return; }
+            flash('Сумма чека сохранена'); loadMine();
+          }).catch(function (err) { if (!err.auth) flash('Ошибка сети', 'error'); });
+        }
+      });
+
+      loadBoard();
+    })();
+  </script>
+
+  <style>
+    .sec { padding-top: 2rem; padding-bottom: 3rem; }
+    .head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .head h1 { font-size: var(--step-3); margin: 0; }
+    .meta { color: var(--muted); font-size: 0.95rem; }
+    .sub { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; }
+    .tabs { display: flex; gap: 0.4rem; margin: 1.2rem 0 0.6rem; }
+    .tab {
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+    }
+    .tab--on { background: var(--green, #008757); color: #fff; border-color: var(--green, #008757); }
+    .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0; }
+    .f-kind--on { background: var(--green, #008757); border-color: var(--green, #008757); color: #fff; }
+    .list { display: flex; flex-direction: column; gap: 0.8rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      padding: 1rem 1.1rem;
+    }
+    .d-head { font-size: 1.05rem; margin-bottom: 0.25rem; }
+    .d-kind {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      background: #eef4ef;
+      color: var(--green, #008757);
+      vertical-align: middle;
+      margin-right: 0.3rem;
+    }
+    .d-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.7rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      background: var(--card);
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn--solid { background: var(--green, #008757); border-color: var(--green, #008757); color: #fff; }
+    .btn--ghost { background: transparent; }
+    .btn--sm { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+    .flash { padding: 0.5rem 0.8rem; border-radius: var(--radius, 8px); background: #eef4ef; color: #00724a; margin: 0.6rem 0; }
+    .flash--error { background: #fdecec; color: #a11; }
+    .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+  </style>
+</Base>

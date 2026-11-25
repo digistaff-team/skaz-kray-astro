@@ -1,0 +1,159 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+
+<Base title="Попросить привезти" description="Заявка на доставку соседям." noindex>
+  <div class="wrap sec">
+    <a class="back" href="/poselenie/dostavka/">← К доставке</a>
+    <h1>Попросить привезти</h1>
+    <p class="meta">
+      Опишите, что нужно купить или забрать. Сосед возьмёт заявку в работу;
+      после получения вы отметите «Получил, рассчитались».
+    </p>
+
+    <p id="flash" class="flash" hidden></p>
+
+    <form class="form" id="createForm">
+      <label>Что сделать
+        <select id="kind">
+          <option value="buy">Купить</option>
+          <option value="pickup">Забрать</option>
+        </select>
+      </label>
+      <label>Что <textarea id="what" rows="3" maxlength="1000" required placeholder="например 2 кг картофеля, хлеб, молоко"></textarea></label>
+      <label>Где <input type="text" id="place" maxlength="160" required placeholder="например рынок в Северской или пункт выдачи Озон" /></label>
+      <label>Нужно до (необязательно) <input type="date" id="needBy" /></label>
+      <label>Бюджет, ₽ (необязательно) <input type="number" id="budget" min="0" step="1" /></label>
+      <label>Привезти к поездке (необязательно)
+        <select id="tripId"><option value="">— на общую доску —</option></select>
+      </label>
+      <label>Заметка (необязательно) <textarea id="note" rows="2" maxlength="500"></textarea></label>
+      <div class="actions">
+        <button type="submit" class="btn btn--solid" id="submit">Отправить заявку</button>
+        <a class="btn btn--ghost" href="/poselenie/dostavka/">Отмена</a>
+      </div>
+    </form>
+
+    <p class="foot"><a href="/poselenie/">На главную</a></p>
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TOKEN_KEY = 'skazV2Token';
+      var flashEl = document.getElementById('flash');
+      var form = document.getElementById('createForm');
+      var submit = document.getElementById('submit');
+      var tripSel = document.getElementById('tripId');
+      var f = {
+        kind: document.getElementById('kind'),
+        what: document.getElementById('what'),
+        place: document.getElementById('place'),
+        needBy: document.getElementById('needBy'),
+        budget: document.getElementById('budget'),
+        note: document.getElementById('note')
+      };
+
+      function authHeaders() {
+        var t = '';
+        try { t = window.sessionStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      function flash(msg) { flashEl.textContent = msg; flashEl.hidden = false; }
+
+      function ruDate(s) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+        if (!m) return s;
+        var months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        return parseInt(m[3], 10) + ' ' + months[parseInt(m[2], 10) - 1];
+      }
+
+      // Подгружаем свои предстоящие поездки — можно привязать заявку к поездке.
+      fetch('/api/trips/board', { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (rows) {
+          (rows || []).forEach(function (t) {
+            var opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.origin + ' → ' + t.destination + ', ' + ruDate(t.tripDate);
+            tripSel.appendChild(opt);
+          });
+          // Если открыта страница поездки (?poezdka=N) — предвыбрать её.
+          var url = new URLSearchParams(window.location.search).get('poezdka');
+          if (url) tripSel.value = url;
+        })
+        .catch(function () {});
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        flashEl.hidden = true;
+        var body = {
+          kind: f.kind.value,
+          what: f.what.value.trim(),
+          place: f.place.value.trim(),
+          needBy: f.needBy.value || null,
+          budget: f.budget.value ? Number(f.budget.value) : null,
+          note: f.note.value.trim() || null,
+          tripId: tripSel.value ? Number(tripSel.value) : null
+        };
+        if (!body.what || !body.place) { flash('Заполните «Что» и «Где»'); return; }
+        submit.disabled = true;
+        fetch('/api/deliveries/create', {
+          method: 'POST',
+          credentials: 'include',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify(body)
+        })
+          .then(function (r) {
+            if (r.status === 401) { window.location.replace('/poselenie/tg/'); return null; }
+            return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, data: d }; });
+          })
+          .then(function (res) {
+            if (!res) return;
+            if (!res.ok) { flash(res.data.error || 'Не удалось создать заявку'); submit.disabled = false; return; }
+            window.location.replace('/poselenie/dostavka/');
+          })
+          .catch(function () { flash('Ошибка сети. Попробуйте ещё раз.'); submit.disabled = false; });
+      });
+    })();
+  </script>
+
+  <style>
+    .sec { padding-top: 2rem; padding-bottom: 3rem; }
+    .back { display: inline-block; margin-bottom: 0.5rem; font-size: 0.9rem; }
+    h1 { font-size: var(--step-3); margin: 0 0 0.4rem; }
+    .meta { color: var(--muted); font-size: 0.95rem; }
+    .form { max-width: 34rem; margin-top: 1.2rem; }
+    .form label { display: block; margin-bottom: 0.8rem; font-size: 0.95rem; }
+    .form input, .form textarea, .form select {
+      display: block;
+      width: 100%;
+      margin-top: 0.3rem;
+      padding: 0.5rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      font: inherit;
+    }
+    .actions { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius, 8px);
+      background: var(--card);
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn--solid { background: var(--green, #008757); border-color: var(--green, #008757); color: #fff; }
+    .btn--ghost { background: transparent; }
+    .btn:disabled { opacity: 0.6; cursor: default; }
+    .flash { padding: 0.5rem 0.8rem; border-radius: var(--radius, 8px); background: #fdecec; color: #a11; margin: 0.6rem 0; }
+    .foot { margin-top: 2.2rem; font-size: 0.95rem; }
+  </style>
+</Base>

@@ -1,7 +1,7 @@
 ---
 title: 'Осенняя посадка деревьев и кустарников на Кубани: что успеть до заморозков'
 date: '2026-11-25 12:00:00'
-cover: /images/posts/osennaya-posadka-derevev-i-kustarnikov-na-kubani-cover.jpg
+cover: /images/posts/osennaya-posadka-2026-cover.jpg
 categories:
   - kopilka-znanij
   - stati

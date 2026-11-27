@@ -1,7 +1,7 @@
 ---
 title: 'Живущая в лесу дизайнер вышла на подиумы Москвы'
 date: '2026-11-27 12:00:00'
-cover: /images/posts/dom-v-lesu-iz-solomy-09.jpg
+cover: /images/posts/dom-v-lesu-iz-solomy-cover.jpg
 categories:
   - kopilka-znanij
   - stati
